@@ -109,11 +109,11 @@ Based on feedback from users, we can choose to pick various options like streaks
 - Archived members cannot log in or mark attendance.
 - Creating a new subscription for an archived member automatically unarchives them, returning them to the active member list.
 - Users log in using email and password.
-- A member's mobile number serves as their login password. No separate password field is stored; the system uses the mobile number as the authentication credential. There is no in-app password change or password reset flow.
+- A user's mobile number serves as their login password. No separate password field is stored; the system uses the mobile number as the authentication credential for both members and the owner. There is no in-app password change or password reset flow.
 - The owner may update a member's full name or mobile number after account creation. No other member fields are editable after creation. Updating a member's mobile number also changes their login credential, since the mobile number is the password.
 - Member email is required, must be globally unique across all members (including archived members), and is matched case-insensitively for uniqueness.
 - Duplicate phone numbers are allowed.
-- The owner account and one initial member account are created by directly seeding the database. Credentials are stored in a local seed file that is not committed to version control. The same seed file is used for local development, local test, and production databases.
+- The owner account and one initial member account are created by directly seeding the database. Credentials are stored in an uncommitted seed file. The same uncommitted credentials seed file is used for local development, local test, and production databases.
 
 ### 4.1 Session
 
@@ -167,7 +167,7 @@ Based on feedback from users, we can choose to pick various options like streaks
 - A message like "You have been consistent for the last 14 days" or "You have been consistent for the last 30 days" is expected.
 - For a consistency rule of "2 exercise days in 7 days" and a message "You have been consistent for the last 30 days", this is to be interpreted as "Every window of 7 consecutive days for the last 30 days has at least 2 exercise days".
 - Consistency should be evaluated using the member's full attendance history and may stretch across subscription boundaries. For example, if a member renews subscription monthly and has been consistent for the last 3 months, then "You have been consistent for the last 90 days" is expected. Only the current continuous consistent period is expected to be referenced.
-- The consistency rule to apply at any moment is the rule of the currently active package. If the package's consistency rule is updated in the seed data, the change retroactively affects consistency evaluation for all members currently on that package. This is intentional and accepted behaviour.
+- The consistency rule to apply at any moment is the rule of the currently active package. If a package's consistency rule is updated directly in backend seed data or in the database, the change retroactively affects consistency evaluation for all members currently on that package. This is intentional and accepted behaviour.
 - Consistency evaluation requires that at least `window_days` have elapsed since the member's earliest ever subscription start date. Until this threshold is met, always show the building message regardless of attendance. For example, for a "2 exercise days in 7 days" rule, the building message is always shown until at least 7 days have passed from the member's earliest subscription start date.
 - For each calendar day (once eligible for evaluation), determine whether the trailing rolling window ending on that day satisfies the active package's consistency rule.
 - "You have been consistent for the last X days" means X is the length of the current continuous suffix ending today for which every day satisfies the consistency rule.
@@ -202,7 +202,10 @@ Based on feedback from users, we can choose to pick various options like streaks
 - There is a fixed set of packages for each service type.
 - Packages are updated infrequently. The full production package list with pre-computed consistency rules is maintained in [service-packages.md](docs/service-packages.md).
 - A package is uniquely identified by the combination of its service type, number of sessions, duration, and price. This combination is guaranteed to be unique within the seeded data.
-- Once a package is seeded, it is immutable. Packages cannot be removed or edited; only new packages may be added.
+- Packages cannot be edited through the app UI.
+- Direct backend or database edits are allowed only for package consistency-rule fields. Such edits retroactively affect current consistency evaluation for members on that package.
+- Changes to package price, duration, service type, or session count must be introduced as new package rows rather than editing existing rows.
+- Packages cannot be removed through the app UI and should not be deleted from the database in MVP.
 - Giving the owner the ability to update packages from the app UI is out of scope for MVP.
 - Unused sessions do not roll over unless explicitly stated by the package policy, which is out of scope for MVP.
 - Each package includes a consistency rule used to evaluate recent attendance.
@@ -545,7 +548,7 @@ The member home screen presents sections in this order:
 
 The owner home screen presents sections in this order:
 
-1. **Renewal-related**: members with no active subscription, followed by members with a renewal upcoming
+1. **Renewal-related**: members with no active subscription, followed by members nearing renewal who do not already have an upcoming subscription
 2. **Consistency-related**: members who have already marked attendance today, each shown compactly alongside their consistency message
 3. **Members list**: non-archived members, followed by archived members
 4. **Create new member** action
@@ -566,19 +569,19 @@ The owner home screen presents sections in this order:
 
 ### 11.2 Data Seeding
 
-- The owner account and one initial member account are seeded directly into the database using a local seed file.
-- The seed file is not committed to version control.
-- The same seed file is applied to local development, local test, and production databases.
+- The owner account and one initial member account are seeded directly into the database using an uncommitted credentials seed file.
+- The credentials seed file is not committed to version control.
+- The same credentials seed file is applied to local development, local test, and production databases.
 - Package definitions are seeded as fixed data from [service-packages.md](docs/service-packages.md).
 
 ### 11.3 Constraints & Assumptions
 
 - This is to be used on mobile only for now.
 - The product is intended for a single gym.
-- Package definitions are stable. Existing packages are immutable; only new packages may be added directly to the database when needed.
+- Package definitions are stable. They are immutable from the app UI. Direct backend or database edits are limited to consistency-rule changes; new package rows must be added for price, duration, service-type, or session-count changes.
 - Package definitions for MVP are fixed in seeded data and include the package-specific consistency rule.
 - All date and time logic runs against Asia/Kolkata (IST, UTC+5:30).
 
-## 12. Open Questions
+## 12. Resolved Questions
 
 Resolved in this document. The production service package list lives in [service-packages.md](docs/service-packages.md).
