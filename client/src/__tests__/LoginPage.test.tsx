@@ -56,7 +56,7 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />);
 
     await user.type(screen.getByLabelText(/email/i), 'member@thebase.fit');
-    await user.type(screen.getByLabelText(/password/i), '7018072497');
+    await user.type(screen.getByLabelText(/password/i), 'password123');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => { expect(mockNavigate).toHaveBeenCalledWith('/home', { replace: true }); });
