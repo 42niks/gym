@@ -105,9 +105,9 @@ Based on feedback from users, we can choose to pick various options like streaks
 - Archived members cannot log in or mark attendance.
 - Creating a new subscription for an archived member automatically unarchives them, returning them to the active member list.
 - Users log in using email and password.
-- For members, the password is initially set to the member's mobile number when the owner creates the account. There is no in-app password change flow.
-- The owner may update a member's mobile number at any time after account creation. Updating a member's mobile number does not change the member's password.
-- Member email is required, must be unique, and is matched case-insensitively for uniqueness.
+- A member's mobile number serves as their login password. No separate password field is stored; the system uses the mobile number as the authentication credential. There is no in-app password change or password reset flow.
+- The owner may update a member's full name or mobile number after account creation. No other member fields are editable after creation. Updating a member's mobile number also changes their login credential, since the mobile number is the password.
+- Member email is required, must be globally unique across all members (including archived members), and is matched case-insensitively for uniqueness.
 - Duplicate phone numbers are allowed.
 - The owner account and one initial member account are created by directly seeding the database. Credentials are stored in a local seed file that is not committed to version control. The same seed file is used for local development, local test, and production databases.
 
@@ -126,7 +126,7 @@ Based on feedback from users, we can choose to pick various options like streaks
 - A subscription is a member-specific instance of a package.
 - A subscription has a start date, end date, total sessions, attended sessions, remaining sessions, and an amount.
 - A subscription is associated with one service type.
-- The amount is automatically populated from the package price at the time of subscription creation. Price changes to a package do not affect existing subscriptions.
+- The amount is automatically populated from the package price at the time of subscription creation. It is not editable at creation or thereafter. Price changes to a package do not affect existing subscriptions.
 - Subscription lifecycle states are derived at query time from the current date and remaining sessions. No lifecycle state is stored.
 - A subscription is considered `active` if the current date is between the start and end date (inclusive), remaining sessions is greater than zero, and the owner has not manually completed it.
 - A subscription is considered `upcoming` if its start date is in the future and the owner has not manually completed it.
@@ -158,13 +158,14 @@ Based on feedback from users, we can choose to pick various options like streaks
     2. A minimum number of exercise days within that window
 - A member is considered consistent when their number of attended exercise days within the current rolling window is greater than or equal to the threshold defined by their active package.
 - Attendance for consistency must be measured in exercise days rather than sessions, since a member can mark at most one attendance entry per calendar day.
-- Consistency rules are derived from the package by dividing the number of sessions by the number of weeks in the package duration (where 1 month = 4 weeks), and rounding to the nearest integer, expressed as exercise days in a 7-day window. For example, 12 sessions in 1 month (4 weeks) = 12/4 = 3 exercise days in 7 days. The stored seeded rule for each package is authoritative; the formula is explanatory only. The full seeded package list is maintained in [service-packages.md](/Users/nikhil/gym/docs/service-packages.md).
+- Consistency rules are derived from the package by dividing the number of sessions by the number of weeks in the package duration (where 1 month = 4 weeks), and rounding to the nearest integer, expressed as exercise days in a 7-day window. For example, 12 sessions in 1 month (4 weeks) = 12/4 = 3 exercise days in 7 days. The stored seeded rule for each package is authoritative; the formula is explanatory only. The full seeded package list is maintained in [service-packages.md](docs/service-packages.md).
 - This metric is intended to describe recent attendance behaviour only. It does not imply that skipped sessions can be compensated for by extra attendance outside the package policy.
 - A message like "You have been consistent for the last 14 days" or "You have been consistent for the last 30 days" is expected.
 - For a consistency rule of "2 exercise days in 7 days" and a message "You have been consistent for the last 30 days", this is to be interpreted as "Every window of 7 consecutive days for the last 30 days has at least 2 exercise days".
 - Consistency should be evaluated using the member's full attendance history and may stretch across subscription boundaries. For example, if a member renews subscription monthly and has been consistent for the last 3 months, then "You have been consistent for the last 90 days" is expected. Only the current continuous consistent period is expected to be referenced.
-- The consistency rule to apply at any moment is the rule of the currently active package.
-- For each calendar day, determine whether the trailing rolling window ending on that day satisfies the active package's consistency rule.
+- The consistency rule to apply at any moment is the rule of the currently active package. If the package's consistency rule is updated in the seed data, the change retroactively affects consistency evaluation for all members currently on that package. This is intentional and accepted behaviour.
+- Consistency evaluation requires that at least `window_days` have elapsed since the member's earliest ever subscription start date. Until this threshold is met, always show the building message regardless of attendance. For example, for a "2 exercise days in 7 days" rule, the building message is always shown until at least 7 days have passed from the member's earliest subscription start date.
+- For each calendar day (once eligible for evaluation), determine whether the trailing rolling window ending on that day satisfies the active package's consistency rule.
 - "You have been consistent for the last X days" means X is the length of the current continuous suffix ending today for which every day satisfies the consistency rule.
 - If the current continuous consistent suffix is shorter than the rolling window (including when a member is new and does not yet have enough attendance history), show: "You are building your consistency, keep it up!"
 - Historical consistency is not stored and is not displayed. Historically, only attended dates and subscription records are shown.
@@ -175,7 +176,7 @@ Based on feedback from users, we can choose to pick various options like streaks
 - One attendance entry is allowed per member per local calendar date.
 - Subscription status is determined using the current local date.
 - Package durations such as 1 month, 2 months, or 3 months are calendar durations starting from the subscription start date.
-- The subscription end date is derived as the day before the same calendar date after the package duration has elapsed. For example, a 1 month subscription starting on 2026-04-07 ends on 2026-05-06.
+- The subscription end date is derived as the day before the same calendar date after the package duration has elapsed. For example, a 1 month subscription starting on 2026-04-07 ends on 2026-05-06. If the derived target date does not exist in the calendar (for example, adding 1 month to January 31 yields February 31, which does not exist), the target date is rounded to the last valid day of that month (e.g. February 28 in a common year, February 29 in a leap year), and the end date is one day before that.
 - "Fewer than 5 days remain" means the local date difference between today and subscription end date is 4 days or less.
 
 ## 5. Domain Model & Key Concepts
@@ -184,10 +185,10 @@ Based on feedback from users, we can choose to pick various options like streaks
 
 #### Attributes
 
-- Full name
-- Email
-- Phone number
-- Join date
+- Full name (editable by owner)
+- Email (not editable after creation)
+- Phone number (editable by owner; also serves as login password)
+- Join date (automatically set to the current local date at account creation time; not provided as input and not editable after creation)
 - Status: `active`, `archived`
 - Billing history - list of all subscriptions, past, present and future.
 - Current consistency is derived from attendance history and the currently active subscription rule. No consistency history or adherence state is stored separately in MVP.
@@ -196,6 +197,8 @@ Based on feedback from users, we can choose to pick various options like streaks
 
 - There is a fixed set of packages for each service type.
 - Packages are updated infrequently. The full production package list with pre-computed consistency rules is maintained in [service-packages.md](docs/service-packages.md).
+- A package is uniquely identified by the combination of its service type, number of sessions, duration, and price. This combination is guaranteed to be unique within the seeded data.
+- Once a package is seeded, it is immutable. Packages cannot be removed or edited; only new packages may be added.
 - Giving the owner the ability to update packages from the app UI is out of scope for MVP.
 - Unused sessions do not roll over unless explicitly stated by the package policy, which is out of scope for MVP.
 - Each package includes a consistency rule used to evaluate recent attendance.
@@ -228,7 +231,7 @@ This is a member-specific instance of a package.
 - Service type: `1:1 Personal Training`, `MMA/Kickboxing Personal Training`, `Group Personal Training`
 - Start date
 - End date
-- Amount (auto-populated from package price at creation; not affected by subsequent package price changes)
+- Amount (auto-populated from package price at creation; not editable at creation or thereafter; not affected by subsequent package price changes)
 - Total sessions
 - Attended sessions
 - Remaining sessions
@@ -283,7 +286,7 @@ This is a member-specific instance of a package.
 - Archive member records
 - Create subscriptions and manually complete active/upcoming subscriptions using fixed seeded package definitions
 - View subscription progress for each member
-- View package-defined consistency status for each member when that member has an active subscription
+- View package-defined consistency status for each member when that member has an active subscription, displayed as a compact label: "Consistent: Xd" (where X is the number of days in the current consistent suffix) or "Building consistency" when the member is not yet consistently meeting the threshold
 - View member lists for archived members, active members, renewal follow-up, and members with no active subscription
 - Add attendance for a member for the current local day if the member has an active subscription, is not archived, and has not already marked it
 
@@ -292,8 +295,9 @@ This is a member-specific instance of a package.
 - The system must provide a single login flow with backend session management.
 - The system must route authenticated users to the Member view or Owner view based on their role.
 - The system must authenticate users using email and password.
-- The system must initialise a member's password to the member's mobile number when the owner creates the account.
-- The system must allow the owner to update a member's mobile number after account creation without changing the member's password.
+- The system must use a member's mobile number as their login password. No separate password field is stored; authentication compares the submitted password directly to the member's mobile number.
+- The system must automatically set a member's join date to the current local date at account creation time. Join date is not provided as input and is not editable after creation.
+- The system must allow the owner to update only a member's full name and mobile number after account creation. Updating the mobile number also changes the member's login credential.
 - The system must allow only the owner to create and update member records.
 - The system must allow only the owner to archive member records.
 - The system must reject archiving when the member has any active or upcoming subscription.
@@ -310,7 +314,8 @@ This is a member-specific instance of a package.
 - The system must not allow attendance deletion by either members or the owner.
 - The system must update attended sessions and remaining sessions immediately after a valid attendance entry is recorded.
 - The system must show the member the active subscription summary, including total, attended, and remaining sessions.
-- The system must show the member subscription history across completed, active, and upcoming subscriptions.
+- The system must show the member subscription history across completed, active, and upcoming subscriptions. Completed and active subscriptions must be shown together in reverse chronological order. Upcoming subscriptions must be shown in a separate list in chronological order.
+- The system must enforce globally unique email addresses across all members, including archived members.
 - The system must evaluate consistency using the rolling attendance rule defined by the member's active package.
 - The system must show the member their current consistency status using the defined progress messaging rules.
 - The system must not store historical consistency state or historical consistency-rule snapshots.
@@ -377,7 +382,7 @@ This is a member-specific instance of a package.
 3. If no active subscription exists but an upcoming subscription exists, the member sees an empty state: "You do not have an active subscription yet. Your next subscription starts on [start date of the earliest upcoming subscription]."
 4. If no active subscription exists and no upcoming subscription exists, the member sees an empty state: "You do not have an active subscription."
 5. If the member has no subscription history at all, the member sees an empty state: "You do not have any subscription history yet."
-6. The member can scroll to view completed and upcoming subscriptions when those records exist.
+6. The member can scroll to view completed and upcoming subscriptions when those records exist. Completed and active subscriptions are displayed together in a single list in reverse chronological order. Upcoming subscriptions are displayed in a separate section in chronological order.
 
 ### 9.4 Member — Renewal
 
@@ -394,16 +399,16 @@ This is a member-specific instance of a package.
 #### 9.5.1 Owner Creates a New Member
 
 1. Owner opens the member management section.
-2. Owner enters the new member's details: full name, email, phone number, and join date. Email is required, must be unique, and is matched case-insensitively for uniqueness.
-3. The system sets the member's initial password to their mobile number.
+2. Owner enters the new member's details: full name, email, and phone number. Email is required, must be globally unique (including archived members), and is matched case-insensitively for uniqueness. Join date is not an input; it is automatically set to the current local date.
+3. The system sets the member's initial password to their mobile number (i.e. the mobile number field is the login credential).
 4. Owner submits and the member record is created.
 5. The member can now be assigned a subscription.
 
 #### 9.5.2 Owner Updates an Existing Member Record
 
 1. Owner opens the member list and selects a member.
-2. Owner edits the relevant member details.
-3. Owner may update the member's mobile number at any time. This does not change the member's password.
+2. Owner may edit only the member's full name or mobile number. Email, join date, and all other fields are not editable after creation.
+3. Updating the member's mobile number also changes their login credential, since the mobile number is the password.
 4. Owner saves the changes and the record is updated.
 
 #### 9.5.3 Owner Archives a Member
@@ -417,7 +422,7 @@ This is a member-specific instance of a package.
 #### 9.5.4 Owner Views an Individual Member's Detail
 
 1. Owner opens the member list and selects a member.
-2. Owner sees the member's full profile: personal details, active subscription progress, consistency status, and subscription history.
+2. Owner sees the member's full profile: personal details, active subscription progress, full consistency message (same format as the member-facing message), and subscription history (completed and active together in reverse chronological order; upcoming in a separate chronological list).
 3. Owner can navigate to create a new subscription or mark an existing one as completed from this view.
 
 ### 9.6 Owner — Subscription Management
@@ -460,7 +465,7 @@ This is a member-specific instance of a package.
 
 1. Owner opens the member list, which is sorted alphabetically by member name.
 2. Owner sees the list of all non-archived members sorted alphabetically.
-3. For members with an active subscription, the owner sees active subscription progress and current consistency status at a glance.
+3. For members with an active subscription, the owner sees active subscription progress and current consistency status at a glance. Consistency is shown as a compact label: "Consistent: Xd" or "Building consistency".
 4. Owner can identify members who are off-track on consistency or low on remaining sessions.
 5. Owner can toggle to the "Show Archived" view to see archived members separately, also sorted alphabetically.
 
@@ -515,7 +520,7 @@ This is a member-specific instance of a package.
 ## 11. Technical Considerations
 
 - No external integrations needed for payments or notifications.
-- The full list of service packages is maintained in [service-packages.md](/Users/nikhil/gym/docs/service-packages.md). It is to be used as production data.
+- The full list of service packages is maintained in [service-packages.md](docs/service-packages.md). It is to be used as production data.
 - This is to be deployed on Cloudflare using Workers for compute and D1 for database.
 
 ### 11.1 Tech Stack
@@ -531,16 +536,16 @@ This is a member-specific instance of a package.
 - The owner account and one initial member account are seeded directly into the database using a local seed file.
 - The seed file is not committed to version control.
 - The same seed file is applied to local development, local test, and production databases.
-- Package definitions are seeded as fixed data from [service-packages.md](/Users/nikhil/gym/docs/service-packages.md).
+- Package definitions are seeded as fixed data from [service-packages.md](docs/service-packages.md).
 
 ### 11.3 Constraints & Assumptions
 
 - This is to be used on mobile only for now.
 - The product is intended for a single gym.
-- Package definitions are relatively stable and updated directly in the database when needed.
+- Package definitions are stable. Existing packages are immutable; only new packages may be added directly to the database when needed.
 - Package definitions for MVP are fixed in seeded data and include the package-specific consistency rule.
 - All date and time logic runs against Asia/Kolkata (IST, UTC+5:30).
 
 ## 12. Open Questions
 
-Resolved in this document. The production service package list lives in [service-packages.md](/Users/nikhil/gym/docs/service-packages.md).
+Resolved in this document. The production service package list lives in [service-packages.md](docs/service-packages.md).
