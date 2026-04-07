@@ -2,6 +2,10 @@
 
 ## 1. Overview
 
+### 1.0 Product Identity
+
+- The gym's name is **BASE**.
+
 ### 1.1 Problem Statement
 
 The gym currently tracks member attendance in a physical register. In practice, members often do not consistently mark attendance, which means the owner does not have a reliable view of member consistency or subscription usage.
@@ -500,7 +504,7 @@ This is a member-specific instance of a package.
 - Attendance marking should require as few steps as possible.
 - Subscription progress should be visible at a glance.
 - Renewal risk should be easy for the owner to scan quickly.
-- The member home screen should present information in this order: attendance action, current consistency message, active subscription summary, and renewal message if applicable.
+- The member home screen should present information in this order: renewal message (if applicable), consistency message, and attendance action. See §10.3 for the full layout specification.
 - Attendance marking should be a one-tap action from the member home screen.
 - After attendance is marked, the system should show immediate success feedback and disable the attendance action for the rest of the local day.
 - Disabled attendance states should always explain why the action is unavailable, such as attendance already marked, no active subscription, or archived member.
@@ -516,6 +520,35 @@ This is a member-specific instance of a package.
 - Loading and saving states should be visible so users know whether an action is in progress or has succeeded.
 - Status should not rely on color alone. Important states should also use text labels and, where helpful, icons.
 - Tap targets should be comfortably sized for mobile use, and destructive actions should be spaced away from routine actions to reduce mistakes.
+
+### 10.3 Screen Layout & Navigation
+
+#### Login Page
+
+- The login form labels the credential fields as "Username" and "Password".
+- Members are informed of their credentials (email and mobile number as password) through a separate channel outside the product. No credential hints are shown in the UI.
+
+#### Member — Main Screen Priority Order
+
+The member home screen presents sections in this order:
+
+1. Renewal message (if applicable, per §4.3)
+2. Consistency message
+3. Mark today's attendance action
+
+#### Member — Drawer Navigation
+
+1. Profile
+2. Billing history
+
+#### Owner — Main Screen Priority Order
+
+The owner home screen presents sections in this order:
+
+1. **Renewal-related**: members with no active subscription, followed by members with a renewal upcoming
+2. **Consistency-related**: members who have already marked attendance today, each shown compactly alongside their consistency message
+3. **Members list**: non-archived members, followed by archived members
+4. **Create new member** action
 
 ## 11. Technical Considerations
 
