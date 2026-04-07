@@ -2,5 +2,7 @@ node_modules/
 dist/
 data/
 *.db
+*.db-shm
+*.db-wal
 .env
 src/db/seed.credentials.sql
