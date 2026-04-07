@@ -1,7 +1,5 @@
 # Technical Design Document — Gym Management Platform (BASE)
 
-**Status:** Draft
-**Last updated:** 2026-04-07
 **PRD:** [prd.md](prd.md)
 **Packages:** [service-packages.md](service-packages.md)
 
@@ -36,9 +34,12 @@ There are two user roles: **member** and **owner**. Members mark attendance and 
 | Package manager | npm |
 | Frontend | React + Vite |
 | Frontend routing | React Router |
+| UI styling | Tailwind CSS |
+| Data fetching | TanStack Query |
 | Backend / API | Hono on Cloudflare Workers |
 | Database | Cloudflare D1 (SQLite) |
 | Hosting | Cloudflare Workers (API + static assets) |
+| Testing | Vitest |
 
 ---
 
@@ -85,30 +86,83 @@ The single Cloudflare Worker handles both the API and serves the React frontend'
 │   │   ├── renewal.ts      # Renewal message logic
 │   │   └── date.ts         # IST-aware date utilities
 │   └── db/
-│       ├── schema.sql       # Migration file
-│       └── seed.sql         # Package seed (committed)
-│       └── seed.credentials.sql   # Owner + initial member (NOT committed)
+│       ├── seed.sql                # Package seed (committed)
+│       └── seed.credentials.sql    # Owner + initial member (NOT committed)
 ├── client/                 # React + Vite frontend
 │   ├── src/
 │   │   ├── main.tsx
+│   │   ├── main.css        # Tailwind CSS entry
 │   │   ├── router.tsx
 │   │   ├── pages/
 │   │   ├── components/
 │   │   ├── hooks/
 │   │   └── lib/
+│   │       └── api.ts      # fetch wrapper for /api calls
 │   ├── index.html
+│   ├── tsconfig.json
 │   └── vite.config.ts
-├── wrangler.toml
-└── package.json
+├── migrations/
+│   └── 0001_initial.sql    # Schema migration
+├── wrangler.toml.example
+├── tsconfig.json           # Worker TypeScript config
+├── vitest.config.ts
+├── package.json
+└── .gitignore
 ```
 
 The repo uses a single root `package.json` for MVP simplicity. The frontend build targets `client/`, and Worker commands are run from the root.
+
+### 2.3 Development Workflow
+
+#### npm Scripts
+
+| Script | Command | Description |
+|---|---|---|
+| `dev:client` | `vite --config client/vite.config.ts` | Vite dev server (port 5173) |
+| `dev:worker` | `wrangler dev` | Worker + local D1 (port 8787) |
+| `build:client` | `vite build --config client/vite.config.ts` | Build frontend to `client/dist/` |
+| `deploy` | `npm run build:client && wrangler deploy` | Build and deploy |
+| `test` | `vitest run` | Run unit tests |
+| `test:watch` | `vitest` | Run unit tests in watch mode |
+| `db:migrate:local` | `wrangler d1 migrations apply base-gym-db --local` | Apply migrations locally |
+| `db:seed:local` | `wrangler d1 execute base-gym-db --local --file=src/db/seed.sql && wrangler d1 execute base-gym-db --local --file=src/db/seed.credentials.sql` | Seed local DB |
+
+#### Local Development Flow
+
+During development, two processes run concurrently:
+
+1. **Vite dev server** (port 5173) — serves the React app with HMR.
+2. **Wrangler dev** (port 8787) — runs the Worker with a local D1 database.
+
+Vite proxies all `/api` requests to the Wrangler dev server:
+
+```ts
+// client/vite.config.ts (proxy excerpt)
+server: {
+  proxy: {
+    '/api': 'http://localhost:8787',
+  },
+}
+```
+
+#### First-Time Setup
+
+```bash
+npm install
+npm run db:migrate:local
+npm run db:seed:local
+# Then in two terminals:
+npm run dev:client
+npm run dev:worker
+```
 
 ---
 
 ## 3. Database Schema
 
 All dates are stored as `TEXT` in `YYYY-MM-DD` format in IST. All datetimes are stored as UTC `TEXT` in SQLite `datetime('now')` format (`YYYY-MM-DD HH:MM:SS`).
+
+Migrations are managed by Wrangler's D1 migration system and live in `migrations/`. The initial schema is in `migrations/0001_initial.sql`.
 
 ### 3.1 Tables
 
@@ -226,12 +280,24 @@ INSERT INTO members (role, full_name, email, phone, join_date) VALUES
 
 Base path: `/api`
 
-All responses use JSON. Error responses follow the shape:
-```json
-{ "error": "human-readable message" }
-```
+All responses use JSON. Successful responses return the relevant resource or `{ "ok": true }` for mutations with no meaningful return body.
 
-Successful responses return the relevant resource or `{ "ok": true }` for mutations with no meaningful return body.
+### 4.0 HTTP Status Codes
+
+| Code | Usage |
+|---|---|
+| `200` | Successful read or update |
+| `201` | Successful resource creation |
+| `400` | Validation error (missing field, past date, no active subscription) |
+| `401` | Not authenticated or session expired |
+| `403` | Authenticated but insufficient role |
+| `404` | Resource not found |
+| `409` | Conflict (duplicate email, overlapping subscription, already marked attendance, already completed) |
+
+Error responses follow the shape:
+```json
+{ "error": "Human-readable message" }
+```
 
 ### 4.1 Auth
 
@@ -246,24 +312,59 @@ Successful responses return the relevant resource or `{ "ok": true }` for mutati
 // Request
 { "email": "user@example.com", "password": "0987654321" }
 
-// Response 200
+// 200
+{ "id": 1, "role": "member", "full_name": "Riya Patel", "email": "user@example.com" }
+// + Set-Cookie: session_id=<uuid>; HttpOnly; SameSite=Strict; Path=/
+
+// 401
+{ "error": "Invalid email or password" }
+```
+
+**POST /api/auth/logout**
+```json
+// 200
+{ "ok": true }
+// + Set-Cookie: session_id=; Max-Age=0; Path=/
+```
+
+**GET /api/auth/me**
+```json
+// 200
 { "id": 1, "role": "member", "full_name": "Riya Patel", "email": "user@example.com" }
 
-// Response 401
-{ "error": "Invalid email or password" }
+// 401
+{ "error": "Not authenticated" }
 ```
 
 ### 4.2 Packages
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/packages` | Yes | List all packages grouped by service type |
+| GET | `/api/packages` | Yes | List all packages |
+
+**GET /api/packages**
+```json
+// 200
+[
+  {
+    "id": 1,
+    "service_type": "1:1 Personal Training",
+    "sessions": 8,
+    "duration_months": 1,
+    "price": 19900,
+    "consistency_window_days": 7,
+    "consistency_min_days": 2
+  }
+]
+```
+
+Returned as a flat array. The frontend groups by `service_type` for display in the subscription creation flow.
 
 ### 4.3 Members
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/api/members` | Owner | List all members (non-archived by default) |
+| GET | `/api/members` | Owner | List members (enriched with subscription and consistency) |
 | GET | `/api/me/profile` | Member | Get the logged-in member's profile |
 | GET | `/api/me/home` | Member | Get member home-screen state |
 | POST | `/api/members` | Owner | Create a new member |
@@ -275,10 +376,89 @@ Successful responses return the relevant resource or `{ "ok": true }` for mutati
 - `?status=active` — return active members (default)
 - `?status=archived` — return archived members instead
 
-**POST /api/members request body:**
+Both lists sorted alphabetically by `full_name`.
+
+**GET /api/members (status=active) response:**
 ```json
-{ "full_name": "Riya Patel", "email": "riya@example.com", "phone": "9876543210" }
+// 200
+[
+  {
+    "id": 1,
+    "full_name": "Asha Singh",
+    "email": "asha@example.com",
+    "phone": "9876543210",
+    "join_date": "2026-01-15",
+    "status": "active",
+    "active_subscription": {
+      "id": 7,
+      "service_type": "1:1 Personal Training",
+      "start_date": "2026-04-01",
+      "end_date": "2026-04-30",
+      "total_sessions": 12,
+      "attended_sessions": 4,
+      "remaining_sessions": 8,
+      "amount": 29500,
+      "lifecycle_state": "active"
+    } | null,
+    "consistency": { "status": "consistent", "days": 14 } | { "status": "building" } | null,
+    "marked_attendance_today": true
+  }
+]
 ```
+
+`consistency` is `null` when the member has no active subscription.
+
+**GET /api/members (status=archived) response:**
+```json
+// 200
+[
+  {
+    "id": 8,
+    "full_name": "Neha Rao",
+    "email": "neha@example.com",
+    "phone": "9876543210",
+    "join_date": "2025-08-01",
+    "status": "archived"
+  }
+]
+```
+
+**GET /api/me/profile response:**
+```json
+// 200
+{
+  "id": 1,
+  "full_name": "Riya Patel",
+  "email": "riya@example.com",
+  "phone": "9876543210",
+  "join_date": "2026-04-07",
+  "status": "active"
+}
+```
+
+**POST /api/members**
+```json
+// Request
+{ "full_name": "Riya Patel", "email": "riya@example.com", "phone": "9876543210" }
+
+// 201
+{
+  "id": 5,
+  "full_name": "Riya Patel",
+  "email": "riya@example.com",
+  "phone": "9876543210",
+  "join_date": "2026-04-07",
+  "status": "active"
+}
+
+// 409
+{ "error": "A member with this email already exists" }
+
+// 400
+{ "error": "Full name, email, and phone are required" }
+```
+
+`join_date` is set server-side to the current IST date. `email` is stored lowercase.
 
 **GET /api/me/home response:**
 ```json
@@ -298,6 +478,8 @@ Successful responses return the relevant resource or `{ "ok": true }` for mutati
 }
 ```
 
+`consistency` is `null` when no active subscription exists.
+
 **GET /api/members/:id response:**
 ```json
 {
@@ -314,6 +496,36 @@ Successful responses return the relevant resource or `{ "ok": true }` for mutati
 }
 ```
 
+**PATCH /api/members/:id**
+```json
+// Request — at least one field required
+{ "full_name": "Riya Sharma", "phone": "1111111111" }
+
+// 200
+{
+  "id": 1,
+  "full_name": "Riya Sharma",
+  "email": "riya@example.com",
+  "phone": "1111111111",
+  "join_date": "2026-04-07",
+  "status": "active"
+}
+
+// 400
+{ "error": "At least one of full_name or phone is required" }
+```
+
+**POST /api/members/:id/archive**
+```json
+// 200
+{ "ok": true }
+
+// 409
+{ "error": "Cannot archive member with active or upcoming subscriptions" }
+```
+
+When archiving, the server also deletes all `user_sessions` rows for that member to immediately revoke access.
+
 ### 4.4 Subscriptions
 
 | Method | Path | Auth | Description |
@@ -323,26 +535,83 @@ Successful responses return the relevant resource or `{ "ok": true }` for mutati
 | POST | `/api/members/:id/subscriptions` | Owner | Create a subscription |
 | POST | `/api/subscriptions/:id/complete` | Owner | Mark subscription as completed |
 
-**POST /api/members/:id/subscriptions request body:**
+**GET /api/me/subscriptions and GET /api/members/:id/subscriptions response:**
 ```json
-{ "package_id": 3, "start_date": "2026-04-10" }
+// 200
+{
+  "completed_and_active": [
+    {
+      "id": 7,
+      "package_id": 3,
+      "service_type": "1:1 Personal Training",
+      "start_date": "2026-04-10",
+      "end_date": "2026-05-09",
+      "total_sessions": 12,
+      "attended_sessions": 4,
+      "remaining_sessions": 8,
+      "amount": 29500,
+      "owner_completed": false,
+      "lifecycle_state": "active"
+    }
+  ],
+  "upcoming": [
+    {
+      "id": 9,
+      "package_id": 3,
+      "service_type": "1:1 Personal Training",
+      "start_date": "2026-05-10",
+      "end_date": "2026-06-09",
+      "total_sessions": 12,
+      "attended_sessions": 0,
+      "remaining_sessions": 12,
+      "amount": 29500,
+      "owner_completed": false,
+      "lifecycle_state": "upcoming"
+    }
+  ]
+}
 ```
 
-**Subscription object shape:**
+`completed_and_active`: active subscription first (if any), then completed subscriptions in reverse chronological order by `start_date`.
+
+`upcoming`: chronological order by `start_date`.
+
+**POST /api/members/:id/subscriptions**
 ```json
+// Request
+{ "package_id": 3, "start_date": "2026-04-10" }
+
+// 201 — returns the created subscription
 {
-  "id": 7,
+  "id": 9,
   "package_id": 3,
   "service_type": "1:1 Personal Training",
   "start_date": "2026-04-10",
   "end_date": "2026-05-09",
   "total_sessions": 12,
-  "attended_sessions": 4,
-  "remaining_sessions": 8,
+  "attended_sessions": 0,
+  "remaining_sessions": 12,
   "amount": 29500,
   "owner_completed": false,
-  "lifecycle_state": "active"
+  "lifecycle_state": "upcoming"
 }
+
+// 409
+{ "error": "New subscription overlaps with an existing active or upcoming subscription" }
+
+// 400
+{ "error": "Start date cannot be in the past" }
+```
+
+If the member is archived, creating a subscription automatically sets their `status` back to `active` as part of the same transaction.
+
+**POST /api/subscriptions/:id/complete**
+```json
+// 200
+{ "ok": true }
+
+// 409
+{ "error": "Subscription is already completed" }
 ```
 
 ### 4.5 Sessions (Attendance)
@@ -353,6 +622,20 @@ Successful responses return the relevant resource or `{ "ok": true }` for mutati
 | POST | `/api/members/:id/sessions` | Owner | Mark attendance for a member for today |
 
 **Attendance mutation contract:** no body required; date is always today in IST.
+
+```json
+// 201
+{ "ok": true }
+
+// 409
+{ "error": "Attendance already marked for today" }
+
+// 400 — no active subscription
+{ "error": "No active subscription" }
+
+// 400 — member is archived (only possible via owner endpoint)
+{ "error": "Cannot mark attendance for an archived member" }
+```
 
 ### 4.6 Owner Dashboard
 
@@ -410,13 +693,25 @@ Successful responses return the relevant resource or `{ "ok": true }` for mutati
 }
 ```
 
+`active_members` sorted alphabetically by `full_name`. `archived_members` sorted alphabetically by `full_name`. `renewal_no_active` and `renewal_nearing_end` sorted alphabetically by `full_name`. `checked_in_today` sorted by most recent check-in first (`sessions.created_at` descending).
+
 ---
 
 ## 5. Authentication & Session Management
 
 ### 5.1 Mechanism
 
-Cookie-based sessions. On successful login, a UUID session token is issued as an `HttpOnly`, `SameSite=Strict` cookie. The session record is stored in the `user_sessions` D1 table.
+Cookie-based sessions. On successful login, a UUID session token is issued as a cookie. The session record is stored in the `user_sessions` D1 table.
+
+**Cookie configuration:**
+
+| Attribute | Value |
+|---|---|
+| Name | `session_id` |
+| HttpOnly | Yes |
+| SameSite | Strict |
+| Secure | Yes in production, No in local development |
+| Path | `/` |
 
 **Rationale for D1 over KV:** Keeps the data layer to a single binding for MVP simplicity. KV has better read latency at edge scale, but that is not a concern for a single-gym app.
 
@@ -424,12 +719,14 @@ Cookie-based sessions. On successful login, a UUID session token is issued as an
 
 - Sessions expire after **10 days** of inactivity.
 - `expires_at` is updated on each authenticated request (sliding expiry).
+- On login, any expired `user_sessions` rows for the authenticating user are deleted (lazy cleanup). No background purge job is needed for MVP.
+- A user who logs in while already having a valid session gets a new session. The previous session is not eagerly invalidated; it expires naturally or is cleaned up at the next login.
 
 ### 5.3 Middleware
 
 Two Hono middleware functions protect all `/api` routes (except `/api/auth/login`):
 
-1. **`authMiddleware`** — reads the session cookie, looks up `user_sessions`, joins to `members`, validates expiry, and confirms the user is still allowed to access the product. If the member record is archived, the middleware deletes the session, clears the cookie, and returns `401`. On success it attaches `{ member_id, role, status }` to context.
+1. **`authMiddleware`** — reads the `session_id` cookie, looks up `user_sessions`, joins to `members`, validates expiry, and confirms the user is still allowed to access the product. If the member record is archived, the middleware deletes the session, clears the cookie, and returns `401`. On success it refreshes `expires_at` and attaches `{ member_id, role, status }` to the Hono context variable `user`.
 2. **`requireOwner`** — returns `403` if `role !== 'owner'`. Applied to owner-only routes.
 
 When the owner archives a member, the archive mutation must also delete all rows from `user_sessions` for that member so existing sessions are revoked immediately.
@@ -514,9 +811,11 @@ Message:
 
 ### 6.5 Consistency Evaluation
 
+**Prerequisite:** Consistency is only evaluated when the member has an active subscription. If there is no active subscription, the API returns `consistency: null`. The algorithm below assumes an active subscription exists.
+
 **Inputs:**
 - `attendance_dates`: all attended dates for the member across all subscriptions (sorted ascending), in IST
-- `earliest_subscription_start`: earliest `start_date` across all the member's subscriptions
+- `earliest_subscription_start`: earliest `start_date` across all the member's subscriptions (not just active — all ever)
 - Active package rule: `window_days` (always 7 for current packages), `min_days`
 - `today`: current IST date
 
@@ -610,16 +909,33 @@ Role-based layout shells:
 - `MemberShell` — drawer navigation (Profile, Billing history)
 - `OwnerShell` — tab or nav structure across Home, Members, Renewal
 
-### 7.3 Data Fetching
+### 7.3 Styling
+
+Tailwind CSS is used for all styling. Mobile-first by default — components are designed for small screens and scaled up only if needed in future.
+
+No component library. Shared UI primitives (`Button`, `Input`, `Dialog`, `Badge`) are built as project components using Tailwind utility classes.
+
+### 7.4 Data Fetching
 
 TanStack Query is used for all server-state fetching and mutations. It keeps the UI consistent after attendance, subscription, and member-management mutations without custom cache plumbing.
 
 Key cache invalidations:
-- After marking attendance → invalidate member home + subscription detail
-- After subscription create/complete → invalidate member subscriptions + owner member list
-- After member create/update/archive → invalidate member list
+- After marking attendance → invalidate member home + owner dashboard
+- After subscription create/complete → invalidate member subscriptions + member detail + owner dashboard
+- After member create/update/archive → invalidate member list + owner dashboard
 
-### 7.4 Member Home Screen Layout
+### 7.5 Error, Loading, and Feedback Patterns
+
+| Pattern | Implementation |
+|---|---|
+| Initial page loads | Skeleton placeholders or a centered spinner |
+| Mutation in progress | Disable the triggering button + show inline spinner |
+| Mutation success | Toast notification for confirms (attendance marked, subscription created); for navigation-based flows (create member), redirect on success |
+| Mutation error | Toast notification with the `error` string from the API response |
+| Form validation | Client-side validation mirrors server rules (required fields, email format, date not in past). Server is authoritative — always handle server errors gracefully |
+| 401 during use | Redirect to login page (handled in a shared fetch wrapper or TanStack Query's `onError`) |
+
+### 7.6 Member Home Screen Layout
 
 Per PRD §10.3, sections rendered in this order:
 
@@ -633,7 +949,7 @@ The attendance button states:
 - **No active subscription** → disabled, with contextual message
 - **Archived** → disabled (member cannot log in; this state is unreachable in practice)
 
-### 7.5 Owner Home Screen Layout
+### 7.7 Owner Home Screen Layout
 
 Per PRD §10.3, sections rendered in this order:
 
@@ -642,7 +958,7 @@ Per PRD §10.3, sections rendered in this order:
 3. Full member list (non-archived, alphabetical; toggle to show archived)
 4. Create new member action
 
-### 7.6 Key Component Boundaries
+### 7.8 Key Component Boundaries
 
 | Component | Responsibility |
 |---|---|
@@ -652,7 +968,7 @@ Per PRD §10.3, sections rendered in this order:
 | `SubscriptionCard` | Shows total / attended / remaining sessions + lifecycle state |
 | `SubscriptionList` | Splits subscriptions into completed+active (reverse chron) and upcoming (chron) sections |
 | `MemberRow` (owner) | Compact row: name, active sub progress, consistency label |
-| `ConfirmDialog` | Reusable confirmation modal for destructive actions |
+| `ConfirmDialog` | Reusable confirmation modal for destructive actions (archive member, complete subscription) |
 
 ---
 
@@ -714,26 +1030,23 @@ database_id = "<d1-database-id>"
 # Install dependencies
 npm install
 
-# Run Vite dev server (frontend)
+# Apply migrations to local D1
+npm run db:migrate:local
+
+# Seed local DB (packages + credentials)
+npm run db:seed:local
+
+# Run Vite dev server (frontend, port 5173)
 npm run dev:client
 
-# Run Wrangler dev (Worker + D1 local)
+# Run Wrangler dev (Worker + D1 local, port 8787)
 npm run dev:worker
-
-# Apply migrations
-npx wrangler d1 migrations apply base-gym-db --local
-
-# Seed packages
-npx wrangler d1 execute base-gym-db --local --file=src/db/seed.sql
-
-# Seed owner + initial member (same uncommitted credentials seed used across environments)
-npx wrangler d1 execute base-gym-db --local --file=src/db/seed.credentials.sql
 ```
 
 ### 9.3 Production Deployment
 
 ```bash
-# Apply additive migrations to production D1
+# Apply migrations to production D1
 npx wrangler d1 migrations apply base-gym-db
 
 # Seed packages (idempotent)
@@ -742,21 +1055,21 @@ npx wrangler d1 execute base-gym-db --file=src/db/seed.sql
 # Seed owner + initial member (same uncommitted credentials seed used across environments)
 npx wrangler d1 execute base-gym-db --file=src/db/seed.credentials.sql
 
-# Build frontend
-npm run build:client
-
-# Deploy worker (includes static assets)
-npx wrangler deploy
+# Build frontend and deploy
+npm run deploy
 ```
 
 For existing environments, rollout steps must remain backward-compatible: apply additive schema changes first, deploy code that works with both old and new data where necessary, and only then remove deprecated paths in a later migration.
 
-### 9.4 `.gitignore` Additions
+### 9.4 `.gitignore`
 
 ```
+node_modules/
 wrangler.toml
 src/db/seed.credentials.sql
 .dev.vars
+.wrangler/
+client/dist/
 ```
 
 ---
@@ -796,16 +1109,24 @@ Manual test checklist covering the core user flows in PRD §9 is sufficient for 
 
 ## 11. Resolved Decisions
 
-## 11. Resolved Decisions
-
 | Area | Decision |
 |---|---|
 | Session storage | D1 table for MVP simplicity |
 | Frontend hosting | Single Worker serves API and static assets |
+| UI styling | Tailwind CSS, no component library |
 | Data fetching | TanStack Query |
 | Session expiry | Sliding expiry, 10 days of inactivity |
+| Session cleanup | Lazy deletion at login time; no background purge |
+| Cookie name | `session_id` |
+| Re-login behavior | New session created; old session expires naturally |
 | Repo structure | Single root `package.json` |
 | Phone storage | Stored as provided; no normalization in MVP |
 | Owner password model | Owner password is also `phone` |
 | Credentials seed | One uncommitted credentials seed reused across local, test, and production |
 | Package mutation policy | UI-immutable; backend consistency-rule edits allowed; price/duration/service/session changes use new rows |
+| Migrations | Wrangler D1 migration system, `migrations/` directory |
+| Dev workflow | Vite dev server + wrangler dev, Vite proxies `/api` to wrangler |
+| Subscription list shape | Pre-split into `completed_and_active` (reverse chron) and `upcoming` (chron) |
+| API sort orders | Member lists alphabetical by full_name; checked_in_today by most recent first |
+| Consistency with no active sub | Returns `null` — not evaluated without an active package |
+| Packages endpoint shape | Flat array; frontend groups by service_type |
