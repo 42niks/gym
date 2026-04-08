@@ -33,7 +33,7 @@ describe('OwnerNewSubscriptionPage', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/owner/members/2/subscriptions/new' });
     expect(screen.getByText('New subscription')).toBeInTheDocument();
-    expect(screen.getByText('← Member')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /arrow_back Member$/ })).toBeInTheDocument();
   });
 
   it('renders package options grouped by type', async () => {

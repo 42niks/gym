@@ -70,8 +70,8 @@ describe('OwnerMemberDetailPage', () => {
   it('has subscription and archive buttons', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/owner/members/2' });
     await waitFor(() => {
-      expect(screen.getByText('+ Subscription')).toBeInTheDocument();
-      expect(screen.getByText('Archive')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Subscription$/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Archive$/ })).toBeInTheDocument();
     });
   });
 
@@ -86,7 +86,7 @@ describe('OwnerMemberDetailPage', () => {
 
   it('shows back link to members', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/owner/members/2' });
-    await waitFor(() => { expect(screen.getByText('← Members')).toBeInTheDocument(); });
+    await waitFor(() => { expect(screen.getByRole('link', { name: /arrow_back Members$/ })).toBeInTheDocument(); });
   });
 
   it('shows no subscriptions message when empty', async () => {

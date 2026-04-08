@@ -16,9 +16,12 @@ export default function NavBar({ links }: { links: NavLink[] }) {
   return (
     <nav className="sticky top-0 z-20 border-b border-white/60 bg-white/72 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/72">
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src="/logo.svg" alt="BASE" className="h-7 w-7" />
-          <span className="font-headline text-lg font-black uppercase tracking-[0.18em] text-gray-900 dark:text-white">BASE</span>
+        <Link to="/" className="flex flex-col items-start gap-1">
+          <img src="/base-wordmark-light.png" alt="BASE" className="h-8 w-auto dark:hidden" />
+          <img src="/base-wordmark-dark.png" alt="BASE" className="hidden h-8 w-auto dark:block" />
+          <span className="hidden font-brand text-[0.5rem] font-black uppercase tracking-[0.22em] text-[#1f6c58] dark:text-[#d90a0a] sm:inline">
+            YOUR STRENGTH HABITAT
+          </span>
         </Link>
         <div className="flex flex-wrap items-center gap-2">
           {links.map(l => (

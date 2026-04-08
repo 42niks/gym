@@ -2,23 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Mister Belvedere';
+  src: url('/fonts/Mister%20Belvedere.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 @layer base {
   :root {
-    --color-brand-50: 236 255 249;
-    --color-brand-100: 208 255 243;
-    --color-brand-300: 95 255 219;
-    --color-brand-400: 0 253 193;
-    --color-brand-500: 0 237 180;
-    --color-brand-600: 0 188 143;
-    --color-brand-700: 0 108 81;
-    --color-brand-800: 0 56 41;
-    --color-accent-50: 255 240 253;
-    --color-accent-100: 255 221 250;
-    --color-accent-300: 255 166 243;
-    --color-accent-400: 255 110 247;
-    --color-accent-500: 255 81 250;
-    --color-accent-600: 186 35 183;
-    --color-accent-700: 146 0 145;
+    --color-brand-50: 241 248 245;
+    --color-brand-100: 223 238 232;
+    --color-brand-300: 134 183 168;
+    --color-brand-400: 82 146 127;
+    --color-brand-500: 31 108 88;
+    --color-brand-600: 24 88 71;
+    --color-brand-700: 18 69 56;
+    --color-brand-800: 12 49 40;
+    --color-accent-50: 255 239 239;
+    --color-accent-100: 255 220 220;
+    --color-accent-300: 241 124 124;
+    --color-accent-400: 229 62 62;
+    --color-accent-500: 217 10 10;
+    --color-accent-600: 176 7 7;
+    --color-accent-700: 138 4 4;
     --color-energy-50: 248 255 223;
     --color-energy-100: 238 255 176;
     --color-energy-300: 222 252 0;
@@ -46,6 +54,21 @@
   }
 
   .dark {
+    --color-brand-50: 241 248 245;
+    --color-brand-100: 223 238 232;
+    --color-brand-300: 151 198 184;
+    --color-brand-400: 95 161 140;
+    --color-brand-500: 31 108 88;
+    --color-brand-600: 24 88 71;
+    --color-brand-700: 18 69 56;
+    --color-brand-800: 12 49 40;
+    --color-accent-50: 255 239 239;
+    --color-accent-100: 255 220 220;
+    --color-accent-300: 247 145 145;
+    --color-accent-400: 237 88 88;
+    --color-accent-500: 217 10 10;
+    --color-accent-600: 176 7 7;
+    --color-accent-700: 138 4 4;
     --gray-50: 244 244 245;
     --gray-100: 228 228 231;
     --gray-200: 212 212 216;
@@ -74,8 +97,8 @@
   body {
     min-height: 100vh;
     background:
-      radial-gradient(circle at top left, rgba(var(--color-accent-500), 0.18), transparent 24%),
-      radial-gradient(circle at top right, rgba(var(--color-brand-400), 0.26), transparent 26%),
+      radial-gradient(circle at top left, rgb(var(--color-accent-500) / 0.16), transparent 24%),
+      radial-gradient(circle at top right, rgb(var(--color-brand-400) / 0.22), transparent 26%),
       rgb(var(--surface-shell));
     color: rgb(var(--ink));
     text-rendering: optimizeLegibility;
@@ -86,7 +109,7 @@
   }
 
   ::selection {
-    background: rgba(var(--color-accent-500), 0.9);
+    background: rgb(var(--color-accent-500) / 0.9);
     color: #fff;
   }
 
@@ -113,6 +136,38 @@
 
   .glass-panel {
     @apply rounded-[1.5rem] border border-white/60 bg-white/80 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/80;
+  }
+
+  .brand-duotone-panel {
+    background-image:
+      radial-gradient(circle at top left, rgb(var(--color-accent-500) / 0.24), transparent 42%),
+      radial-gradient(circle at bottom right, rgb(var(--color-brand-500) / 0.24), transparent 48%);
+  }
+
+  .dark .brand-duotone-panel {
+    background-image:
+      radial-gradient(circle at top left, rgb(var(--color-accent-400) / 0.3), transparent 42%),
+      radial-gradient(circle at bottom right, rgb(var(--color-brand-400) / 0.26), transparent 48%);
+  }
+
+  .brand-duotone-button {
+    background-image:
+      radial-gradient(circle at 0% 0%, rgb(var(--color-accent-500) / 0.44) 0%, rgb(var(--color-accent-500) / 0.22) 26%, transparent 58%),
+      radial-gradient(circle at 100% 100%, rgb(var(--color-brand-500) / 0.46) 0%, rgb(var(--color-brand-500) / 0.24) 32%, transparent 68%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.96) 0%, rgb(255 255 255 / 0.9) 100%);
+    background-size: 52% 185%, 68% 235%, 100% 100%;
+    background-position: left top, right bottom, center;
+    background-repeat: no-repeat;
+  }
+
+  .dark .brand-duotone-button {
+    background-image:
+      radial-gradient(circle at 0% 0%, rgb(var(--color-accent-500) / 0.5) 0%, rgb(var(--color-accent-500) / 0.26) 26%, transparent 58%),
+      radial-gradient(circle at 100% 100%, rgb(var(--color-brand-500) / 0.52) 0%, rgb(var(--color-brand-500) / 0.28) 32%, transparent 68%),
+      linear-gradient(180deg, rgb(var(--surface-dark) / 0.96) 0%, rgb(var(--surface-dark) / 0.92) 100%);
+    background-size: 52% 185%, 68% 235%, 100% 100%;
+    background-position: left top, right bottom, center;
+    background-repeat: no-repeat;
   }
 
   .page-content {

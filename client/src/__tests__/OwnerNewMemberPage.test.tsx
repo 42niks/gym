@@ -39,7 +39,7 @@ describe('OwnerNewMemberPage', () => {
 
   it('has a back link to members', () => {
     renderWithProviders(<OwnerNewMemberPage />, { route: '/owner/members/new' });
-    expect(screen.getByText('← Members')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /arrow_back Members$/ })).toBeInTheDocument();
   });
 
   it('submits form and navigates to member detail', async () => {

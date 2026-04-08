@@ -2,7 +2,7 @@ import Icon from './Icon.js';
 
 const variants = {
   primary:
-    'bg-brand-gradient dark:bg-brand-gradient-dark bg-white dark:bg-surface-dark border border-white/70 dark:border-white/10 text-gray-900 dark:text-white font-label font-bold italic uppercase tracking-[0.18em] shadow-panel hover:-translate-y-0.5 hover:shadow-glow-brand active:translate-y-0',
+    'border border-white/70 dark:border-white/10 text-gray-900 dark:text-white font-label font-bold italic uppercase tracking-[0.18em] shadow-panel hover:-translate-y-0.5 hover:shadow-glow-brand active:translate-y-0',
   secondary:
     'border border-white/55 bg-white/80 text-gray-900 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:bg-surface-dark/75 dark:text-white hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:hover:bg-surface-raised/85',
   ghost:
@@ -19,15 +19,19 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export default function Button({ variant = 'primary', children, className = '', icon, iconEnd = false, ...props }: ButtonProps) {
   const iconEl = icon ? <Icon name={icon} className="text-[1.1rem]" /> : null;
+  const isPrimary = variant === 'primary';
 
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${isPrimary ? 'relative overflow-hidden isolate p-px' : 'px-5 py-3'} ${variants[variant]} ${className}`}
     >
-      {!iconEnd && iconEl}
-      {children}
-      {iconEnd && iconEl}
+      {isPrimary ? <span aria-hidden="true" className="brand-duotone-button absolute inset-0 rounded-2xl" /> : null}
+      <span className={`relative z-10 inline-flex items-center justify-center gap-2 ${isPrimary ? 'w-full rounded-[calc(1rem-1px)] px-5 py-3' : ''}`}>
+        {!iconEnd && iconEl}
+        {children}
+        {iconEnd && iconEl}
+      </span>
     </button>
   );
 }

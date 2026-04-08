@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const passwordInputId = 'login-password';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,13 +39,22 @@ export default function LoginPage() {
 
       <div className="flex min-h-full items-center justify-center bg-page px-6 py-10 sm:px-10">
         <div className="glass-panel w-full max-w-sm px-8 py-8">
-          <div className="relative mb-8 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white px-6 py-5 shadow-panel dark:border-white/10 dark:bg-surface-dark">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,81,250,0.28),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(0,237,180,0.28),transparent_48%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(255,81,250,0.34),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(0,237,180,0.30),transparent_48%)]" />
-            <div className="relative flex items-center gap-4">
-              <img src="/logo.svg" alt="BASE" className="h-14 w-14" />
-              <h1 className="font-headline text-[2.8rem] font-black uppercase tracking-[0.18em] text-gray-900 dark:text-white sm:text-[3.4rem]">
-                BASE
-              </h1>
+          <div className="relative mb-8 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white px-6 py-6 shadow-panel dark:border-white/10 dark:bg-surface-dark">
+            <div className="brand-duotone-panel absolute inset-0" />
+            <div className="relative flex min-h-[10.25rem] flex-col justify-between pt-1">
+              <div className="ml-1">
+                <img src="/base-wordmark-light.png" alt="BASE" className="h-[4.05rem] w-auto dark:hidden" />
+                <img src="/base-wordmark-dark.png" alt="BASE" className="hidden h-[4.05rem] w-auto dark:block" />
+              </div>
+              <div className="ml-auto max-w-[13.5rem] text-right">
+                <p className="font-brand text-[1.22rem] font-black uppercase tracking-[0.16em] text-[#1f6c58] dark:text-[#d90a0a]">
+                  YOUR
+                  <br />
+                  STRENGTH
+                  <br />
+                  HABITAT
+                </p>
+              </div>
             </div>
           </div>
 
@@ -61,11 +71,12 @@ export default function LoginPage() {
             />
 
             <div>
-              <label className="mb-2 ml-3 block font-label text-[0.68rem] font-bold not-italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
+              <label htmlFor={passwordInputId} className="mb-2 ml-3 block font-label text-[0.68rem] font-bold not-italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
                 Password
               </label>
               <div className="relative">
                 <input
+                  id={passwordInputId}
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required

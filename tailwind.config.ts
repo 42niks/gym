@@ -65,18 +65,18 @@ export default {
         ink: withOpacity('--ink'),
       },
       backgroundImage: {
-        'brand-gradient': 'radial-gradient(circle at top left, rgba(255,81,250,0.28), transparent 42%), radial-gradient(circle at bottom right, rgba(0,237,180,0.28), transparent 48%)',
-        'brand-gradient-dark': 'radial-gradient(circle at top left, rgba(255,81,250,0.34), transparent 42%), radial-gradient(circle at bottom right, rgba(0,237,180,0.30), transparent 48%)',
+        'brand-gradient': 'radial-gradient(circle at top left, rgb(var(--color-accent-500) / 0.24), transparent 42%), radial-gradient(circle at bottom right, rgb(var(--color-brand-500) / 0.18), transparent 48%)',
+        'brand-gradient-dark': 'radial-gradient(circle at top left, rgb(var(--color-accent-400) / 0.28), transparent 42%), radial-gradient(circle at bottom right, rgb(var(--color-brand-400) / 0.22), transparent 48%)',
         'hero-mesh':
-          'radial-gradient(circle at top left, rgba(var(--color-accent-500), 0.18), transparent 34%), radial-gradient(circle at top right, rgba(var(--color-brand-400), 0.22), transparent 32%), linear-gradient(180deg, rgba(var(--surface-page), 0.98) 0%, rgba(var(--surface-shell), 0.95) 100%)',
+          'radial-gradient(circle at top left, rgb(var(--color-accent-500) / 0.18), transparent 34%), radial-gradient(circle at top right, rgb(var(--color-brand-400) / 0.2), transparent 32%), linear-gradient(180deg, rgb(var(--surface-page) / 0.98) 0%, rgb(var(--surface-shell) / 0.95) 100%)',
         'hero-grid':
           'linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)',
       },
       boxShadow: {
         panel: '0 18px 50px rgba(14, 14, 15, 0.08)',
         glass: '0 10px 30px rgba(14, 14, 15, 0.08)',
-        'glow-brand': '0 18px 38px rgba(0, 237, 180, 0.13)',
-        'glow-accent': '0 18px 38px rgba(255, 81, 250, 0.12)',
+        'glow-brand': '0 18px 38px rgb(var(--color-brand-500) / 0.18)',
+        'glow-accent': '0 18px 38px rgb(var(--color-accent-500) / 0.18)',
       },
       borderRadius: {
         shell: '2rem',
@@ -85,6 +85,7 @@ export default {
         headline: ['"Space Grotesk"', 'sans-serif'],
         body: ['Manrope', 'sans-serif'],
         label: ['"Space Grotesk"', 'sans-serif'],
+        brand: ['"Mister Belvedere"', '"Space Grotesk"', 'sans-serif'],
       },
     },
   },

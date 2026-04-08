@@ -29,9 +29,10 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
-  it('renders the BASE heading', () => {
+  it('renders the BASE brand lockup', () => {
     renderWithProviders(<LoginPage />);
-    expect(screen.getByText('BASE')).toBeInTheDocument();
+    expect(screen.getByAltText('BASE')).toBeInTheDocument();
+    expect(screen.getByText('Your Strength Habitat')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
