@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginPage from '../pages/LoginPage.js';
 import { renderWithProviders } from './test-utils.js';
@@ -25,14 +25,14 @@ describe('LoginPage', () => {
   it('renders login form with email and password fields', () => {
     renderWithProviders(<LoginPage />);
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('renders the BASE brand lockup', () => {
     renderWithProviders(<LoginPage />);
     expect(screen.getByAltText('BASE')).toBeInTheDocument();
-    expect(screen.getByText('Your Strength Habitat')).toBeInTheDocument();
+    expect(screen.getByLabelText('Your Strength Habitat')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
@@ -42,7 +42,7 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />);
 
     await user.type(screen.getByLabelText(/email/i), 'owner@thebase.fit');
-    await user.type(screen.getByLabelText(/password/i), '9999999999');
+    await user.type(screen.getByLabelText(/^password$/i), '9999999999');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => {
@@ -57,7 +57,7 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />);
 
     await user.type(screen.getByLabelText(/email/i), 'member@thebase.fit');
-    await user.type(screen.getByLabelText(/password/i), 'password123');
+    await user.type(screen.getByLabelText(/^password$/i), 'password123');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => { expect(mockNavigate).toHaveBeenCalledWith('/home', { replace: true }); });
@@ -70,7 +70,7 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />);
 
     await user.type(screen.getByLabelText(/email/i), 'bad@email.com');
-    await user.type(screen.getByLabelText(/password/i), 'wrong');
+    await user.type(screen.getByLabelText(/^password$/i), 'wrong');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => { expect(screen.getByText('Authentication Failed')).toBeInTheDocument(); });
@@ -83,11 +83,13 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />);
 
     await user.type(screen.getByLabelText(/email/i), 'test@test.com');
-    await user.type(screen.getByLabelText(/password/i), '1234');
+    await user.type(screen.getByLabelText(/^password$/i), '1234');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
     expect(screen.getByText('Signing in…')).toBeInTheDocument();
-    resolveLogin({ id: 1, role: 'member', full_name: 'Test', email: 'test@test.com' });
+    await act(async () => {
+      resolveLogin({ id: 1, role: 'member', full_name: 'Test', email: 'test@test.com' });
+    });
   });
 
   it('has a theme toggle button', () => {

@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import type { AppDatabase } from '../db/client.js';
 import { listMembersByStatus, type MemberRow } from '../repositories/members-repo.js';
 import { listSubscriptionsForMember, getEarliestSubscriptionStart } from '../repositories/subscriptions-repo.js';
 import { listAttendanceDatesForMember, hasAttendanceForDate, getMembersCheckedInToday } from '../repositories/sessions-repo.js';
@@ -9,27 +9,27 @@ import { computeConsistency } from '../lib/consistency.js';
 import { getIstDate } from '../lib/date.js';
 import { formatSubscription, getActiveSub, getUpcomingSubs } from './member-service.js';
 
-export function getDashboard(db: Database.Database) {
+export async function getDashboard(db: AppDatabase) {
   const today = getIstDate();
-  const activeMembers = listMembersByStatus(db, 'active');
-  const archivedMembers = listMembersByStatus(db, 'archived');
+  const activeMembers = await listMembersByStatus(db, 'active');
+  const archivedMembers = await listMembersByStatus(db, 'archived');
 
   const renewalNoActive: any[] = [];
   const renewalNearingEnd: any[] = [];
   const activeMembersList: any[] = [];
 
   for (const member of activeMembers) {
-    const subs = listSubscriptionsForMember(db, member.id);
+    const subs = await listSubscriptionsForMember(db, member.id);
     const activeSub = getActiveSub(subs, today);
     const upcomingSubs = getUpcomingSubs(subs, today);
-    const markedToday = hasAttendanceForDate(db, member.id, today);
+    const markedToday = await hasAttendanceForDate(db, member.id, today);
 
     let consistency = null;
     if (activeSub) {
-      const pkg = findPackageById(db, activeSub.package_id);
+      const pkg = await findPackageById(db, activeSub.package_id);
       if (pkg) {
-        const earliest = getEarliestSubscriptionStart(db, member.id);
-        const attendanceDates = listAttendanceDatesForMember(db, member.id);
+        const earliest = await getEarliestSubscriptionStart(db, member.id);
+        const attendanceDates = await listAttendanceDatesForMember(db, member.id);
         consistency = computeConsistency({
           hasActiveSubscription: true,
           windowDays: pkg.consistency_window_days,
@@ -83,7 +83,7 @@ export function getDashboard(db: Database.Database) {
   }
 
   // Checked in today
-  const checkedInRows = getMembersCheckedInToday(db, today);
+  const checkedInRows = await getMembersCheckedInToday(db, today);
   const checkedInToday: any[] = [];
   for (const row of checkedInRows) {
     const memberEntry = activeMembersList.find(m => m.member_id === row.member_id);
@@ -98,12 +98,12 @@ export function getDashboard(db: Database.Database) {
   }
 
   // Archived members
-  const archivedList = archivedMembers.map(m => ({
+  const archivedList = await Promise.all(archivedMembers.map(async (m) => ({
     member_id: m.id,
     full_name: m.full_name,
     status: m.status,
-    marked_attendance_today: hasAttendanceForDate(db, m.id, today),
-  }));
+    marked_attendance_today: await hasAttendanceForDate(db, m.id, today),
+  })));
 
   return {
     renewal_no_active: renewalNoActive,

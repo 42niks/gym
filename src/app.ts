@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
-import Database from 'better-sqlite3';
+import type { AppDatabase } from './db/client.js';
 import { findMemberByEmail, findMemberById } from './repositories/members-repo.js';
 import { createSession, deleteSession, deleteExpiredSessions } from './repositories/user-sessions-repo.js';
 import { listPackages } from './repositories/packages-repo.js';
@@ -19,8 +19,13 @@ import { getIstDate } from './lib/date.js';
 const SESSION_MAX_AGE = 864000;
 
 export type AppEnv = {
+  Bindings: {
+    DB: D1Database;
+    ASSETS?: Fetcher;
+  };
   Variables: {
-    db: Database.Database;
+    db: AppDatabase;
+    secureCookies: boolean;
     user: {
       member_id: number;
       role: string;
@@ -33,12 +38,13 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function createApp(db: Database.Database) {
+export function createApp(db: AppDatabase, { secureCookies }: { secureCookies: boolean }) {
   const app = new Hono<AppEnv>();
 
   // Inject DB
   app.use('*', async (c, next) => {
     c.set('db', db);
+    c.set('secureCookies', secureCookies);
     await next();
   });
 
@@ -58,16 +64,16 @@ export function createApp(db: Database.Database) {
     if (!email) return c.json({ error: 'Email is required' }, 400);
     if (!password) return c.json({ error: 'Password is required' }, 400);
 
-    const member = findMemberByEmail(db, email);
+    const member = await findMemberByEmail(db, email);
     if (!member || member.status === 'archived' || member.phone !== password) {
       return c.json({ error: 'Invalid email or password' }, 401);
     }
 
-    deleteExpiredSessions(db, member.id);
-    const { token } = createSession(db, member.id);
+    await deleteExpiredSessions(db, member.id);
+    const { token } = await createSession(db, member.id);
 
     setCookie(c, 'session_id', token, {
-      httpOnly: true, sameSite: 'Strict', path: '/', maxAge: SESSION_MAX_AGE, secure: false,
+      httpOnly: true, sameSite: 'Strict', path: '/', maxAge: SESSION_MAX_AGE, secure: secureCookies,
     });
 
     return c.json({ id: member.id, role: member.role, full_name: member.full_name, email: member.email });
@@ -75,42 +81,42 @@ export function createApp(db: Database.Database) {
 
   app.post('/api/auth/logout', async (c) => {
     const token = getCookie(c, 'session_id');
-    if (token) deleteSession(db, token);
+    if (token) await deleteSession(db, token);
     setCookie(c, 'session_id', '', {
-      httpOnly: true, sameSite: 'Strict', path: '/', maxAge: 0, secure: false,
+      httpOnly: true, sameSite: 'Strict', path: '/', maxAge: 0, secure: secureCookies,
     });
     return c.json({ ok: true });
   });
 
-  app.get('/api/auth/me', authMiddleware, (c) => {
+  app.get('/api/auth/me', authMiddleware, async (c) => {
     const user = c.get('user');
-    const row = db.prepare(`SELECT id, role, full_name, email FROM members WHERE id = ?`).get(user.member_id) as any;
+    const row = await findMemberById(db, user.member_id);
     if (!row) return c.json({ error: 'Not authenticated' }, 401);
     return c.json({ id: row.id, role: row.role, full_name: row.full_name, email: row.email });
   });
 
   // ─── Packages ───
 
-  app.get('/api/packages', authMiddleware, (c) => {
-    return c.json(listPackages(db));
+  app.get('/api/packages', authMiddleware, async (c) => {
+    return c.json(await listPackages(db));
   });
 
   // ─── Member self routes ───
 
-  app.get('/api/me/profile', authMiddleware, requireMember, (c) => {
+  app.get('/api/me/profile', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
-    const member = findMemberById(db, user.member_id);
+    const member = await findMemberById(db, user.member_id);
     if (!member) return c.json({ error: 'Not found' }, 404);
     return c.json(toProfile(member));
   });
 
-  app.get('/api/me/home', authMiddleware, requireMember, (c) => {
+  app.get('/api/me/home', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
-    const member = findMemberById(db, user.member_id);
+    const member = await findMemberById(db, user.member_id);
     if (!member) return c.json({ error: 'Not found' }, 404);
 
     const today = getIstDate();
-    const enrichment = computeMemberEnrichment(db, member.id, today);
+    const enrichment = await computeMemberEnrichment(db, member.id, today);
 
     return c.json({
       member: toProfile(member),
@@ -118,26 +124,26 @@ export function createApp(db: Database.Database) {
     });
   });
 
-  app.get('/api/me/subscriptions', authMiddleware, requireMember, (c) => {
+  app.get('/api/me/subscriptions', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
-    return c.json(getGroupedSubscriptions(db, user.member_id));
+    return c.json(await getGroupedSubscriptions(db, user.member_id));
   });
 
-  app.post('/api/me/sessions', authMiddleware, requireMember, (c) => {
+  app.post('/api/me/sessions', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
-    const result = markAttendance(db, user.member_id);
+    const result = await markAttendance(db, user.member_id);
     if ('error' in result) return c.json({ error: result.error }, result.status);
     return c.json(result.data);
   });
 
   // ─── Owner: Members ───
 
-  app.get('/api/members', authMiddleware, requireOwner, (c) => {
+  app.get('/api/members', authMiddleware, requireOwner, async (c) => {
     const status = c.req.query('status') ?? 'active';
     if (status !== 'active' && status !== 'archived') {
       return c.json({ error: 'Invalid status parameter' }, 400);
     }
-    return c.json(listMembers(db, status));
+    return c.json(await listMembers(db, status));
   });
 
   app.post('/api/members', authMiddleware, requireOwner, async (c) => {
@@ -161,7 +167,7 @@ export function createApp(db: Database.Database) {
     if (phone.length > 32) return c.json({ error: 'phone exceeds 32 characters' }, 400);
 
     try {
-      const member = createNewMember(db, { full_name: fullName, email, phone });
+      const member = await createNewMember(db, { full_name: fullName, email, phone });
       return c.json(member, 201);
     } catch (e: any) {
       if (e.message?.includes('UNIQUE constraint failed')) {
@@ -171,10 +177,10 @@ export function createApp(db: Database.Database) {
     }
   });
 
-  app.get('/api/members/:id', authMiddleware, requireOwner, (c) => {
+  app.get('/api/members/:id', authMiddleware, requireOwner, async (c) => {
     const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
-    const detail = getMemberDetail(db, id);
+    const detail = await getMemberDetail(db, id);
     if (!detail) return c.json({ error: 'Member not found' }, 404);
     return c.json(detail);
   });
@@ -208,17 +214,17 @@ export function createApp(db: Database.Database) {
       return c.json({ error: 'No editable field provided' }, 400);
     }
 
-    const existing = findMemberById(db, id);
+    const existing = await findMemberById(db, id);
     if (!existing) return c.json({ error: 'Member not found' }, 404);
 
-    const member = updateExistingMember(db, id, updates);
+    const member = await updateExistingMember(db, id, updates);
     return c.json(member);
   });
 
-  app.post('/api/members/:id/archive', authMiddleware, requireOwner, (c) => {
+  app.post('/api/members/:id/archive', authMiddleware, requireOwner, async (c) => {
     const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
-    const result = archiveMemberById(db, id);
+    const result = await archiveMemberById(db, id);
     if (result.error) {
       const status = result.error === 'Member not found' ? 404 :  409;
       return c.json({ error: result.error }, status);
@@ -228,12 +234,12 @@ export function createApp(db: Database.Database) {
 
   // ─── Owner: Subscriptions ───
 
-  app.get('/api/members/:id/subscriptions', authMiddleware, requireOwner, (c) => {
+  app.get('/api/members/:id/subscriptions', authMiddleware, requireOwner, async (c) => {
     const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
-    const member = findMemberById(db, id);
+    const member = await findMemberById(db, id);
     if (!member) return c.json({ error: 'Member not found' }, 404);
-    return c.json(getGroupedSubscriptions(db, id));
+    return c.json(await getGroupedSubscriptions(db, id));
   });
 
   app.post('/api/members/:id/subscriptions', authMiddleware, requireOwner, async (c) => {
@@ -255,37 +261,37 @@ export function createApp(db: Database.Database) {
     }
     if (!startDate) return c.json({ error: 'start_date is required' }, 400);
 
-    const result = createNewSubscription(db, { member_id: memberId, package_id: packageId, start_date: startDate });
+    const result = await createNewSubscription(db, { member_id: memberId, package_id: packageId, start_date: startDate });
     if ('error' in result) return c.json({ error: result.error }, result.status);
     return c.json(result.data, result.status);
   });
 
-  app.post('/api/subscriptions/:id/complete', authMiddleware, requireOwner, (c) => {
+  app.post('/api/subscriptions/:id/complete', authMiddleware, requireOwner, async (c) => {
     const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid subscription id' }, 400);
-    const result = completeSubscription(db, id);
+    const result = await completeSubscription(db, id);
     if ('error' in result) return c.json({ error: result.error }, result.status);
     return c.json(result.data);
   });
 
   // ─── Owner: Attendance ───
 
-  app.post('/api/members/:id/sessions', authMiddleware, requireOwner, (c) => {
+  app.post('/api/members/:id/sessions', authMiddleware, requireOwner, async (c) => {
     const memberId = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(memberId) || memberId <= 0) return c.json({ error: 'Invalid member id' }, 400);
 
-    const member = findMemberById(db, memberId);
+    const member = await findMemberById(db, memberId);
     if (!member) return c.json({ error: 'Member not found' }, 404);
 
-    const result = markAttendance(db, memberId);
+    const result = await markAttendance(db, memberId);
     if ('error' in result) return c.json({ error: result.error }, result.status);
     return c.json(result.data);
   });
 
   // ─── Owner: Dashboard ───
 
-  app.get('/api/owner/dashboard', authMiddleware, requireOwner, (c) => {
-    return c.json(getDashboard(db));
+  app.get('/api/owner/dashboard', authMiddleware, requireOwner, async (c) => {
+    return c.json(await getDashboard(db));
   });
 
   return app;

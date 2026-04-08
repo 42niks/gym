@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import type { AppDatabase } from '../db/client.js';
 
 export interface SubscriptionRow {
   id: number;
@@ -17,27 +17,27 @@ export interface SubscriptionWithType extends SubscriptionRow {
   service_type: string;
 }
 
-export function findSubscriptionById(db: Database.Database, id: number): SubscriptionWithType | undefined {
-  return db.prepare(
+export async function findSubscriptionById(db: AppDatabase, id: number): Promise<SubscriptionWithType | undefined> {
+  return db.get(
     `SELECT s.*, p.service_type
      FROM subscriptions s
      JOIN packages p ON p.id = s.package_id
      WHERE s.id = ?`
-  ).get(id) as SubscriptionWithType | undefined;
+  , [id]);
 }
 
-export function listSubscriptionsForMember(db: Database.Database, memberId: number): SubscriptionWithType[] {
-  return db.prepare(
+export async function listSubscriptionsForMember(db: AppDatabase, memberId: number): Promise<SubscriptionWithType[]> {
+  return db.all(
     `SELECT s.*, p.service_type
      FROM subscriptions s
      JOIN packages p ON p.id = s.package_id
      WHERE s.member_id = ?
      ORDER BY s.start_date DESC, s.id DESC`
-  ).all(memberId) as SubscriptionWithType[];
+  , [memberId]);
 }
 
-export function createSubscription(
-  db: Database.Database,
+export async function createSubscription(
+  db: AppDatabase,
   data: {
     member_id: number;
     package_id: number;
@@ -46,28 +46,28 @@ export function createSubscription(
     total_sessions: number;
     amount: number;
   }
-): number {
-  const result = db.prepare(
+): Promise<number> {
+  const result = await db.run(
     `INSERT INTO subscriptions (member_id, package_id, start_date, end_date, total_sessions, amount)
      VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(data.member_id, data.package_id, data.start_date, data.end_date, data.total_sessions, data.amount);
-  return Number(result.lastInsertRowid);
+  , [data.member_id, data.package_id, data.start_date, data.end_date, data.total_sessions, data.amount]);
+  return result.lastRowId;
 }
 
-export function markSubscriptionCompleted(db: Database.Database, id: number): void {
-  db.prepare(`UPDATE subscriptions SET owner_completed = 1 WHERE id = ?`).run(id);
+export async function markSubscriptionCompleted(db: AppDatabase, id: number): Promise<void> {
+  await db.run(`UPDATE subscriptions SET owner_completed = 1 WHERE id = ?`, [id]);
 }
 
-export function incrementAttendedSessions(db: Database.Database, id: number): void {
-  db.prepare(
+export async function incrementAttendedSessions(db: AppDatabase, id: number): Promise<void> {
+  await db.run(
     `UPDATE subscriptions SET attended_sessions = attended_sessions + 1
      WHERE id = ? AND attended_sessions < total_sessions`
-  ).run(id);
+  , [id]);
 }
 
-export function getEarliestSubscriptionStart(db: Database.Database, memberId: number): string | undefined {
-  const row = db.prepare(
+export async function getEarliestSubscriptionStart(db: AppDatabase, memberId: number): Promise<string | undefined> {
+  const row = await db.get<{ earliest: string | null }>(
     `SELECT MIN(start_date) as earliest FROM subscriptions WHERE member_id = ?`
-  ).get(memberId) as any;
+  , [memberId]);
   return row?.earliest ?? undefined;
 }

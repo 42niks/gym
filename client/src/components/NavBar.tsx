@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
+import { useTheme } from '../context/ThemeContext.js';
 import ThemeToggle from './ThemeToggle.js';
 import Icon from './Icon.js';
 
@@ -11,14 +12,18 @@ interface NavLink {
 
 export default function NavBar({ links }: { links: NavLink[] }) {
   const { logout } = useAuth();
+  const { theme } = useTheme();
   const location = useLocation();
 
   return (
     <nav className="sticky top-0 z-20 border-b border-white/60 bg-white/72 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/72">
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
         <Link to="/" className="flex flex-col items-start gap-1">
-          <img src="/base-wordmark-light.png" alt="BASE" className="h-8 w-auto dark:hidden" />
-          <img src="/base-wordmark-dark.png" alt="BASE" className="hidden h-8 w-auto dark:block" />
+          <img
+            src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
+            alt="BASE"
+            className="h-8 w-auto"
+          />
           <span className="hidden font-brand text-[0.5rem] font-black uppercase tracking-[0.22em] text-[#1f6c58] dark:text-[#d90a0a] sm:inline">
             YOUR STRENGTH HABITAT
           </span>

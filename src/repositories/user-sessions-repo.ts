@@ -1,5 +1,4 @@
-import Database from 'better-sqlite3';
-import crypto from 'crypto';
+import type { AppDatabase } from '../db/client.js';
 
 export interface UserSessionRow {
   id: string;
@@ -8,40 +7,40 @@ export interface UserSessionRow {
   expires_at: string;
 }
 
-export function createSession(db: Database.Database, memberId: number): { token: string; expiresAt: string } {
+export async function createSession(db: AppDatabase, memberId: number): Promise<{ token: string; expiresAt: string }> {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
-  db.prepare(
+  await db.run(
     `INSERT INTO user_sessions (id, member_id, expires_at) VALUES (?, ?, ?)`
-  ).run(token, memberId, expiresAt);
+  , [token, memberId, expiresAt]);
   return { token, expiresAt };
 }
 
-export function findSession(db: Database.Database, token: string): (UserSessionRow & { role: string; status: string }) | undefined {
-  return db.prepare(
+export async function findSession(db: AppDatabase, token: string): Promise<(UserSessionRow & { role: string; status: string }) | undefined> {
+  return db.get(
     `SELECT us.id, us.member_id, us.created_at, us.expires_at, m.role, m.status
      FROM user_sessions us
      JOIN members m ON m.id = us.member_id
      WHERE us.id = ?`
-  ).get(token) as any;
+  , [token]);
 }
 
-export function deleteSession(db: Database.Database, token: string): void {
-  db.prepare(`DELETE FROM user_sessions WHERE id = ?`).run(token);
+export async function deleteSession(db: AppDatabase, token: string): Promise<void> {
+  await db.run(`DELETE FROM user_sessions WHERE id = ?`, [token]);
 }
 
-export function deleteExpiredSessions(db: Database.Database, memberId: number): void {
-  db.prepare(
+export async function deleteExpiredSessions(db: AppDatabase, memberId: number): Promise<void> {
+  await db.run(
     `DELETE FROM user_sessions WHERE member_id = ? AND expires_at < datetime('now')`
-  ).run(memberId);
+  , [memberId]);
 }
 
-export function deleteAllSessionsForMember(db: Database.Database, memberId: number): void {
-  db.prepare(`DELETE FROM user_sessions WHERE member_id = ?`).run(memberId);
+export async function deleteAllSessionsForMember(db: AppDatabase, memberId: number): Promise<void> {
+  await db.run(`DELETE FROM user_sessions WHERE member_id = ?`, [memberId]);
 }
 
-export function refreshSession(db: Database.Database, token: string): string {
+export async function refreshSession(db: AppDatabase, token: string): Promise<string> {
   const expiresAt = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
-  db.prepare(`UPDATE user_sessions SET expires_at = ? WHERE id = ?`).run(expiresAt, token);
+  await db.run(`UPDATE user_sessions SET expires_at = ? WHERE id = ?`, [expiresAt, token]);
   return expiresAt;
 }

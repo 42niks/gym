@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import type { AppDatabase } from '../db/client.js';
 
 export interface MemberRow {
   id: number;
@@ -11,47 +11,46 @@ export interface MemberRow {
   created_at: string;
 }
 
-export function findMemberByEmail(db: Database.Database, email: string): MemberRow | undefined {
-  return db.prepare(
+export async function findMemberByEmail(db: AppDatabase, email: string): Promise<MemberRow | undefined> {
+  return db.get(
     `SELECT id, role, full_name, email, phone, join_date, status, created_at
      FROM members WHERE LOWER(email) = LOWER(?)`
-  ).get(email.trim().toLowerCase()) as MemberRow | undefined;
+  , [email.trim().toLowerCase()]);
 }
 
-export function findMemberById(db: Database.Database, id: number): MemberRow | undefined {
-  return db.prepare(
+export async function findMemberById(db: AppDatabase, id: number): Promise<MemberRow | undefined> {
+  return db.get(
     `SELECT id, role, full_name, email, phone, join_date, status, created_at
      FROM members WHERE id = ?`
-  ).get(id) as MemberRow | undefined;
+  , [id]);
 }
 
-export function listMembersByStatus(db: Database.Database, status: string): MemberRow[] {
-  return db.prepare(
+export async function listMembersByStatus(db: AppDatabase, status: string): Promise<MemberRow[]> {
+  return db.all(
     `SELECT id, role, full_name, email, phone, join_date, status, created_at
      FROM members WHERE status = ? AND role = 'member'
      ORDER BY LOWER(full_name) ASC, id ASC`
-  ).all(status) as MemberRow[];
+  , [status]);
 }
 
-export function createMember(
-  db: Database.Database,
+export async function createMember(
+  db: AppDatabase,
   data: { full_name: string; email: string; phone: string; join_date: string }
-): MemberRow {
-  const stmt = db.prepare(
+): Promise<MemberRow> {
+  const result = await db.run(
     `INSERT INTO members (role, full_name, email, phone, join_date)
      VALUES ('member', ?, LOWER(?), ?, ?)`
-  );
-  const result = stmt.run(data.full_name.trim(), data.email.trim(), data.phone.trim(), data.join_date);
-  return findMemberById(db, Number(result.lastInsertRowid))!;
+  , [data.full_name.trim(), data.email.trim(), data.phone.trim(), data.join_date]);
+  return (await findMemberById(db, result.lastRowId))!;
 }
 
-export function updateMember(
-  db: Database.Database,
+export async function updateMember(
+  db: AppDatabase,
   id: number,
   data: { full_name?: string; phone?: string }
-): MemberRow | undefined {
+): Promise<MemberRow | undefined> {
   const sets: string[] = [];
-  const values: any[] = [];
+  const values: (string | number)[] = [];
   if (data.full_name !== undefined) {
     sets.push('full_name = ?');
     values.push(data.full_name.trim());
@@ -62,14 +61,14 @@ export function updateMember(
   }
   if (sets.length === 0) return findMemberById(db, id);
   values.push(id);
-  db.prepare(`UPDATE members SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+  await db.run(`UPDATE members SET ${sets.join(', ')} WHERE id = ?`, values);
   return findMemberById(db, id);
 }
 
-export function archiveMember(db: Database.Database, id: number): void {
-  db.prepare(`UPDATE members SET status = 'archived' WHERE id = ?`).run(id);
+export async function archiveMember(db: AppDatabase, id: number): Promise<void> {
+  await db.run(`UPDATE members SET status = 'archived' WHERE id = ?`, [id]);
 }
 
-export function unarchiveMember(db: Database.Database, id: number): void {
-  db.prepare(`UPDATE members SET status = 'active' WHERE id = ?`).run(id);
+export async function unarchiveMember(db: AppDatabase, id: number): Promise<void> {
+  await db.run(`UPDATE members SET status = 'active' WHERE id = ?`, [id]);
 }

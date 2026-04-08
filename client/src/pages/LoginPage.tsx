@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
+import { useTheme } from '../context/ThemeContext.js';
 import { ApiError } from '../lib/api.js';
 import Input from '../components/Input.js';
 import Button from '../components/Button.js';
@@ -9,6 +10,7 @@ import ThemeToggle from '../components/ThemeToggle.js';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,11 +45,17 @@ export default function LoginPage() {
             <div className="brand-duotone-panel absolute inset-0" />
             <div className="relative flex min-h-[10.25rem] flex-col justify-between pt-1">
               <div className="ml-1">
-                <img src="/base-wordmark-light.png" alt="BASE" className="h-[4.05rem] w-auto dark:hidden" />
-                <img src="/base-wordmark-dark.png" alt="BASE" className="hidden h-[4.05rem] w-auto dark:block" />
+                <img
+                  src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
+                  alt="BASE"
+                  className="h-[4.05rem] w-auto"
+                />
               </div>
               <div className="ml-auto max-w-[13.5rem] text-right">
-                <p className="font-brand text-[1.22rem] font-black uppercase tracking-[0.16em] text-[#1f6c58] dark:text-[#d90a0a]">
+                <p
+                  aria-label="Your Strength Habitat"
+                  className="font-brand text-[1.22rem] font-black uppercase tracking-[0.16em] text-[#1f6c58] dark:text-[#d90a0a]"
+                >
                   YOUR
                   <br />
                   STRENGTH

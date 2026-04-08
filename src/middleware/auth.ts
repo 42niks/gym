@@ -12,36 +12,37 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
   }
 
   const db = c.get('db');
-  const session = findSession(db, token);
+  const session = await findSession(db, token);
+  const secureCookies = c.get('secureCookies');
 
   if (!session) {
-    clearSessionCookie(c);
+    clearSessionCookie(c, secureCookies);
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
   // Check expiry
   const expiresAt = new Date(session.expires_at + 'Z');
   if (expiresAt <= new Date()) {
-    deleteSession(db, token);
-    clearSessionCookie(c);
+    await deleteSession(db, token);
+    clearSessionCookie(c, secureCookies);
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
   // Check archived
   if (session.status === 'archived') {
-    deleteSession(db, token);
-    clearSessionCookie(c);
+    await deleteSession(db, token);
+    clearSessionCookie(c, secureCookies);
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
   // Refresh sliding expiry
-  refreshSession(db, token);
+  await refreshSession(db, token);
   setCookie(c, 'session_id', token, {
     httpOnly: true,
     sameSite: 'Strict',
     path: '/',
     maxAge: SESSION_MAX_AGE,
-    secure: false, // local dev
+    secure: secureCookies,
   });
 
   c.set('user', {
@@ -53,12 +54,12 @@ export async function authMiddleware(c: Context<AppEnv>, next: Next) {
   await next();
 }
 
-function clearSessionCookie(c: Context) {
+function clearSessionCookie(c: Context, secureCookies: boolean) {
   setCookie(c, 'session_id', '', {
     httpOnly: true,
     sameSite: 'Strict',
     path: '/',
     maxAge: 0,
-    secure: false,
+    secure: secureCookies,
   });
 }

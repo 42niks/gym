@@ -1,9 +1,26 @@
 import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createSqliteAppDatabase, type AppDatabase } from './client.js';
+
+function getMigrationsDir(): string {
+  return path.resolve(import.meta.dirname, '../../migrations');
+}
+
+function loadSqlFile(filePath: string): string {
+  return fs.readFileSync(filePath, 'utf-8');
+}
+
+export function loadPackageSeedSql(): string {
+  return loadSqlFile(path.resolve(import.meta.dirname, 'seed.sql'));
+}
+
+export function loadCredentialsSeedSql(): string {
+  return loadSqlFile(path.resolve(import.meta.dirname, 'seed.credentials.sql'));
+}
 
 export function runMigrations(db: Database.Database): void {
-  const migrationsDir = path.resolve(import.meta.dirname, '../../migrations');
+  const migrationsDir = getMigrationsDir();
   const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
 
   db.exec('PRAGMA journal_mode = WAL');
@@ -20,21 +37,31 @@ export function runMigrations(db: Database.Database): void {
 
   for (const file of files) {
     if (applied.has(file)) continue;
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+    const sql = loadSqlFile(path.join(migrationsDir, file));
     db.exec(sql);
     db.prepare('INSERT INTO _migrations (filename) VALUES (?)').run(file);
   }
 }
 
 export function seedPackages(db: Database.Database): void {
-  const seedFile = path.resolve(import.meta.dirname, 'seed.sql');
-  const sql = fs.readFileSync(seedFile, 'utf-8');
-  db.exec(sql);
+  db.exec(loadPackageSeedSql());
 }
 
-export function createDatabase(dbPath: string = ':memory:'): Database.Database {
+export function createSqliteDatabase(dbPath: string = ':memory:'): Database.Database {
   const db = new Database(dbPath);
   runMigrations(db);
   seedPackages(db);
   return db;
+}
+
+export function createLocalDatabase(dbPath: string = ':memory:'): AppDatabase {
+  return createSqliteAppDatabase(createSqliteDatabase(dbPath));
+}
+
+export async function applyPackageSeed(db: AppDatabase): Promise<void> {
+  await db.exec(loadPackageSeedSql());
+}
+
+export async function applyCredentialsSeed(db: AppDatabase): Promise<void> {
+  await db.exec(loadCredentialsSeedSql());
 }

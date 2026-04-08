@@ -5,9 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev-runner.mjs",
+    "dev:server": "tsx watch src/index.ts",
+    "dev:client": "vite",
+    "build": "vite build",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
+    "types:cloudflare": "wrangler types ./worker-configuration.d.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest run --config vitest.config.ui.ts"
+    "test:ui": "vitest run --config vitest.config.ui.ts",
+    "test:server": "tsx src/test-server.ts"
   },
   "dependencies": {
     "@hono/node-server": "1.19.13",
@@ -35,6 +41,7 @@
     "happy-dom": "18.0.1",
     "tsx": "4.21.0",
     "typescript": "5.9.3",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "wrangler": "^4.81.0"
   }
 }

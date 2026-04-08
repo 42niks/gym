@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import type { AppDatabase } from '../db/client.js';
 
 export interface SessionRow {
   id: number;
@@ -8,29 +8,29 @@ export interface SessionRow {
   created_at: string;
 }
 
-export function hasAttendanceForDate(db: Database.Database, memberId: number, date: string): boolean {
-  const row = db.prepare(
+export async function hasAttendanceForDate(db: AppDatabase, memberId: number, date: string): Promise<boolean> {
+  const row = await db.get(
     `SELECT 1 FROM sessions WHERE member_id = ? AND date = ?`
-  ).get(memberId, date);
+  , [memberId, date]);
   return !!row;
 }
 
-export function insertSession(db: Database.Database, memberId: number, subscriptionId: number, date: string): number {
-  const result = db.prepare(
+export async function insertSession(db: AppDatabase, memberId: number, subscriptionId: number, date: string): Promise<number> {
+  const result = await db.run(
     `INSERT INTO sessions (member_id, subscription_id, date) VALUES (?, ?, ?)`
-  ).run(memberId, subscriptionId, date);
-  return Number(result.lastInsertRowid);
+  , [memberId, subscriptionId, date]);
+  return result.lastRowId;
 }
 
-export function listAttendanceDatesForMember(db: Database.Database, memberId: number): string[] {
-  const rows = db.prepare(
+export async function listAttendanceDatesForMember(db: AppDatabase, memberId: number): Promise<string[]> {
+  const rows = await db.all<{ date: string }>(
     `SELECT date FROM sessions WHERE member_id = ? ORDER BY date ASC`
-  ).all(memberId) as { date: string }[];
+  , [memberId]);
   return rows.map(r => r.date);
 }
 
-export function getMembersCheckedInToday(db: Database.Database, date: string): { member_id: number; created_at: string }[] {
-  return db.prepare(
+export async function getMembersCheckedInToday(db: AppDatabase, date: string): Promise<{ member_id: number; created_at: string }[]> {
+  return db.all(
     `SELECT member_id, created_at FROM sessions WHERE date = ? ORDER BY created_at DESC, member_id ASC`
-  ).all(date) as any[];
+  , [date]);
 }

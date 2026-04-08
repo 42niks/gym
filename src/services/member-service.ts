@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import type { AppDatabase } from '../db/client.js';
 import { findMemberById, listMembersByStatus, createMember as repoCreateMember, updateMember as repoUpdateMember, archiveMember as repoArchiveMember, type MemberRow } from '../repositories/members-repo.js';
 import { listSubscriptionsForMember, getEarliestSubscriptionStart, type SubscriptionWithType } from '../repositories/subscriptions-repo.js';
 import { listAttendanceDatesForMember, hasAttendanceForDate } from '../repositories/sessions-repo.js';
@@ -51,18 +51,18 @@ export function getUpcomingSubs(subs: SubscriptionWithType[], today: string): Su
     .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.id - b.id);
 }
 
-export function computeMemberEnrichment(db: Database.Database, memberId: number, today: string) {
-  const subs = listSubscriptionsForMember(db, memberId);
+export async function computeMemberEnrichment(db: AppDatabase, memberId: number, today: string) {
+  const subs = await listSubscriptionsForMember(db, memberId);
   const activeSub = getActiveSub(subs, today);
   const upcomingSubs = getUpcomingSubs(subs, today);
-  const markedToday = hasAttendanceForDate(db, memberId, today);
+  const markedToday = await hasAttendanceForDate(db, memberId, today);
 
   let consistency = null;
   if (activeSub) {
-    const pkg = findPackageById(db, activeSub.package_id);
+    const pkg = await findPackageById(db, activeSub.package_id);
     if (pkg) {
-      const earliest = getEarliestSubscriptionStart(db, memberId);
-      const attendanceDates = listAttendanceDatesForMember(db, memberId);
+      const earliest = await getEarliestSubscriptionStart(db, memberId);
+      const attendanceDates = await listAttendanceDatesForMember(db, memberId);
       consistency = computeConsistency({
         hasActiveSubscription: true,
         windowDays: pkg.consistency_window_days,
@@ -92,8 +92,8 @@ export function computeMemberEnrichment(db: Database.Database, memberId: number,
   };
 }
 
-export function getMemberDetail(db: Database.Database, id: number) {
-  const member = findMemberById(db, id);
+export async function getMemberDetail(db: AppDatabase, id: number) {
+  const member = await findMemberById(db, id);
   if (!member) return null;
 
   const today = getIstDate();
@@ -104,47 +104,47 @@ export function getMemberDetail(db: Database.Database, id: number) {
       active_subscription: null,
       consistency: null,
       renewal: null,
-      marked_attendance_today: hasAttendanceForDate(db, member.id, today),
+      marked_attendance_today: await hasAttendanceForDate(db, member.id, today),
     };
   }
 
-  const enrichment = computeMemberEnrichment(db, member.id, today);
+  const enrichment = await computeMemberEnrichment(db, member.id, today);
   return { ...toProfile(member), ...enrichment };
 }
 
-export function listMembers(db: Database.Database, status: string) {
-  const members = listMembersByStatus(db, status);
+export async function listMembers(db: AppDatabase, status: string) {
+  const members = await listMembersByStatus(db, status);
   const today = getIstDate();
 
   if (status === 'archived') {
     return members.map(m => toProfile(m));
   }
 
-  return members.map(m => {
-    const enrichment = computeMemberEnrichment(db, m.id, today);
+  return Promise.all(members.map(async (m) => {
+    const enrichment = await computeMemberEnrichment(db, m.id, today);
     return { ...toProfile(m), ...enrichment };
-  });
+  }));
 }
 
-export function createNewMember(db: Database.Database, data: { full_name: string; email: string; phone: string }) {
+export async function createNewMember(db: AppDatabase, data: { full_name: string; email: string; phone: string }) {
   const today = getIstDate();
-  const member = repoCreateMember(db, { ...data, join_date: today });
+  const member = await repoCreateMember(db, { ...data, join_date: today });
   return toProfile(member);
 }
 
-export function updateExistingMember(db: Database.Database, id: number, data: { full_name?: string; phone?: string }) {
-  const member = repoUpdateMember(db, id, data);
+export async function updateExistingMember(db: AppDatabase, id: number, data: { full_name?: string; phone?: string }) {
+  const member = await repoUpdateMember(db, id, data);
   if (!member) return null;
   return toProfile(member);
 }
 
-export function archiveMemberById(db: Database.Database, id: number): { error?: string } {
-  const member = findMemberById(db, id);
+export async function archiveMemberById(db: AppDatabase, id: number): Promise<{ error?: string }> {
+  const member = await findMemberById(db, id);
   if (!member) return { error: 'Member not found' };
   if (member.status === 'archived') return { error: 'Member is already archived' };
 
   const today = getIstDate();
-  const subs = listSubscriptionsForMember(db, member.id);
+  const subs = await listSubscriptionsForMember(db, member.id);
   const hasActiveOrUpcoming = subs.some(s => {
     const state = deriveLifecycleState(s, today);
     return state === 'active' || state === 'upcoming';
@@ -154,16 +154,15 @@ export function archiveMemberById(db: Database.Database, id: number): { error?: 
     return { error: 'Cannot archive member with active or upcoming subscriptions' };
   }
 
-  const doArchive = db.transaction(() => {
-    repoArchiveMember(db, id);
-    deleteAllSessionsForMember(db, id);
-  });
-  doArchive();
+  await db.batch([
+    { sql: `UPDATE members SET status = 'archived' WHERE id = ?`, params: [id] },
+    { sql: `DELETE FROM user_sessions WHERE member_id = ?`, params: [id] },
+  ]);
   return {};
 }
 
-export function getGroupedSubscriptions(db: Database.Database, memberId: number) {
-  const subs = listSubscriptionsForMember(db, memberId);
+export async function getGroupedSubscriptions(db: AppDatabase, memberId: number) {
+  const subs = await listSubscriptionsForMember(db, memberId);
   const today = getIstDate();
 
   const completedAndActive: any[] = [];

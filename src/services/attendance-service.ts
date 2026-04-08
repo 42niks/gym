@@ -1,13 +1,13 @@
-import Database from 'better-sqlite3';
+import type { AppDatabase } from '../db/client.js';
 import { findMemberById } from '../repositories/members-repo.js';
-import { listSubscriptionsForMember, incrementAttendedSessions } from '../repositories/subscriptions-repo.js';
-import { hasAttendanceForDate, insertSession } from '../repositories/sessions-repo.js';
+import { listSubscriptionsForMember } from '../repositories/subscriptions-repo.js';
+import { hasAttendanceForDate } from '../repositories/sessions-repo.js';
 import { deriveLifecycleState } from '../lib/subscription.js';
 import { getIstDate } from '../lib/date.js';
 
-export function markAttendance(db: Database.Database, memberId: number) {
+export async function markAttendance(db: AppDatabase, memberId: number) {
   const today = getIstDate();
-  const member = findMemberById(db, memberId);
+  const member = await findMemberById(db, memberId);
   if (!member) return { error: 'Member not found', status: 404 as const };
 
   if (member.status === 'archived') {
@@ -15,7 +15,7 @@ export function markAttendance(db: Database.Database, memberId: number) {
   }
 
   // Find active subscription
-  const subs = listSubscriptionsForMember(db, memberId);
+  const subs = await listSubscriptionsForMember(db, memberId);
   const activeSubs = subs.filter(s => deriveLifecycleState(s, today) === 'active');
 
   if (activeSubs.length === 0) {
@@ -28,18 +28,22 @@ export function markAttendance(db: Database.Database, memberId: number) {
   const activeSub = activeSubs[0];
 
   // Check for duplicate
-  if (hasAttendanceForDate(db, memberId, today)) {
+  if (await hasAttendanceForDate(db, memberId, today)) {
     return { error: 'Attendance already marked for today', status: 409 as const };
   }
 
-  // Atomic insert + increment
-  const doMark = db.transaction(() => {
-    insertSession(db, memberId, activeSub.id, today);
-    incrementAttendedSessions(db, activeSub.id);
-  });
-
   try {
-    doMark();
+    await db.batch([
+      {
+        sql: `INSERT INTO sessions (member_id, subscription_id, date) VALUES (?, ?, ?)`,
+        params: [memberId, activeSub.id, today],
+      },
+      {
+        sql: `UPDATE subscriptions SET attended_sessions = attended_sessions + 1
+              WHERE id = ? AND attended_sessions < total_sessions`,
+        params: [activeSub.id],
+      },
+    ]);
   } catch (e: any) {
     // UNIQUE constraint violation on (member_id, date)
     if (e.message?.includes('UNIQUE constraint failed')) {

@@ -7,4 +7,10 @@ logo/
 *.db-shm
 *.db-wal
 .env
+.dev.vars
+.wrangler/
+wrangler.toml
+wrangler.json
+wrangler.jsonc
 src/db/seed.credentials.sql
+.claude/
