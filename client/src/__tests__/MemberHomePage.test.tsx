@@ -36,7 +36,7 @@ describe('MemberHomePage', () => {
     await waitFor(() => { expect(screen.getByText('Alex')).toBeInTheDocument(); });
     expect(screen.getByText('7')).toBeInTheDocument();
     expect(screen.getByText(/sessions remaining/)).toBeInTheDocument();
-    expect(screen.getByText('1:1 Personal Training')).toBeInTheDocument();
+    expect(screen.getAllByText('1:1 Personal Training').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows mark attendance button when not marked today', async () => {
@@ -64,7 +64,7 @@ describe('MemberHomePage', () => {
   it('shows renewal warning when ends_soon', async () => {
     mockApiGet.mockResolvedValue({ ...mockMemberHome, renewal: mockRenewalEndsSoon } as MemberHome);
     renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByText('Your subscription ends in 3 days')).toBeInTheDocument(); });
+    await waitFor(() => { expect(screen.getAllByText('Your subscription ends in 3 days').length).toBeGreaterThanOrEqual(1); });
   });
 
   it('shows no active subscription message', async () => {

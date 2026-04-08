@@ -59,8 +59,11 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <div className="min-h-screen bg-shell dark:bg-shell-dark">
-          <div className="max-w-sm mx-auto min-h-screen bg-page dark:bg-page-dark relative shadow-2xl overflow-hidden">
+        <div className="min-h-screen bg-shell px-2 py-2 sm:px-4 sm:py-4">
+          <div className="relative mx-auto min-h-[calc(100vh-1rem)] max-w-6xl overflow-hidden rounded-shell border border-white/70 bg-page shadow-panel dark:border-white/10">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,81,250,0.08),transparent_24%),radial-gradient(circle_at_top_right,rgba(0,253,193,0.12),transparent_26%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(255,81,250,0.12),transparent_24%),radial-gradient(circle_at_top_right,rgba(0,253,193,0.15),transparent_26%)]" />
+            <div className="pointer-events-none absolute -left-24 top-16 h-56 w-56 rounded-full bg-accent-500/8 blur-3xl" />
+            <div className="pointer-events-none absolute -right-24 top-1/3 h-64 w-64 rounded-full bg-brand-500/8 blur-3xl" />
             <AppRoutes />
           </div>
         </div>

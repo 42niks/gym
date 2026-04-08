@@ -1,5 +1,5 @@
 /**
- * Test server — port 8002, ./data/test.db
+ * Test server — dedicated process and DB for tests only.
  * Registers /api/__test__/* endpoints for DB control.
  * Must NEVER be imported in production code.
  */
@@ -9,8 +9,8 @@ import type { ServerType } from '@hono/node-server';
 import { createDatabase, seedPackages } from './db/index.js';
 import { createApp } from './app.js';
 
-export const TEST_PORT = 8002;
-export const TEST_DB_PATH = './data/test.db';
+export const TEST_PORT = parseInt(process.env.TEST_PORT ?? '8002', 10);
+export const TEST_DB_PATH = process.env.TEST_DB_PATH ?? './data/test.db';
 
 let server: ServerType | null = null;
 
@@ -21,6 +21,10 @@ export function startTestServer(): Promise<void> {
       const app = createApp(db);
 
       // ─── Test-only endpoints ───────────────────────────────────────────────
+
+      app.get('/api/__test__/health', (c) => {
+        return c.json({ ok: true, port: TEST_PORT, dbPath: TEST_DB_PATH });
+      });
 
       // Reset: wipe all data except packages, re-seed packages
       app.post('/api/__test__/reset', (c) => {
@@ -132,4 +136,19 @@ export function stopTestServer(): Promise<void> {
       resolve();
     });
   });
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  startTestServer().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+
+  const shutdown = async () => {
+    await stopTestServer();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }

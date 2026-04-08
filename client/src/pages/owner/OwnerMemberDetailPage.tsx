@@ -9,8 +9,8 @@ import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
 
 const ownerLinks = [
-  { to: '/owner', label: 'Dashboard' },
-  { to: '/owner/members', label: 'Members' },
+  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/owner/members', label: 'Members', icon: 'groups' },
 ];
 
 function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
@@ -38,26 +38,28 @@ function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
   }
 
   return (
-    <Card className="px-5 py-4">
+    <Card className="px-5 py-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-white">{sub.service_type}</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          <p className="font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{sub.service_type}</p>
+          <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
             {new Date(sub.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             {' – '}
             {new Date(sub.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {sub.attended_sessions} / {sub.total_sessions} sessions
             <span className="mx-1.5 text-gray-300 dark:text-gray-700">·</span>
             <span className="font-semibold text-gray-700 dark:text-gray-300">₹{sub.amount.toLocaleString('en-IN')}</span>
           </p>
         </div>
-        <Badge variant={variant}>{sub.lifecycle_state}</Badge>
+        <Badge variant={variant} icon={sub.lifecycle_state === 'active' ? 'bolt' : sub.lifecycle_state === 'upcoming' ? 'schedule' : 'history'}>
+          {sub.lifecycle_state}
+        </Badge>
       </div>
       {sub.lifecycle_state === 'active' && !sub.owner_completed && (
-        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="ghost" onClick={handleComplete} disabled={completing} className="text-xs px-0 py-0">
+        <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+          <Button variant="ghost" onClick={handleComplete} disabled={completing} className="text-xs px-0 py-0" icon={completing ? 'progress_activity' : 'task_alt'}>
             {completing ? 'Completing…' : 'Mark complete'}
           </Button>
           {err && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{err}</p>}
@@ -82,7 +84,7 @@ function AttendanceButton({ memberId, markedToday }: { memberId: string; markedT
 
   if (markedToday) {
     return (
-      <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+      <div className="flex items-center gap-2 text-brand-600 dark:text-brand-300">
         <span className="text-lg">✓</span>
         <span className="text-sm font-semibold">Attendance marked for today</span>
       </div>
@@ -91,7 +93,7 @@ function AttendanceButton({ memberId, markedToday }: { memberId: string; markedT
 
   return (
     <div>
-      <Button onClick={() => mark.mutate()} disabled={mark.isPending} className="py-2.5">
+      <Button onClick={() => mark.mutate()} disabled={mark.isPending} className="py-2.5" icon={mark.isPending ? 'progress_activity' : 'how_to_reg'}>
         {mark.isPending ? 'Marking…' : 'Mark attendance'}
       </Button>
       {err && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{err}</p>}
@@ -144,16 +146,22 @@ export default function OwnerMemberDetailPage() {
   return (
     <>
       <NavBar links={ownerLinks} />
-      <div className="px-4 pt-4 pb-8 space-y-5">
-        <Link to="/owner/members" className="inline-flex items-center text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
-          ← Members
+      <div className="page-content">
+        <div className="page-stack">
+        <Link to="/owner/members" className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Members
         </Link>
 
-        {/* Member header card */}
+        <div>
+          <p className="section-eyebrow">Member record</p>
+          <h2 className="page-title mt-2">Member detail</h2>
+        </div>
+
         <Card className="px-5 py-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="text-xl font-black text-gray-900 dark:text-white">{detail.full_name}</h2>
+              <h2 className="font-headline text-3xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{detail.full_name}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">{detail.email}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{detail.phone}</p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -166,7 +174,9 @@ export default function OwnerMemberDetailPage() {
                 <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">{detail.renewal.message}</p>
               )}
             </div>
-            <Badge variant={detail.status === 'active' ? 'green' : 'gray'}>{detail.status}</Badge>
+            <Badge variant={detail.status === 'active' ? 'green' : 'gray'} icon={detail.status === 'active' ? 'check_circle' : 'archive'}>
+              {detail.status}
+            </Badge>
           </div>
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-3">
@@ -174,27 +184,27 @@ export default function OwnerMemberDetailPage() {
               <AttendanceButton memberId={id!} markedToday={detail.marked_attendance_today} />
             )}
             <Link to={`/owner/members/${id}/subscriptions/new`}>
-              <Button variant="secondary" className="py-2.5 text-sm">+ Subscription</Button>
+              <Button variant="secondary" className="py-2.5 text-sm" icon="add_card">
+                Subscription
+              </Button>
             </Link>
-            <Button variant="ghost" onClick={handleArchive} disabled={archiving} className="text-sm py-0">
+            <Button variant="ghost" onClick={handleArchive} disabled={archiving} className="text-sm py-0" icon={detail.status === 'active' ? 'archive' : 'unarchive'}>
               {archiving ? '…' : detail.status === 'active' ? 'Archive' : 'Unarchive'}
             </Button>
           </div>
           {archiveErr && <p className="text-xs text-red-600 dark:text-red-400 mt-2">{archiveErr}</p>}
         </Card>
 
-        {/* Subscriptions */}
         <div>
-          <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Subscriptions</h3>
+          <h3 className="section-eyebrow mb-3">Subscriptions</h3>
           {allSubs.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-sm text-gray-400 dark:text-gray-500">No subscriptions yet</p>
-            </div>
+            <div className="empty-state">No subscriptions yet</div>
           ) : (
             <div className="space-y-3">
               {allSubs.map(s => <SubCard key={s.id} sub={s} memberId={id!} />)}
             </div>
           )}
+        </div>
         </div>
       </div>
     </>

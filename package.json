@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tsx watch src/index.ts\" \"vite\"",
+    "dev": "node scripts/dev-runner.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest run --config vitest.config.ui.ts"

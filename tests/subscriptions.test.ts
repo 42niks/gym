@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { api, reset, seedOwner, seedMember } from './setup.js';
 import { loginAs, seedSubscription, getSubscription } from './helpers.js';
+import { addDays, getIstDate } from '../src/lib/date.js';
+import { computeEndDate } from '../src/lib/subscription.js';
 
 describe('Subscriptions', () => {
   let ownerCookie: string;
   let memberId: number;
+  let today: string;
+  let tomorrow: string;
 
   beforeEach(async () => {
+    today = getIstDate();
+    tomorrow = addDays(today, 1);
     await reset();
     await seedOwner({ email: 'owner@base.gym', phone: '9999999999' });
     memberId = await seedMember({ email: 'member@test.com', phone: '1234567890' });
@@ -20,15 +26,15 @@ describe('Subscriptions', () => {
       const res = await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 1, start_date: '2026-04-07' }),
+        body: JSON.stringify({ package_id: 1, start_date: tomorrow }),
       });
       expect(res.status).toBe(201);
       expect(await res.json()).toMatchObject({
         id: expect.any(Number),
         package_id: 1,
         service_type: '1:1 Personal Training',
-        start_date: '2026-04-07',
-        end_date: '2026-05-06',
+        start_date: tomorrow,
+        end_date: computeEndDate(tomorrow, 1),
         total_sessions: 8,
         attended_sessions: 0,
         remaining_sessions: 8,
@@ -42,7 +48,7 @@ describe('Subscriptions', () => {
       const body = await (await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 2, start_date: '2026-04-07' }),
+        body: JSON.stringify({ package_id: 2, start_date: tomorrow }),
       })).json();
       expect(body.total_sessions).toBe(12);
       expect(body.amount).toBe(29500);
@@ -52,16 +58,16 @@ describe('Subscriptions', () => {
       const body = await (await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 3, start_date: '2026-04-07' }),
+        body: JSON.stringify({ package_id: 3, start_date: tomorrow }),
       })).json();
-      expect(body.end_date).toBe('2026-07-06');
+      expect(body.end_date).toBe(computeEndDate(tomorrow, 3));
     });
 
     it('should reject past start_date', async () => {
       expect((await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 1, start_date: '2020-01-01' }),
+        body: JSON.stringify({ package_id: 1, start_date: addDays(today, -1) }),
       })).status).toBe(400);
     });
 
@@ -77,7 +83,7 @@ describe('Subscriptions', () => {
       expect((await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 999, start_date: '2026-04-07' }),
+        body: JSON.stringify({ package_id: 999, start_date: tomorrow }),
       })).status).toBe(404);
     });
 
@@ -85,41 +91,45 @@ describe('Subscriptions', () => {
       expect((await api('/api/members/9999/subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 1, start_date: '2026-04-07' }),
+        body: JSON.stringify({ package_id: 1, start_date: tomorrow }),
       })).status).toBe(404);
     });
 
     it('should reject overlapping subscription (boundary inclusive)', async () => {
-      await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-04-07', end_date: '2026-05-06', total_sessions: 8, amount: 19900 });
+      const existingStart = tomorrow;
+      const existingEnd = computeEndDate(existingStart, 1);
+      await seedSubscription({ member_id: memberId, package_id: 1, start_date: existingStart, end_date: existingEnd, total_sessions: 8, amount: 19900 });
 
       const res = await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 1, start_date: '2026-05-06' }), // same as end_date
+        body: JSON.stringify({ package_id: 1, start_date: existingEnd }), // same as end_date
       });
       expect(res.status).toBe(409);
       expect((await res.json()).error).toContain('overlap');
     });
 
     it('should allow non-overlapping subscription (start after existing ends)', async () => {
-      await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-04-07', end_date: '2026-05-06', total_sessions: 8, amount: 19900 });
+      const existingStart = tomorrow;
+      const existingEnd = computeEndDate(existingStart, 1);
+      await seedSubscription({ member_id: memberId, package_id: 1, start_date: existingStart, end_date: existingEnd, total_sessions: 8, amount: 19900 });
 
       expect((await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 1, start_date: '2026-05-07' }),
+        body: JSON.stringify({ package_id: 1, start_date: addDays(existingEnd, 1) }),
       })).status).toBe(201);
     });
 
     it('should allow same-day replacement after completion', async () => {
-      const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-04-07', end_date: '2026-05-06', total_sessions: 8, amount: 19900 });
+      const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: today, end_date: computeEndDate(today, 1), total_sessions: 8, amount: 19900 });
 
       await api(`/api/subscriptions/${subId}/complete`, { method: 'POST', headers: { Cookie: ownerCookie } });
 
       expect((await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 1, start_date: '2026-04-07' }),
+        body: JSON.stringify({ package_id: 1, start_date: today }),
       })).status).toBe(201);
     });
 
@@ -129,7 +139,7 @@ describe('Subscriptions', () => {
       expect((await api(`/api/members/${archivedId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ package_id: 1, start_date: '2026-04-07' }),
+        body: JSON.stringify({ package_id: 1, start_date: tomorrow }),
       })).status).toBe(201);
 
       const detail = await (await api(`/api/members/${archivedId}`, { headers: { Cookie: ownerCookie } })).json();
@@ -141,9 +151,9 @@ describe('Subscriptions', () => {
 
   describe('GET /api/members/:id/subscriptions', () => {
     it('should return grouped subscriptions for a member', async () => {
-      await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
-      await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2027-01-01', end_date: '2027-01-31', total_sessions: 8, amount: 19900 });
-      await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2025-01-01', end_date: '2025-01-31', total_sessions: 8, amount: 19900 });
+      await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, -7), end_date: addDays(today, 7), total_sessions: 8, amount: 19900 });
+      await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, 20), end_date: addDays(today, 50), total_sessions: 8, amount: 19900 });
+      await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, -50), end_date: addDays(today, -20), total_sessions: 8, amount: 19900 });
 
       const body = await (await api(`/api/members/${memberId}/subscriptions`, { headers: { Cookie: ownerCookie } })).json();
       expect(body.completed_and_active.length).toBe(2);
@@ -155,7 +165,7 @@ describe('Subscriptions', () => {
 
   describe('POST /api/subscriptions/:id/complete', () => {
     it('should mark subscription completed and preserve counters', async () => {
-      const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, attended_sessions: 3, amount: 19900 });
+      const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, -7), end_date: addDays(today, 7), total_sessions: 8, attended_sessions: 3, amount: 19900 });
 
       const res = await api(`/api/subscriptions/${subId}/complete`, { method: 'POST', headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(200);
@@ -168,7 +178,7 @@ describe('Subscriptions', () => {
     });
 
     it('should reject already completed subscription', async () => {
-      const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900, owner_completed: 1 });
+      const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, -7), end_date: addDays(today, 7), total_sessions: 8, amount: 19900, owner_completed: 1 });
 
       const res = await api(`/api/subscriptions/${subId}/complete`, { method: 'POST', headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(409);

@@ -12,7 +12,7 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     globalSetup: ['./tests/global-setup.ts'],
-    // Sequential: all test files share one DB on port 8002
+    // Sequential test workers, backed by a dedicated external test server.
     pool: 'forks',
     poolOptions: {
       forks: {

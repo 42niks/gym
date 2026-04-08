@@ -8,8 +8,8 @@ import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
 
 const ownerLinks = [
-  { to: '/owner', label: 'Dashboard' },
-  { to: '/owner/members', label: 'Members' },
+  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/owner/members', label: 'Members', icon: 'groups' },
 ];
 
 export default function OwnerMembersPage() {
@@ -23,31 +23,40 @@ export default function OwnerMembersPage() {
   return (
     <>
       <NavBar links={ownerLinks} />
-      <div className="px-4 pt-5 pb-8 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white">Members</h2>
+      <div className="page-content">
+        <div className="page-stack">
+        <div className="page-header">
+          <div>
+            <p className="section-eyebrow">Member roster</p>
+            <h2 className="page-title mt-2">Members</h2>
+            <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+              Review the full roster, switch between active and archived members, and jump into individual records quickly.
+            </p>
+          </div>
           <Link to="/owner/members/new">
-            <Button className="text-sm py-2">+ New</Button>
+            <Button className="text-sm py-2" icon="person_add">
+              + New
+            </Button>
           </Link>
         </div>
 
-        <div className="flex gap-2 bg-gray-100 dark:bg-gray-800/60 rounded-xl p-1">
+        <div className="glass-panel flex gap-2 p-1">
           <button
             onClick={() => setShowArchived(false)}
-            className={`flex-1 text-sm py-1.5 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 rounded-[1.2rem] border px-4 py-2 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
               !showArchived
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
+                : 'border-transparent text-gray-500 hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white'
             }`}
           >
             Active
           </button>
           <button
             onClick={() => setShowArchived(true)}
-            className={`flex-1 text-sm py-1.5 px-4 rounded-lg font-semibold transition-all ${
+            className={`flex-1 rounded-[1.2rem] border px-4 py-2 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
               showArchived
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
+                : 'border-transparent text-gray-500 hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white'
             }`}
           >
             Archived
@@ -57,16 +66,14 @@ export default function OwnerMembersPage() {
         {isLoading ? (
           <div className="flex justify-center py-16"><Spinner /></div>
         ) : members.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-sm text-gray-400 dark:text-gray-500">No members found</p>
-          </div>
+          <div className="empty-state">No members found</div>
         ) : (
-          <Card className="divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
+          <Card className="space-y-1.5 p-3">
             {members.map(m => (
               <Link
                 key={m.id}
                 to={`/owner/members/${m.id}`}
-                className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors first:rounded-t-2xl last:rounded-b-2xl"
+                className="flex items-center justify-between rounded-2xl px-4 py-4 transition-all hover:bg-surface-raised/80 dark:hover:bg-surface-raised/60"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-gray-900 dark:text-white">{m.full_name}</p>
@@ -78,20 +85,21 @@ export default function OwnerMembersPage() {
                 <div className="text-right shrink-0 ml-4">
                   {m.active_subscription ? (
                     <>
-                      <p className="text-xs font-bold text-brand-500">{m.active_subscription.remaining_sessions} left</p>
+                      <p className="text-xs font-bold text-brand-600 dark:text-brand-300">{m.active_subscription.remaining_sessions} left</p>
                       <p className="text-xs text-gray-400 dark:text-gray-500">{m.active_subscription.service_type}</p>
                     </>
                   ) : (
                     <span className="text-xs text-gray-400 dark:text-gray-500">No plan</span>
                   )}
                   {m.marked_attendance_today && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-0.5 font-medium">In today</p>
+                    <p className="mt-0.5 text-xs font-medium text-brand-600 dark:text-brand-300">In today</p>
                   )}
                 </div>
               </Link>
             ))}
           </Card>
         )}
+        </div>
       </div>
     </>
   );

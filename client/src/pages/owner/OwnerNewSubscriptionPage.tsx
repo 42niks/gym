@@ -7,10 +7,11 @@ import Card from '../../components/Card.js';
 import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
+import Alert from '../../components/Alert.js';
 
 const ownerLinks = [
-  { to: '/owner', label: 'Dashboard' },
-  { to: '/owner/members', label: 'Members' },
+  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/owner/members', label: 'Members', icon: 'groups' },
 ];
 
 export default function OwnerNewSubscriptionPage() {
@@ -60,33 +61,39 @@ export default function OwnerNewSubscriptionPage() {
   return (
     <>
       <NavBar links={ownerLinks} />
-      <div className="px-4 pt-4 pb-8">
-        <Link to={`/owner/members/${id}`} className="inline-flex items-center text-sm text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-5 transition-colors">
-          ← Member
+      <div className="page-content">
+        <div className="page-stack max-w-4xl">
+        <Link to={`/owner/members/${id}`} className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Member
         </Link>
-        <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-6">New subscription</h2>
+        <p className="section-eyebrow">Owner actions</p>
+        <h2 className="page-title mb-6 mt-2">New subscription</h2>
+        <p className="-mt-3 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+          Pick a package, confirm the start date, and lock in the final amount collected for this member.
+        </p>
 
         {isLoading ? <div className="flex justify-center py-16"><Spinner /></div> : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-5">
               {Object.entries(byType).map(([type, pkgs]) => (
                 <div key={type}>
-                  <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">{type}</p>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <p className="section-eyebrow mb-3">{type}</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {pkgs.map(pkg => (
                       <button
                         key={pkg.id}
                         type="button"
                         onClick={() => handlePackageSelect(pkg)}
-                        className={`text-left p-4 rounded-2xl border-2 transition-all ${
+                        className={`rounded-[1.5rem] border p-4 text-left shadow-sm shadow-black/5 transition-all ${
                           selectedPackage?.id === pkg.id
-                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 shadow-md shadow-brand-500/10'
-                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-surface-dark hover:border-gray-300 dark:hover:border-gray-600'
+                            ? 'border-white/70 bg-white bg-brand-gradient shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark'
+                            : 'border-white/55 bg-white/80 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white/10 dark:bg-surface-dark/80 dark:hover:bg-surface-raised/85'
                         }`}
                       >
-                        <p className="text-sm font-bold text-gray-900 dark:text-white">{pkg.sessions} sessions</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{pkg.duration_months}mo</p>
-                        <p className={`text-sm font-black mt-1.5 ${selectedPackage?.id === pkg.id ? 'text-brand-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                        <p className="font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{pkg.sessions} sessions</p>
+                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{pkg.duration_months}mo</p>
+                        <p className={`mt-2 text-sm font-black ${selectedPackage?.id === pkg.id ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                           ₹{pkg.price.toLocaleString('en-IN')}
                         </p>
                       </button>
@@ -102,16 +109,17 @@ export default function OwnerNewSubscriptionPage() {
                 <Input label="Amount (₹)" type="number" required min="0" step="1" value={amount} onChange={e => setAmount(e.target.value)} />
 
                 {error && (
-                  <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3">{error}</p>
+                  <Alert variant="error">{error}</Alert>
                 )}
 
-                <Button type="submit" disabled={loading} className="w-full">
+                <Button type="submit" disabled={loading} className="w-full" icon={loading ? 'progress_activity' : 'add_card'}>
                   {loading ? 'Creating…' : 'Create subscription'}
                 </Button>
               </Card>
             )}
           </form>
         )}
+        </div>
       </div>
     </>
   );

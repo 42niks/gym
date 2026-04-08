@@ -1,19 +1,23 @@
+import Icon from './Icon.js';
+
 const variants = {
-  green: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  blue: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  gray: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
-  red: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  green: 'bg-brand-500 text-brand-800 dark:bg-brand-300 dark:text-gray-950',
+  blue: 'bg-accent-500 text-white dark:bg-accent-400 dark:text-gray-950',
+  orange: 'bg-energy-300 text-gray-950 dark:bg-energy-300 dark:text-gray-950',
+  gray: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-100',
+  red: 'bg-red-500 text-white dark:bg-red-400 dark:text-gray-950',
 } as const;
 
 interface BadgeProps {
   variant: keyof typeof variants;
   children: React.ReactNode;
+  icon?: string;
 }
 
-export default function Badge({ variant, children }: BadgeProps) {
+export default function Badge({ variant, children, icon }: BadgeProps) {
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${variants[variant]}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-2xl px-3 py-1.5 font-label text-[0.62rem] font-bold italic uppercase tracking-[0.18em] shadow-sm shadow-black/5 ${variants[variant]}`}>
+      {icon ? <Icon name={icon} className="text-[0.9rem]" /> : null}
       {children}
     </span>
   );

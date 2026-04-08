@@ -8,15 +8,15 @@ import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
 
 const ownerLinks = [
-  { to: '/owner', label: 'Dashboard' },
-  { to: '/owner/members', label: 'Members' },
+  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/owner/members', label: 'Members', icon: 'groups' },
 ];
 
 function MemberRow({ item, badge }: { item: DashboardItem; badge?: string }) {
   return (
     <Link
       to={`/owner/members/${item.member_id}`}
-      className="flex items-center justify-between py-3.5 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800/50 -mx-1 px-1 rounded-xl transition-colors"
+      className="flex items-center justify-between rounded-2xl px-3 py-3.5 transition-all hover:bg-surface-raised/80 dark:hover:bg-surface-raised/60"
     >
       <div>
         <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.full_name}</p>
@@ -28,7 +28,7 @@ function MemberRow({ item, badge }: { item: DashboardItem; badge?: string }) {
         )}
       </div>
       <div className="shrink-0 ml-3">
-        {badge ? <Badge variant="gray">{badge}</Badge> : item.marked_attendance_today && <Badge variant="green">In today</Badge>}
+        {badge ? <Badge variant="gray" icon="label">{badge}</Badge> : item.marked_attendance_today && <Badge variant="green" icon="check_circle">In today</Badge>}
       </div>
     </Link>
   );
@@ -37,9 +37,16 @@ function MemberRow({ item, badge }: { item: DashboardItem; badge?: string }) {
 function Section({ title, items, badge }: { title: string; items: DashboardItem[]; badge?: string }) {
   if (items.length === 0) return null;
   return (
-    <Card className="px-5 py-3">
-      <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">{title} <span className="font-normal">({items.length})</span></h3>
-      {items.map(item => <MemberRow key={item.member_id} item={item} badge={badge} />)}
+    <Card className="p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="section-eyebrow">{title}</h3>
+        <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+          {items.length} total
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        {items.map(item => <MemberRow key={item.member_id} item={item} badge={badge} />)}
+      </div>
     </Card>
   );
 }
@@ -53,11 +60,20 @@ export default function OwnerHomePage() {
   return (
     <>
       <NavBar links={ownerLinks} />
-      <div className="px-4 pt-5 pb-8 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-black text-gray-900 dark:text-white">Dashboard</h2>
+      <div className="page-content">
+        <div className="page-stack">
+        <div className="page-header">
+          <div>
+            <p className="section-eyebrow">Owner command center</p>
+            <h2 className="page-title mt-2">Dashboard</h2>
+            <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+              Monitor renewals, daily check-ins, and the active roster from one ambient overview.
+            </p>
+          </div>
           <Link to="/owner/members/new">
-            <Button className="text-sm py-2">+ New member</Button>
+            <Button className="text-sm py-2" icon="person_add">
+              + New member
+            </Button>
           </Link>
         </div>
 
@@ -72,6 +88,7 @@ export default function OwnerHomePage() {
             <Section title="Archived" items={data.archived_members} badge="Archived" />
           </>
         )}
+        </div>
       </div>
     </>
   );

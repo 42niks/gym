@@ -172,7 +172,7 @@ export function createApp(db: Database.Database) {
   });
 
   app.get('/api/members/:id', authMiddleware, requireOwner, (c) => {
-    const id = parseInt(c.req.param('id'), 10);
+    const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
     const detail = getMemberDetail(db, id);
     if (!detail) return c.json({ error: 'Member not found' }, 404);
@@ -180,7 +180,7 @@ export function createApp(db: Database.Database) {
   });
 
   app.patch('/api/members/:id', authMiddleware, requireOwner, async (c) => {
-    const id = parseInt(c.req.param('id'), 10);
+    const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
 
     let body: any;
@@ -216,7 +216,7 @@ export function createApp(db: Database.Database) {
   });
 
   app.post('/api/members/:id/archive', authMiddleware, requireOwner, (c) => {
-    const id = parseInt(c.req.param('id'), 10);
+    const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
     const result = archiveMemberById(db, id);
     if (result.error) {
@@ -229,7 +229,7 @@ export function createApp(db: Database.Database) {
   // ─── Owner: Subscriptions ───
 
   app.get('/api/members/:id/subscriptions', authMiddleware, requireOwner, (c) => {
-    const id = parseInt(c.req.param('id'), 10);
+    const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
     const member = findMemberById(db, id);
     if (!member) return c.json({ error: 'Member not found' }, 404);
@@ -237,7 +237,7 @@ export function createApp(db: Database.Database) {
   });
 
   app.post('/api/members/:id/subscriptions', authMiddleware, requireOwner, async (c) => {
-    const memberId = parseInt(c.req.param('id'), 10);
+    const memberId = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(memberId) || memberId <= 0) return c.json({ error: 'Invalid member id' }, 400);
 
     let body: any;
@@ -261,7 +261,7 @@ export function createApp(db: Database.Database) {
   });
 
   app.post('/api/subscriptions/:id/complete', authMiddleware, requireOwner, (c) => {
-    const id = parseInt(c.req.param('id'), 10);
+    const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid subscription id' }, 400);
     const result = completeSubscription(db, id);
     if ('error' in result) return c.json({ error: result.error }, result.status);
@@ -271,7 +271,7 @@ export function createApp(db: Database.Database) {
   // ─── Owner: Attendance ───
 
   app.post('/api/members/:id/sessions', authMiddleware, requireOwner, (c) => {
-    const memberId = parseInt(c.req.param('id'), 10);
+    const memberId = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(memberId) || memberId <= 0) return c.json({ error: 'Invalid member id' }, 400);
 
     const member = findMemberById(db, memberId);

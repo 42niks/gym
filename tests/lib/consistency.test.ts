@@ -51,7 +51,10 @@ describe('consistency logic', () => {
       today: '2026-04-07',
     });
     expect(result!.status).toBe('consistent');
-    expect(result!.days).toBeGreaterThanOrEqual(7);
+    if (result?.status !== 'consistent') {
+      throw new Error('Expected a consistent result');
+    }
+    expect(result.days).toBeGreaterThanOrEqual(7);
     expect(result!.message).toMatch(/You have been consistent for the last \d+ days/);
   });
 

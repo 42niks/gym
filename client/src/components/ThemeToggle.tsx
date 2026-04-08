@@ -1,9 +1,9 @@
 import { useTheme } from '../context/ThemeContext.js';
 
 const icons: Record<string, string> = {
-  light: '☀️',
-  dark: '🌙',
-  system: '💻',
+  light: 'light_mode',
+  dark: 'dark_mode',
+  system: 'computer',
 };
 
 const next: Record<string, 'light' | 'dark' | 'system'> = {
@@ -17,11 +17,11 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={() => setPreference(next[preference])}
-      className="w-8 h-8 flex items-center justify-center rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/60 bg-white/82 text-gray-700 shadow-glass backdrop-blur-md transition-all hover:-translate-y-0.5 hover:text-gray-900 dark:border-white/10 dark:bg-surface-dark/82 dark:text-gray-300 dark:hover:bg-surface-raised/88 dark:hover:text-white"
       aria-label={`Theme: ${preference}. Click to switch.`}
       title={`Theme: ${preference}`}
     >
-      {icons[preference]}
+      <span className="material-symbols-outlined text-[1.15rem]">{icons[preference]}</span>
     </button>
   );
 }

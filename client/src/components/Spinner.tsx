@@ -1,7 +1,7 @@
 export default function Spinner() {
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+      <div className="h-8 w-8 rounded-full border-4 border-brand-400 border-t-accent-500 animate-spin" />
     </div>
   );
 }

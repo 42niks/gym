@@ -1,4 +1,4 @@
-export const BASE_URL = 'http://localhost:8002';
+export const BASE_URL = process.env.TEST_BASE_URL ?? 'http://localhost:8002';
 
 /** Raw HTTP helper — thin wrapper around fetch for the test server */
 export async function api(path: string, options?: RequestInit): Promise<Response> {

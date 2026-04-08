@@ -1,21 +1,33 @@
+import Icon from './Icon.js';
+
 const variants = {
-  primary: 'bg-brand-gradient text-white font-bold shadow-lg shadow-brand-500/30 hover:shadow-brand-500/50 hover:brightness-110 active:brightness-90',
-  secondary: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700',
-  ghost: 'text-brand-500 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300 font-semibold underline-offset-2 hover:underline',
-  danger: 'bg-red-600 hover:bg-red-700 text-white font-bold shadow-sm',
+  primary:
+    'bg-brand-gradient dark:bg-brand-gradient-dark bg-white dark:bg-surface-dark border border-white/70 dark:border-white/10 text-gray-900 dark:text-white font-label font-bold italic uppercase tracking-[0.18em] shadow-panel hover:-translate-y-0.5 hover:shadow-glow-brand active:translate-y-0',
+  secondary:
+    'border border-white/55 bg-white/80 text-gray-900 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:bg-surface-dark/75 dark:text-white hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:hover:bg-surface-raised/85',
+  ghost:
+    'text-gray-600 dark:text-gray-300 font-label font-semibold italic uppercase tracking-[0.16em] hover:bg-white/60 hover:text-gray-900 dark:hover:bg-white/5 dark:hover:text-white',
+  danger:
+    'border border-red-200 bg-red-50/90 text-red-700 font-label font-bold italic uppercase tracking-[0.16em] shadow-sm shadow-black/5 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 hover:-translate-y-0.5 hover:bg-red-100 dark:hover:bg-red-950/45',
 } as const;
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: keyof typeof variants;
+  icon?: string;
+  iconEnd?: boolean;
 }
 
-export default function Button({ variant = 'primary', children, className = '', ...props }: ButtonProps) {
+export default function Button({ variant = 'primary', children, className = '', icon, iconEnd = false, ...props }: ButtonProps) {
+  const iconEl = icon ? <Icon name={icon} className="text-[1.1rem]" /> : null;
+
   return (
     <button
       {...props}
-      className={`rounded-xl py-3 px-5 text-sm transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${variants[variant]} ${className}`}
     >
+      {!iconEnd && iconEl}
       {children}
+      {iconEnd && iconEl}
     </button>
   );
 }

@@ -31,7 +31,7 @@ describe('LoginPage', () => {
 
   it('renders the BASE heading', () => {
     renderWithProviders(<LoginPage />);
-    expect(screen.getByText('THE BASE')).toBeInTheDocument();
+    expect(screen.getByText('BASE')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
@@ -72,7 +72,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'wrong');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-    await waitFor(() => { expect(screen.getByText('Invalid email or password')).toBeInTheDocument(); });
+    await waitFor(() => { expect(screen.getByText('Authentication Failed')).toBeInTheDocument(); });
   });
 
   it('shows loading state while submitting', async () => {
