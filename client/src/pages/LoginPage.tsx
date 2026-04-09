@@ -12,6 +12,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const isPasswordOptionalInDev = import.meta.env.DEV;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -87,10 +88,10 @@ export default function LoginPage() {
                   id={passwordInputId}
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
-                  required
+                  required={!isPasswordOptionalInDev}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••••"
+                  placeholder={isPasswordOptionalInDev ? 'Optional in local dev' : '••••••••••'}
                   className="w-full rounded-2xl border border-line bg-white/90 px-4 py-3.5 pr-12 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/80 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
                 <button

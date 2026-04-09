@@ -1,9 +1,54 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { api, reset, seedOwner, seedMember, seedUserSession, getUserSession, getUserSessionCount, utcDatetime } from './setup.js';
+import { createApp } from '../src/app.js';
+import { createLocalDatabase } from '../src/db/index.js';
 
 describe('Auth', () => {
   beforeEach(async () => {
     await reset();
+  });
+
+  describe('Passwordless dev login', () => {
+    it('should allow email-only login when explicitly enabled', async () => {
+      const db = createLocalDatabase(':memory:');
+      await db.run(
+        `INSERT INTO members (role, full_name, email, phone, join_date, status)
+         VALUES (?, ?, LOWER(?), ?, ?, ?)`,
+        ['owner', 'Dev Owner', 'dev@base.gym', '9999999999', '2026-01-01', 'active'],
+      );
+
+      const app = createApp(db, { secureCookies: false, allowPasswordlessLogin: true });
+      const res = await app.request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'dev@base.gym' }),
+      });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({
+        role: 'owner',
+        email: 'dev@base.gym',
+      });
+    });
+
+    it('should still require password when passwordless login is disabled', async () => {
+      const db = createLocalDatabase(':memory:');
+      await db.run(
+        `INSERT INTO members (role, full_name, email, phone, join_date, status)
+         VALUES (?, ?, LOWER(?), ?, ?, ?)`,
+        ['owner', 'Prod Owner', 'prod@base.gym', '9999999999', '2026-01-01', 'active'],
+      );
+
+      const app = createApp(db, { secureCookies: false, allowPasswordlessLogin: false });
+      const res = await app.request('http://localhost/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'prod@base.gym' }),
+      });
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Password is required');
+    });
   });
 
   // ─── POST /api/auth/login ───

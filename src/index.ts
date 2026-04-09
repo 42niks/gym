@@ -23,7 +23,9 @@ async function seedInitialCredentials(db: import('./db/client.js').AppDatabase):
 }
 
 async function main() {
-  const { db, app } = createServerRuntime(DB_PATH);
+  const { db, app } = createServerRuntime(DB_PATH, {
+    allowPasswordlessLogin: process.env.DEV_PASSWORDLESS_LOGIN !== '0',
+  });
   await seedInitialCredentials(db);
   await startNodeServer({ app, port: PORT, name: 'dev', dbPath: DB_PATH });
 }

@@ -29,6 +29,11 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
+  it('does not require a password in local dev', () => {
+    renderWithProviders(<LoginPage />);
+    expect(screen.getByLabelText(/^password$/i)).not.toBeRequired();
+  });
+
   it('renders the BASE brand lockup', () => {
     renderWithProviders(<LoginPage />);
     expect(screen.getByAltText('BASE')).toBeInTheDocument();

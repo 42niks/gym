@@ -18,7 +18,7 @@ export async function startTestServer(): Promise<void> {
     return;
   }
 
-  const { db, app } = createServerRuntime(TEST_DB_PATH);
+  const { db, app } = createServerRuntime(TEST_DB_PATH, { allowPasswordlessLogin: false });
   registerTestRoutes(app, db, { testPort: TEST_PORT, dbPath: TEST_DB_PATH });
   server = await startNodeServer({ app, port: TEST_PORT, name: 'test', dbPath: TEST_DB_PATH });
 }

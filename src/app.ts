@@ -34,11 +34,19 @@ export type AppEnv = {
   };
 };
 
+interface CreateAppOptions {
+  secureCookies: boolean;
+  allowPasswordlessLogin?: boolean;
+}
+
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-export function createApp(db: AppDatabase, { secureCookies }: { secureCookies: boolean }) {
+export function createApp(
+  db: AppDatabase,
+  { secureCookies, allowPasswordlessLogin = false }: CreateAppOptions,
+) {
   const app = new Hono<AppEnv>();
 
   // Inject DB
@@ -62,10 +70,14 @@ export function createApp(db: AppDatabase, { secureCookies }: { secureCookies: b
     const password = typeof body.password === 'string' ? body.password.trim() : '';
 
     if (!email) return c.json({ error: 'Email is required' }, 400);
-    if (!password) return c.json({ error: 'Password is required' }, 400);
+    if (!password && !allowPasswordlessLogin) return c.json({ error: 'Password is required' }, 400);
 
     const member = await findMemberByEmail(db, email);
-    if (!member || member.status === 'archived' || member.phone !== password) {
+    const passwordMatches = allowPasswordlessLogin
+      ? password.length === 0 || member?.phone === password
+      : member?.phone === password;
+
+    if (!member || member.status === 'archived' || !passwordMatches) {
       return c.json({ error: 'Invalid email or password' }, 401);
     }
 

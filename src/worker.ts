@@ -10,7 +10,7 @@ export default {
     }
 
     const db = createD1AppDatabase(env.DB);
-    const app = createApp(db, { secureCookies: true });
+    const app = createApp(db, { secureCookies: true, allowPasswordlessLogin: false });
     return app.fetch(request, env, executionCtx);
   },
 };
