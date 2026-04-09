@@ -45,6 +45,27 @@ export default function AppShell({ links, children }: AppShellProps) {
 
   return (
     <div className="relative min-h-screen">
+      <div
+        aria-hidden="true"
+        className="brand-duotone-page pointer-events-none fixed inset-0"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-5 top-4 h-24 rounded-full bg-white/24 blur-3xl dark:bg-white/5"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed -left-12 top-24 h-44 w-44 rounded-full bg-accent-500/12 blur-3xl dark:bg-accent-500/10"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed right-[-3.5rem] top-36 h-40 w-40 rounded-full bg-brand-400/16 blur-3xl dark:bg-brand-400/14"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed bottom-16 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-energy-300/10 blur-3xl dark:bg-energy-300/8"
+      />
+
       <header className="fixed inset-x-0 top-0 z-50 pt-2 sm:pt-4">
         <div className="mx-auto max-w-6xl px-2 sm:px-4">
           <nav className="w-full overflow-hidden rounded-shell border border-white/60 bg-white/88 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/88">

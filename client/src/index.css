@@ -27,11 +27,11 @@
     --color-accent-500: 224 11 11;
     --color-accent-600: 176 7 7;
     --color-accent-700: 138 4 4;
-    --color-energy-50: 248 255 223;
-    --color-energy-100: 238 255 176;
-    --color-energy-300: 222 252 0;
-    --color-energy-400: 208 237 0;
-    --color-energy-500: 124 140 0;
+    --color-energy-50: 255 251 224;
+    --color-energy-100: 255 243 163;
+    --color-energy-300: 255 230 23;
+    --color-energy-400: 237 205 0;
+    --color-energy-500: 153 126 0;
     --gray-50: 252 252 252;
     --gray-100: 244 244 244;
     --gray-200: 235 235 235;
@@ -69,6 +69,11 @@
     --color-accent-500: 224 11 11;
     --color-accent-600: 176 7 7;
     --color-accent-700: 138 4 4;
+    --color-energy-50: 248 255 223;
+    --color-energy-100: 238 255 176;
+    --color-energy-300: 222 252 0;
+    --color-energy-400: 208 237 0;
+    --color-energy-500: 124 140 0;
     --gray-50: 244 244 245;
     --gray-100: 228 228 231;
     --gray-200: 212 212 216;
@@ -130,6 +135,50 @@
 }
 
 @layer components {
+  @keyframes consistency-border-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+
+  @keyframes consistency-shine-sweep {
+    0% {
+      transform: translateX(-150%) skewX(-24deg);
+      opacity: 0;
+    }
+    12% {
+      opacity: 0.18;
+    }
+    22% {
+      opacity: 0.92;
+    }
+    88% {
+      opacity: 0.92;
+    }
+    100% {
+      transform: translateX(400%) skewX(-24deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes consistency-today-pulse {
+    0%, 100% {
+      box-shadow:
+        inset 0 0 0 1px rgb(var(--consistency-today-glow-soft) / 0.38),
+        inset 0 0 14px rgb(var(--consistency-today-glow) / 0.12),
+        inset 0 0 24px rgb(var(--consistency-today-glow-soft) / 0.08);
+    }
+    50% {
+      box-shadow:
+        inset 0 0 0 1px rgb(var(--consistency-today-glow) / 0.72),
+        inset 0 0 20px rgb(var(--consistency-today-glow) / 0.24),
+        inset 0 0 38px rgb(var(--consistency-today-glow-soft) / 0.18);
+    }
+  }
+
   .page-title {
     @apply font-headline text-3xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white;
   }
@@ -148,10 +197,26 @@
       radial-gradient(circle at bottom right, rgb(var(--color-brand-500) / 0.24), transparent 48%);
   }
 
+  .brand-duotone-page {
+    background:
+      radial-gradient(circle at 18% 14%, rgb(var(--color-accent-500) / 0.22), transparent 26%),
+      radial-gradient(circle at 82% 18%, rgb(var(--color-brand-400) / 0.28), transparent 30%),
+      radial-gradient(circle at 50% 82%, rgb(var(--color-energy-300) / 0.14), transparent 28%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.94) 0%, rgb(248 248 248 / 0.9) 100%);
+  }
+
   .dark .brand-duotone-panel {
     background-image:
       radial-gradient(circle at top left, rgb(var(--color-accent-400) / 0.3), transparent 42%),
       radial-gradient(circle at bottom right, rgb(var(--color-brand-400) / 0.26), transparent 48%);
+  }
+
+  .dark .brand-duotone-page {
+    background:
+      radial-gradient(circle at 18% 14%, rgb(var(--color-accent-500) / 0.26), transparent 28%),
+      radial-gradient(circle at 82% 18%, rgb(var(--color-brand-500) / 0.3), transparent 32%),
+      radial-gradient(circle at 50% 82%, rgb(var(--color-energy-300) / 0.12), transparent 30%),
+      linear-gradient(180deg, rgb(15 15 17 / 0.97) 0%, rgb(7 7 8 / 0.96) 100%);
   }
 
   .brand-duotone-button {
@@ -200,5 +265,106 @@
 
   .empty-state {
     @apply glass-panel px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400;
+  }
+
+  .consistency-panel-frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.75rem;
+    padding: 5px;
+    isolation: isolate;
+    contain: paint;
+    background-image: linear-gradient(
+      115deg,
+      rgb(var(--color-accent-500) / 0.58) 0%,
+      rgb(var(--color-energy-300) / 0.6) 44%,
+      rgb(var(--color-brand-500) / 0.56) 100%
+    );
+    box-shadow: 0 20px 50px rgb(0 0 0 / 0.1);
+  }
+
+  .consistency-panel-frame::before {
+    content: '';
+    position: absolute;
+    inset: -28% auto -28% -18%;
+    width: 34%;
+    background:
+      linear-gradient(
+        90deg,
+        rgb(255 255 255 / 0) 0%,
+        rgb(255 255 255 / 0.12) 12%,
+        rgb(255 255 255 / 0.54) 28%,
+        rgb(255 255 255 / 0.78) 50%,
+        rgb(255 255 255 / 0.54) 72%,
+        rgb(255 255 255 / 0.12) 88%,
+        rgb(255 255 255 / 0) 100%
+      );
+    opacity: 0.95;
+    filter: blur(1.5px);
+    box-shadow:
+      0 0 18px rgb(255 255 255 / 0.2),
+      0 0 30px rgb(255 255 255 / 0.1);
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    transform: translate3d(0, 0, 0);
+    animation: consistency-shine-sweep 5.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .consistency-panel-inner {
+    border-radius: calc(1.75rem - 5px);
+    overflow: hidden;
+    transform: translateZ(0);
+    background: rgb(255 255 255 / 0.8);
+  }
+
+  .dark .consistency-panel-inner {
+    background: rgb(var(--surface-dark) / 0.8);
+  }
+
+  .consistency-day-box {
+    position: relative;
+    isolation: isolate;
+    contain: paint;
+    border-radius: 1rem;
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .consistency-day-box-inner {
+    height: 100%;
+    width: 100%;
+    border-radius: calc(1rem - 1px);
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .consistency-day-box-today {
+    --consistency-today-glow: var(--color-brand-500);
+    --consistency-today-glow-soft: var(--color-brand-400);
+    animation: consistency-today-pulse 2.2s ease-in-out infinite;
+  }
+
+  .consistency-day-box-attended {
+    background-image: linear-gradient(
+      135deg,
+      rgb(var(--color-brand-500)) 0%,
+      rgb(var(--color-brand-700)) 100%
+    );
+  }
+
+  .dark .consistency-day-box-attended {
+    background-image: linear-gradient(
+      135deg,
+      rgb(var(--color-accent-500)) 0%,
+      rgb(var(--color-accent-400)) 100%
+    );
+  }
+
+  .dark .consistency-day-box-today {
+    --consistency-today-glow: var(--color-accent-500);
+    --consistency-today-glow-soft: var(--color-accent-400);
   }
 }

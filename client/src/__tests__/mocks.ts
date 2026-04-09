@@ -56,6 +56,15 @@ export const mockMemberHome: MemberHome = {
   consistency: mockConsistency,
   renewal: null,
   marked_attendance_today: false,
+  recent_attendance: [
+    { date: '2026-04-02', attended: true },
+    { date: '2026-04-03', attended: false },
+    { date: '2026-04-04', attended: true },
+    { date: '2026-04-05', attended: false },
+    { date: '2026-04-06', attended: true },
+    { date: '2026-04-07', attended: false },
+    { date: '2026-04-08', attended: false },
+  ],
 };
 
 export const mockGroupedSubscriptions: GroupedSubscriptions = {

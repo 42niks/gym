@@ -33,8 +33,8 @@ describe('MemberHomePage', () => {
   it('renders greeting and active subscription', async () => {
     mockApiGet.mockResolvedValue(mockMemberHome);
     renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByText('Alex')).toBeInTheDocument(); });
-    expect(screen.getByText('7')).toBeInTheDocument();
+    await waitFor(() => { expect(screen.getByText(/sessions remaining/)).toBeInTheDocument(); });
+    expect(screen.getByText('7', { selector: 'p' })).toBeInTheDocument();
     expect(screen.getByText(/sessions remaining/)).toBeInTheDocument();
     expect(screen.getAllByText('1:1 Personal Training').length).toBeGreaterThanOrEqual(1);
   });
@@ -76,7 +76,9 @@ describe('MemberHomePage', () => {
   it('shows consistency card', async () => {
     mockApiGet.mockResolvedValue(mockMemberHome);
     renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByText('Consistent for 14 days')).toBeInTheDocument(); });
+    await waitFor(() => { expect(screen.getByText('Consistency')).toBeInTheDocument(); });
+    expect(screen.getByText('14')).toBeInTheDocument();
+    expect(screen.getByText('DAYS!')).toBeInTheDocument();
   });
 
   it('renders nav links', async () => {

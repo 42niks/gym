@@ -41,81 +41,99 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <div className="flex min-h-full items-center justify-center px-6 py-10 sm:px-10">
-        <div className="w-full max-w-sm">
-          <div className="relative mb-8 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white px-6 py-6 shadow-panel dark:border-white/10 dark:bg-surface-dark">
-            <div className="brand-duotone-panel absolute inset-0" />
-            <div className="relative flex min-h-[10.25rem] flex-col justify-between pt-1">
-              <div className="ml-1">
-                <img
-                  src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
-                  alt="BASE"
-                  className="h-[4.05rem] w-auto"
-                />
-              </div>
-              <div className="ml-auto max-w-[13.5rem] text-right">
-                <p
-                  aria-label="Your Strength Habitat"
-                  className="font-brand text-[1.22rem] font-black uppercase tracking-[0.16em] text-[#226350] dark:text-[#e00b0b]"
-                >
-                  YOUR
-                  <br />
-                  STRENGTH
-                  <br />
-                  HABITAT
-                </p>
+      <div className="brand-duotone-page relative min-h-screen overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-4 top-5 h-24 rounded-full bg-white/30 blur-3xl dark:bg-white/5"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-10 top-24 h-40 w-40 rounded-full bg-accent-500/15 blur-3xl dark:bg-accent-500/10"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-12 bottom-20 h-48 w-48 rounded-full bg-brand-400/20 blur-3xl dark:bg-brand-400/15"
+        />
+
+        <div className="relative flex min-h-screen items-start justify-center px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 sm:pb-10 sm:pt-6">
+          <div className="w-full max-w-sm">
+            <div className="relative mb-4 overflow-hidden rounded-[2rem] border border-white/65 bg-white/78 px-5 py-5 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/82 sm:mb-5 sm:px-6 sm:py-6">
+              <div className="brand-duotone-panel absolute inset-0" />
+              <div className="relative flex min-h-[10.5rem] flex-col justify-between pt-1">
+                <div className="ml-1">
+                  <img
+                    src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
+                    alt="BASE"
+                    className="h-[3.7rem] w-auto sm:h-[4.05rem]"
+                  />
+                </div>
+                <div className="ml-auto max-w-[13.5rem] text-right">
+                  <p
+                    aria-label="Your Strength Habitat"
+                    className="font-brand text-[1.1rem] font-black uppercase tracking-[0.16em] text-[#226350] dark:text-[#e00b0b] sm:text-[1.22rem]"
+                  >
+                    YOUR
+                    <br />
+                    STRENGTH
+                    <br />
+                    HABITAT
+                  </p>
+                </div>
               </div>
             </div>
+
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4 rounded-[2rem] border border-white/60 bg-white/82 p-4 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/84 sm:p-5"
+            >
+              <Input
+                label="Email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                labelClassName="ml-3 not-italic"
+              />
+
+              <div>
+                <label htmlFor={passwordInputId} className="mb-2 ml-3 block font-label text-[0.68rem] font-bold not-italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id={passwordInputId}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required={!isPasswordOptionalInDev}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={isPasswordOptionalInDev ? 'Optional in local dev' : '••••••••••'}
+                    className="w-full rounded-2xl border border-line bg-white/92 px-4 py-3.5 pr-12 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all [color-scheme:light] placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/82 dark:text-gray-100 dark:placeholder:text-gray-500 dark:[color-scheme:dark]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-2.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-black/[0.04] hover:text-gray-600 dark:hover:bg-white/[0.06] dark:hover:text-gray-200"
+                  >
+                    <Icon name={showPassword ? 'visibility_off' : 'visibility'} className="block text-[1.2rem]" />
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div role="alert">
+                  <Alert variant="error">{error}</Alert>
+                </div>
+              )}
+
+              <Button type="submit" disabled={loading} className="w-full" icon={loading ? 'progress_activity' : 'login'}>
+                {loading ? 'Signing in…' : 'Sign in'}
+              </Button>
+            </form>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              labelClassName="ml-3 not-italic"
-            />
-
-            <div>
-              <label htmlFor={passwordInputId} className="mb-2 ml-3 block font-label text-[0.68rem] font-bold not-italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id={passwordInputId}
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required={!isPasswordOptionalInDev}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={isPasswordOptionalInDev ? 'Optional in local dev' : '••••••••••'}
-                  className="w-full rounded-2xl border border-line bg-white/90 px-4 py-3.5 pr-12 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/80 dark:text-gray-100 dark:placeholder:text-gray-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-2.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-black/[0.04] hover:text-gray-600 dark:hover:bg-white/[0.06] dark:hover:text-gray-200"
-                >
-                  <Icon name={showPassword ? 'visibility_off' : 'visibility'} className="block text-[1.2rem]" />
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div role="alert">
-                <Alert variant="error">{error}</Alert>
-              </div>
-            )}
-
-            <Button type="submit" disabled={loading} className="w-full" icon={loading ? 'progress_activity' : 'login'}>
-              {loading ? 'Signing in…' : 'Sign in'}
-            </Button>
-          </form>
         </div>
       </div>
     </>

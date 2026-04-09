@@ -73,6 +73,11 @@ export interface Consistency {
   message: string;
 }
 
+export interface RecentAttendanceDay {
+  date: string;
+  attended: boolean;
+}
+
 export interface Renewal {
   kind: 'ends_soon' | 'starts_on' | 'no_active';
   message: string;
@@ -85,6 +90,7 @@ export interface MemberHome {
   consistency: Consistency | null;
   renewal: Renewal | null;
   marked_attendance_today: boolean;
+  recent_attendance: RecentAttendanceDay[];
 }
 
 export interface GroupedSubscriptions {

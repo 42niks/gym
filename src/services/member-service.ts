@@ -6,7 +6,7 @@ import { deleteAllSessionsForMember } from '../repositories/user-sessions-repo.j
 import { deriveLifecycleState } from '../lib/subscription.js';
 import { computeRenewal } from '../lib/renewal.js';
 import { computeConsistency } from '../lib/consistency.js';
-import { getIstDate } from '../lib/date.js';
+import { addDays, getIstDate } from '../lib/date.js';
 import { findPackageById } from '../repositories/packages-repo.js';
 
 export interface MemberProfile {
@@ -51,18 +51,33 @@ export function getUpcomingSubs(subs: SubscriptionWithType[], today: string): Su
     .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.id - b.id);
 }
 
+function buildRecentAttendance(attendanceDates: string[], today: string, days: number) {
+  const attendanceSet = new Set(attendanceDates);
+  const result: { date: string; attended: boolean }[] = [];
+
+  for (let offset = days - 1; offset >= 0; offset--) {
+    const date = addDays(today, -offset);
+    result.push({
+      date,
+      attended: attendanceSet.has(date),
+    });
+  }
+
+  return result;
+}
+
 export async function computeMemberEnrichment(db: AppDatabase, memberId: number, today: string) {
   const subs = await listSubscriptionsForMember(db, memberId);
   const activeSub = getActiveSub(subs, today);
   const upcomingSubs = getUpcomingSubs(subs, today);
   const markedToday = await hasAttendanceForDate(db, memberId, today);
+  const attendanceDates = await listAttendanceDatesForMember(db, memberId);
 
   let consistency = null;
   if (activeSub) {
     const pkg = await findPackageById(db, activeSub.package_id);
     if (pkg) {
       const earliest = await getEarliestSubscriptionStart(db, memberId);
-      const attendanceDates = await listAttendanceDatesForMember(db, memberId);
       consistency = computeConsistency({
         hasActiveSubscription: true,
         windowDays: pkg.consistency_window_days,
@@ -89,6 +104,7 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
     consistency,
     renewal,
     marked_attendance_today: markedToday,
+    recent_attendance: activeSub ? buildRecentAttendance(attendanceDates, today, 7) : [],
   };
 }
 

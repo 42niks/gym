@@ -47,6 +47,31 @@ function extractDayCount(message: string | undefined) {
   return match ? Number(match[0]) : 0;
 }
 
+function getWeekdayLetter(date: string) {
+  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
+  return ['S', 'M', 'T', 'W', 'T', 'F', 'S'][day];
+}
+
+function getConsistencyLabel(consistency: NonNullable<MemberHome['consistency']>) {
+  if (consistency.status === 'consistent') {
+    const days = consistency.days ?? extractDayCount(consistency.message);
+    return {
+      prefix: 'Consistency',
+      count: String(days),
+      suffix: 'DAYS!',
+    };
+  }
+  return {
+    prefix: 'Consistency',
+    count: 'Building',
+    suffix: '',
+  };
+}
+
+function formatDayNumber(date: string) {
+  return String(Number(date.slice(-2)));
+}
+
 export default function MemberHomePage() {
   const queryClient = useQueryClient();
   const [attendanceError, setAttendanceError] = useState('');
@@ -77,36 +102,111 @@ export default function MemberHomePage() {
     );
   }
 
-  const { member, active_subscription: sub, consistency, renewal, marked_attendance_today } = data!;
-  const firstName = member.full_name.split(' ')[0];
+  const { active_subscription: sub, consistency, renewal, marked_attendance_today, recent_attendance } = data!;
   const completion = sub && sub.total_sessions > 0 ? Math.round((sub.attended_sessions / sub.total_sessions) * 100) : 0;
-  const streakDays = extractDayCount(consistency?.message);
-  const filledStreakCells = streakDays > 0 ? Math.min(7, streakDays % 7 || 7) : 0;
 
   return (
     <AppShell links={memberLinks}>
       <div className="page-stack">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="section-eyebrow">Member dashboard</p>
-              <h2 className="page-title mt-2">{firstName}</h2>
-              <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-                {marked_attendance_today
-                  ? 'Checked in and moving. Keep the pressure on through the rest of the day.'
-                  : 'Today’s session is still up for grabs. Check in and keep the streak moving.'}
-              </p>
+        <div className="grid gap-5 xl:grid-cols-12">
+          {consistency && sub ? (
+            <div className="consistency-panel-frame xl:col-span-7">
+              <div className="consistency-panel-inner relative overflow-hidden p-5 lg:p-6">
+                <div className="relative z-10">
+                  <p className="section-eyebrow text-right">Consistency</p>
+                  <div className="mt-3">
+                    {consistency.status === 'consistent' ? (
+                      <div className="flex items-end">
+                        <span className="font-headline text-[3.6rem] font-black italic leading-[0.82] tracking-[-0.07em] text-brand-600 dark:text-brand-300 sm:text-[4.5rem]">
+                          {getConsistencyLabel(consistency).count}
+                        </span>
+                        <span className="ml-6 pb-1 font-label text-[0.9rem] font-bold italic uppercase tracking-[0.18em] text-brand-600/80 dark:text-brand-300/80 sm:ml-8 sm:text-[1rem]">
+                          {getConsistencyLabel(consistency).suffix}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="font-headline text-[2.3rem] font-black italic leading-[0.9] tracking-[-0.05em] text-brand-600 dark:text-brand-300 sm:text-[2.9rem]">
+                        {getConsistencyLabel(consistency).count}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-6 grid grid-cols-7 gap-2">
+                    {recent_attendance.map((day, index) => {
+                      const isToday = index === recent_attendance.length - 1;
+                      return (
+                      <div
+                        key={day.date}
+                        aria-label={`${day.date} ${day.attended ? 'attended' : 'not attended'}`}
+                        className={`consistency-day-box h-[4.5rem] text-center shadow-sm transition-colors ${
+                          day.attended
+                            ? 'border border-transparent shadow-[0_12px_24px_rgba(34,99,80,0.18)]'
+                            : 'border border-line dark:border-white/10'
+                        }`}
+                      >
+                        <div
+                          className={`consistency-day-box-inner flex h-full flex-col items-center justify-between px-2 py-2 ${
+                            day.attended
+                              ? 'consistency-day-box-attended text-white'
+                              : 'bg-white/55 text-gray-500 dark:bg-white/[0.04] dark:text-gray-400'
+                          } ${isToday ? 'consistency-day-box-today' : ''}`}
+                        >
+                          <span className={`text-[0.68rem] font-bold uppercase ${day.attended ? 'text-white/85' : 'text-inherit'}`}>
+                            {getWeekdayLetter(day.date)}
+                          </span>
+                          <span className={`font-headline text-[1.1rem] font-black italic leading-none ${day.attended ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                            {formatDayNumber(day.date)}
+                          </span>
+                        </div>
+                      </div>
+                    )})}
+                  </div>
+                </div>
+              </div>
             </div>
+          ) : null}
 
-            <div className="glass-panel max-w-sm px-4 py-4">
-              <p className="section-eyebrow">Current focus</p>
-              <p className="mt-3 font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-                {sub ? sub.service_type : 'No active plan'}
-              </p>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {renewal?.message ?? (sub ? `${sub.remaining_sessions} sessions ready to use.` : 'Reactivate a subscription to unlock check-ins and billing history.')}
-              </p>
+          <Card className={`p-6 lg:p-7 ${consistency && sub ? 'xl:col-span-5' : 'xl:col-span-12'}`}>
+            <p className="section-eyebrow">Member pulse</p>
+            <h3 className="mt-3 font-headline text-2xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
+              {marked_attendance_today ? 'Session secured.' : 'Session waiting.'}
+            </h3>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {marked_attendance_today
+                ? 'You already checked in today, so the dashboard is now all about following through on the work.'
+                : 'Check in before the day closes to keep your activity trend moving the right way.'}
+            </p>
+            <div className="mt-6 space-y-3">
+              <div className="surface-inset flex items-center justify-between">
+                <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                  Status
+                </span>
+                <Badge variant={marked_attendance_today ? 'green' : 'orange'} icon={marked_attendance_today ? 'check_circle' : 'schedule'}>
+                  {marked_attendance_today ? 'Checked in' : 'Pending'}
+                </Badge>
+              </div>
+              <div className="surface-inset flex items-center justify-between">
+                <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
+                  Plan
+                </span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {sub ? `${sub.remaining_sessions} left` : 'Inactive'}
+                </span>
+              </div>
             </div>
+          </Card>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="glass-panel max-w-sm px-4 py-4">
+            <p className="section-eyebrow">Current focus</p>
+            <p className="mt-3 font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
+              {sub ? sub.service_type : 'No active plan'}
+            </p>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {renewal?.message ?? (sub ? `${sub.remaining_sessions} sessions ready to use.` : 'Reactivate a subscription to unlock check-ins and billing history.')}
+            </p>
           </div>
+        </div>
 
           {renewal && (
             <section className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-white bg-brand-gradient p-px shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark">
@@ -229,86 +329,6 @@ export default function MemberHomePage() {
             </div>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-12">
-            {consistency ? (
-              <Card className="relative overflow-hidden p-6 lg:p-7 xl:col-span-7">
-                <div className="absolute -bottom-16 right-0 h-40 w-40 rounded-full bg-accent-500/6 blur-3xl" />
-                <div className="relative z-10">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="section-eyebrow">Consistency engine</p>
-                      <div className="mt-4 flex items-baseline gap-3">
-                        <span className="font-headline text-6xl font-black italic leading-none tracking-tight text-gray-900 dark:text-white">
-                          {streakDays || '—'}
-                        </span>
-                        <span className="font-headline text-2xl font-bold italic uppercase tracking-tight text-accent-600 dark:text-accent-300">
-                          Day streak
-                        </span>
-                      </div>
-                    </div>
-                    <Badge variant={consistency.status === 'consistent' ? 'green' : 'orange'} icon={consistency.status === 'consistent' ? 'local_fire_department' : 'fitness_center'}>
-                      {consistency.status === 'consistent' ? 'Top form' : 'Keep pushing'}
-                    </Badge>
-                  </div>
-                  <div className="mt-6 grid grid-cols-7 gap-2.5">
-                    {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((label, index) => (
-                      <div
-                        key={`${label}-${index}`}
-                        className={`flex h-14 items-center justify-center rounded-2xl border-b-4 font-headline text-xs font-black italic ${
-                          index < filledStreakCells
-                            ? 'border-brand-500 bg-brand-500/15 text-brand-700 dark:text-brand-200'
-                            : 'border-accent-500 bg-accent-500/8 text-accent-600 dark:text-accent-200'
-                        }`}
-                      >
-                        {label}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-4 text-sm font-semibold italic text-gray-500 dark:text-gray-400">{consistency.message}</p>
-                </div>
-              </Card>
-            ) : (
-              <Card className="p-6 lg:p-7 xl:col-span-7">
-                <p className="section-eyebrow">Consistency engine</p>
-                <h3 className="mt-3 font-headline text-2xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-                  Build the next streak
-                </h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Your next check-in starts the momentum tracker again.
-                </p>
-              </Card>
-            )}
-
-            <Card className="p-6 lg:p-7 xl:col-span-5">
-              <p className="section-eyebrow">Member pulse</p>
-              <h3 className="mt-3 font-headline text-2xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-                {marked_attendance_today ? 'Session secured.' : 'Session waiting.'}
-              </h3>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                {marked_attendance_today
-                  ? 'You already checked in today, so the dashboard is now all about following through on the work.'
-                  : 'Check in before the day closes to keep your activity trend moving the right way.'}
-              </p>
-              <div className="mt-6 space-y-3">
-                <div className="surface-inset flex items-center justify-between">
-                  <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                    Status
-                  </span>
-                  <Badge variant={marked_attendance_today ? 'green' : 'orange'} icon={marked_attendance_today ? 'check_circle' : 'schedule'}>
-                    {marked_attendance_today ? 'Checked in' : 'Pending'}
-                  </Badge>
-                </div>
-                <div className="surface-inset flex items-center justify-between">
-                  <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">
-                    Plan
-                  </span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {sub ? `${sub.remaining_sessions} left` : 'Inactive'}
-                  </span>
-                </div>
-              </div>
-            </Card>
-          </div>
       </div>
     </AppShell>
   );
