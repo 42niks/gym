@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type MemberProfile } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
 
@@ -26,10 +26,8 @@ export default function MemberProfilePage() {
   });
 
   return (
-    <>
-      <NavBar links={memberLinks} />
-      <div className="page-content">
-        <div className="page-stack">
+    <AppShell links={memberLinks}>
+      <div className="page-stack">
           <div>
             <p className="section-eyebrow">Member record</p>
             <h2 className="page-title mt-2">Profile</h2>
@@ -56,8 +54,7 @@ export default function MemberProfilePage() {
               </div>
             </Card>
           )}
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }

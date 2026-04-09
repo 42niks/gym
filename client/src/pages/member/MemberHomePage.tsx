@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type MemberHome } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Badge from '../../components/Badge.js';
 import Card from '../../components/Card.js';
 import Button from '../../components/Button.js';
@@ -67,16 +67,13 @@ export default function MemberHomePage() {
 
   if (isLoading) {
     return (
-      <>
-        <NavBar links={memberLinks} />
-        <div className="page-content">
-          <div className="page-stack">
-            <div className="flex justify-center py-16">
-              <Spinner />
-            </div>
+      <AppShell links={memberLinks}>
+        <div className="page-stack">
+          <div className="flex justify-center py-16">
+            <Spinner />
           </div>
         </div>
-      </>
+      </AppShell>
     );
   }
 
@@ -87,10 +84,8 @@ export default function MemberHomePage() {
   const filledStreakCells = streakDays > 0 ? Math.min(7, streakDays % 7 || 7) : 0;
 
   return (
-    <>
-      <NavBar links={memberLinks} />
-      <div className="page-content">
-        <div className="page-stack">
+    <AppShell links={memberLinks}>
+      <div className="page-stack">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="section-eyebrow">Member dashboard</p>
@@ -314,8 +309,7 @@ export default function MemberHomePage() {
               </div>
             </Card>
           </div>
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type MemberDetail, type GroupedSubscriptions, type Subscription, ApiError } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Button from '../../components/Button.js';
@@ -136,7 +136,15 @@ export default function OwnerMemberDetailPage() {
   }
 
   if (isLoading) {
-    return <><NavBar links={ownerLinks} /><div className="flex justify-center py-16"><Spinner /></div></>;
+    return (
+      <AppShell links={ownerLinks}>
+        <div className="page-stack">
+          <div className="flex justify-center py-16">
+            <Spinner />
+          </div>
+        </div>
+      </AppShell>
+    );
   }
 
   if (!detail) return null;
@@ -144,10 +152,8 @@ export default function OwnerMemberDetailPage() {
   const allSubs = [...(subs?.upcoming ?? []), ...(subs?.completed_and_active ?? [])];
 
   return (
-    <>
-      <NavBar links={ownerLinks} />
-      <div className="page-content">
-        <div className="page-stack">
+    <AppShell links={ownerLinks}>
+      <div className="page-stack">
         <Link to="/owner/members" className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Members
@@ -205,8 +211,7 @@ export default function OwnerMemberDetailPage() {
             </div>
           )}
         </div>
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }

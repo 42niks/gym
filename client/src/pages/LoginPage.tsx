@@ -7,6 +7,7 @@ import Input from '../components/Input.js';
 import Button from '../components/Button.js';
 import Alert from '../components/Alert.js';
 import ThemeToggle from '../components/ThemeToggle.js';
+import Icon from '../components/Icon.js';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -40,8 +41,8 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <div className="flex min-h-full items-center justify-center bg-page px-6 py-10 sm:px-10">
-        <div className="glass-panel w-full max-w-sm px-8 py-8">
+      <div className="flex min-h-full items-center justify-center px-6 py-10 sm:px-10">
+        <div className="w-full max-w-sm">
           <div className="relative mb-8 overflow-hidden rounded-[1.75rem] border border-white/70 bg-white px-6 py-6 shadow-panel dark:border-white/10 dark:bg-surface-dark">
             <div className="brand-duotone-panel absolute inset-0" />
             <div className="relative flex min-h-[10.25rem] flex-col justify-between pt-1">
@@ -55,7 +56,7 @@ export default function LoginPage() {
               <div className="ml-auto max-w-[13.5rem] text-right">
                 <p
                   aria-label="Your Strength Habitat"
-                  className="font-brand text-[1.22rem] font-black uppercase tracking-[0.16em] text-[#1f6c58] dark:text-[#d90a0a]"
+                  className="font-brand text-[1.22rem] font-black uppercase tracking-[0.16em] text-[#226350] dark:text-[#e00b0b]"
                 >
                   YOUR
                   <br />
@@ -98,11 +99,9 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-200"
+                  className="absolute right-2.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-black/[0.04] hover:text-gray-600 dark:hover:bg-white/[0.06] dark:hover:text-gray-200"
                 >
-                  <span className="material-symbols-outlined text-[1.2rem]">
-                    {showPassword ? 'visibility_off' : 'visibility'}
-                  </span>
+                  <Icon name={showPassword ? 'visibility_off' : 'visibility'} className="block text-[1.2rem]" />
                 </button>
               </div>
             </div>

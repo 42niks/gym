@@ -16,7 +16,7 @@
     --color-brand-100: 223 238 232;
     --color-brand-300: 134 183 168;
     --color-brand-400: 82 146 127;
-    --color-brand-500: 31 108 88;
+    --color-brand-500: 34 99 80;
     --color-brand-600: 24 88 71;
     --color-brand-700: 18 69 56;
     --color-brand-800: 12 49 40;
@@ -24,7 +24,7 @@
     --color-accent-100: 255 220 220;
     --color-accent-300: 241 124 124;
     --color-accent-400: 229 62 62;
-    --color-accent-500: 217 10 10;
+    --color-accent-500: 224 11 11;
     --color-accent-600: 176 7 7;
     --color-accent-700: 138 4 4;
     --color-energy-50: 248 255 223;
@@ -58,7 +58,7 @@
     --color-brand-100: 223 238 232;
     --color-brand-300: 151 198 184;
     --color-brand-400: 95 161 140;
-    --color-brand-500: 31 108 88;
+    --color-brand-500: 34 99 80;
     --color-brand-600: 24 88 71;
     --color-brand-700: 18 69 56;
     --color-brand-800: 12 49 40;
@@ -66,7 +66,7 @@
     --color-accent-100: 255 220 220;
     --color-accent-300: 247 145 145;
     --color-accent-400: 237 88 88;
-    --color-accent-500: 217 10 10;
+    --color-accent-500: 224 11 11;
     --color-accent-600: 176 7 7;
     --color-accent-700: 138 4 4;
     --gray-50: 244 244 245;
@@ -123,6 +123,10 @@
   body {
     @apply bg-shell text-gray-900 antialiased dark:text-gray-100;
   }
+
+  body.drawer-open {
+    overflow: hidden;
+  }
 }
 
 @layer components {
@@ -172,6 +176,10 @@
 
   .page-content {
     @apply px-4 pb-8 pt-6 lg:px-6 lg:pt-8;
+  }
+
+  .page-content-with-fixed-nav {
+    @apply pt-28 sm:pt-32 lg:pt-32;
   }
 
   .page-stack {

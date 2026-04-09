@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type GroupedSubscriptions, type Subscription } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Spinner from '../../components/Spinner.js';
@@ -48,10 +48,8 @@ export default function MemberBillingPage() {
   });
 
   return (
-    <>
-      <NavBar links={memberLinks} />
-      <div className="page-content">
-        <div className="page-stack">
+    <AppShell links={memberLinks}>
+      <div className="page-stack">
           <div>
             <p className="section-eyebrow">Payments and packages</p>
             <h2 className="page-title mt-2">Billing</h2>
@@ -83,8 +81,7 @@ export default function MemberBillingPage() {
               </section>
             </>
           )}
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }

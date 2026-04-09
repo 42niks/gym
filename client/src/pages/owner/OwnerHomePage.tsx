@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, type Dashboard, type DashboardItem } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Button from '../../components/Button.js';
@@ -58,10 +58,8 @@ export default function OwnerHomePage() {
   });
 
   return (
-    <>
-      <NavBar links={ownerLinks} />
-      <div className="page-content">
-        <div className="page-stack">
+    <AppShell links={ownerLinks}>
+      <div className="page-stack">
         <div className="page-header">
           <div>
             <p className="section-eyebrow">Owner command center</p>
@@ -88,8 +86,7 @@ export default function OwnerHomePage() {
             <Section title="Archived" items={data.archived_members} badge="Archived" />
           </>
         )}
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }

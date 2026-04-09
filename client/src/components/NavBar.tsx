@@ -10,21 +10,28 @@ interface NavLink {
   icon?: string;
 }
 
-export default function NavBar({ links }: { links: NavLink[] }) {
+export default function NavBar({ links, fixed = false }: { links: NavLink[]; fixed?: boolean }) {
   const { logout } = useAuth();
   const { theme } = useTheme();
   const location = useLocation();
 
   return (
-    <nav className="sticky top-0 z-20 border-b border-white/60 bg-white/72 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/72">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
-        <Link to="/" className="flex flex-col items-start gap-1">
-          <img
-            src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
-            alt="BASE"
-            className="h-8 w-auto"
+    <div
+      className={
+        fixed
+          ? 'fixed inset-x-0 top-0 z-30 px-2 py-2 sm:px-4 sm:py-4'
+          : ''
+      }
+    >
+      <nav className="border-b border-white/60 bg-white/72 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/72">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
+          <Link to="/" className="flex flex-col items-start gap-1">
+            <img
+              src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
+              alt="BASE"
+              className="h-8 w-auto"
           />
-          <span className="hidden font-brand text-[0.5rem] font-black uppercase tracking-[0.22em] text-[#1f6c58] dark:text-[#d90a0a] sm:inline">
+          <span className="hidden font-brand text-[0.5rem] font-black uppercase tracking-[0.22em] text-[#226350] dark:text-[#e00b0b] sm:inline">
             YOUR STRENGTH HABITAT
           </span>
         </Link>
@@ -52,7 +59,8 @@ export default function NavBar({ links }: { links: NavLink[] }) {
             Out
           </button>
         </div>
-      </div>
-    </nav>
+        </div>
+      </nav>
+    </div>
   );
 }

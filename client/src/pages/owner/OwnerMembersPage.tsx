@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, type MemberListItem } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
@@ -21,10 +21,8 @@ export default function OwnerMembersPage() {
   });
 
   return (
-    <>
-      <NavBar links={ownerLinks} />
-      <div className="page-content">
-        <div className="page-stack">
+    <AppShell links={ownerLinks}>
+      <div className="page-stack">
         <div className="page-header">
           <div>
             <p className="section-eyebrow">Member roster</p>
@@ -99,8 +97,7 @@ export default function OwnerMembersPage() {
             ))}
           </Card>
         )}
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }

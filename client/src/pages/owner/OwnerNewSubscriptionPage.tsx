@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api, type Package, type Subscription, ApiError } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
@@ -59,10 +59,8 @@ export default function OwnerNewSubscriptionPage() {
   }, {});
 
   return (
-    <>
-      <NavBar links={ownerLinks} />
-      <div className="page-content">
-        <div className="page-stack max-w-4xl">
+    <AppShell links={ownerLinks}>
+      <div className="page-stack max-w-4xl">
         <Link to={`/owner/members/${id}`} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Member
@@ -119,8 +117,7 @@ export default function OwnerNewSubscriptionPage() {
             )}
           </form>
         )}
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }

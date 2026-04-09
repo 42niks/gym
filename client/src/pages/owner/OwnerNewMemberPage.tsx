@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api, type MemberProfile, ApiError } from '../../lib/api.js';
-import NavBar from '../../components/NavBar.js';
+import AppShell from '../../components/AppShell.js';
 import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
@@ -40,10 +40,8 @@ export default function OwnerNewMemberPage() {
   }
 
   return (
-    <>
-      <NavBar links={ownerLinks} />
-      <div className="page-content">
-        <div className="page-stack max-w-3xl">
+    <AppShell links={ownerLinks}>
+      <div className="page-stack max-w-3xl">
         <Link to="/owner/members" className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Members
@@ -68,8 +66,7 @@ export default function OwnerNewMemberPage() {
             {loading ? 'Creating…' : 'Create member'}
           </Button>
         </form>
-        </div>
       </div>
-    </>
+    </AppShell>
   );
 }
