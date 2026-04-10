@@ -139,8 +139,8 @@ export default function MemberHomePage() {
                   <p className="font-headline text-[2.2rem] font-black italic leading-[0.92] tracking-[-0.05em] text-brand-600 dark:text-accent-500 sm:text-[2.8rem]">
                     Good Job!
                   </p>
-                  <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                    Get some rest!
+                  <p className="ml-1 mt-3 text-sm text-gray-600 dark:text-gray-400">
+                    Get some rest.
                   </p>
                 </div>
               ) : (

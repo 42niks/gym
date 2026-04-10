@@ -67,7 +67,7 @@ describe('MemberHomePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Good Job!')).toBeInTheDocument();
-      expect(screen.getByText('Get some rest!')).toBeInTheDocument();
+      expect(screen.getByText('Get some rest.')).toBeInTheDocument();
     });
 
     expect(screen.queryByRole('button', { name: /mark today/i })).not.toBeInTheDocument();
@@ -79,7 +79,7 @@ describe('MemberHomePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Good Job!')).toBeInTheDocument();
-      expect(screen.getByText('Get some rest!')).toBeInTheDocument();
+      expect(screen.getByText('Get some rest.')).toBeInTheDocument();
     });
   });
 
