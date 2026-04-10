@@ -75,6 +75,10 @@ export default function MemberHomePage() {
   return (
     <AppShell links={memberLinks}>
       <div className="page-stack">
+        <div>
+          <p className="section-eyebrow">Today</p>
+          <h2 className="page-title mt-2">Home</h2>
+        </div>
         {consistency && sub ? (
           <div className="grid gap-5 xl:grid-cols-12">
             <div className="consistency-panel-frame xl:col-span-7">

@@ -8,12 +8,12 @@ const processes = [];
 let shuttingDown = false;
 let exitCode = 0;
 
-function spawnManagedProcess(name, command, args) {
+function spawnManagedProcess(name, command, args, envOverrides = {}) {
   const child = spawn(command, args, {
     cwd: rootDir,
     stdio: 'inherit',
     detached: true,
-    env: process.env,
+    env: { ...process.env, ...envOverrides },
   });
 
   child.on('exit', (code, signal) => {
@@ -84,11 +84,12 @@ function shutdown(code = 0) {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
-spawnManagedProcess('server', process.execPath, [
-  path.join(rootDir, 'node_modules/tsx/dist/cli.mjs'),
-  'watch',
-  'src/index.ts',
-]);
+spawnManagedProcess(
+  'server',
+  process.execPath,
+  [path.join(rootDir, 'node_modules/tsx/dist/cli.mjs'), 'watch', 'src/index.ts'],
+  { PORT: process.env.SERVER_PORT ?? '8099' },
+);
 
 spawnManagedProcess('client', process.execPath, [
   path.join(rootDir, 'node_modules/vite/bin/vite.js'),

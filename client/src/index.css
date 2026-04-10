@@ -191,6 +191,58 @@
     @apply rounded-[1.5rem] border border-white/60 bg-white/80 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/80;
   }
 
+  .glass-panel.billing-current-card {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--surface-card) / 0.96) 0%,
+      rgb(var(--surface-card) / 0.92) 100%
+    );
+    border-color: rgb(255 255 255 / 0.7);
+  }
+
+  .glass-panel.billing-current-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        ellipse 70% 90% at 100% 0%,
+        rgb(var(--color-energy-300) / 0.5) 0%,
+        rgb(var(--color-energy-300) / 0.2) 28%,
+        transparent 62%
+      );
+    z-index: 0;
+  }
+
+  .glass-panel.billing-current-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .dark .glass-panel.billing-current-card {
+    border-color: rgb(255 255 255 / 0.14);
+  }
+
+  .dark .glass-panel.billing-current-card::before {
+    background:
+      radial-gradient(
+        ellipse 75% 95% at 100% 0%,
+        rgb(var(--color-energy-300) / 0.32) 0%,
+        rgb(var(--color-energy-300) / 0.12) 28%,
+        transparent 62%
+      ),
+      radial-gradient(
+        ellipse 60% 80% at 0% 100%,
+        rgb(var(--color-accent-500) / 0.32) 0%,
+        rgb(var(--color-accent-500) / 0.14) 32%,
+        transparent 64%
+      );
+  }
+
   .brand-duotone-panel {
     background-image:
       radial-gradient(circle at top left, rgb(var(--color-accent-500) / 0.24), transparent 42%),
