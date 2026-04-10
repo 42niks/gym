@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MemberHomePage from '../pages/member/MemberHomePage.js';
 import { renderWithProviders } from './test-utils.js';
-import { mockMemberHome, mockRenewalEndsSoon, mockRenewalNoActive } from './mocks.js';
+import { mockMemberHome } from './mocks.js';
 import type { MemberHome } from '../lib/api.js';
 
 const { mockApiGet, mockApiPost } = vi.hoisted(() => ({
@@ -21,7 +21,9 @@ vi.mock('../lib/api.js', async () => {
   return { ...actual, api: { get: mockApiGet, post: mockApiPost, patch: vi.fn() } };
 });
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('MemberHomePage', () => {
   it('shows spinner while loading', () => {
@@ -30,60 +32,70 @@ describe('MemberHomePage', () => {
     expect(screen.getByText('Home')).toBeInTheDocument();
   });
 
-  it('renders greeting and active subscription', async () => {
+  it('renders consistency and check in panels', async () => {
     mockApiGet.mockResolvedValue(mockMemberHome);
     renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByText(/sessions remaining/)).toBeInTheDocument(); });
-    expect(screen.getByText('7', { selector: 'p' })).toBeInTheDocument();
-    expect(screen.getByText(/sessions remaining/)).toBeInTheDocument();
-    expect(screen.getAllByText('1:1 Personal Training').length).toBeGreaterThanOrEqual(1);
-  });
 
-  it('shows mark attendance button when not marked today', async () => {
-    mockApiGet.mockResolvedValue(mockMemberHome);
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByRole('button', { name: /mark attendance/i })).toBeInTheDocument(); });
-  });
+    await waitFor(() => {
+      expect(screen.getByText('Consistency')).toBeInTheDocument();
+      expect(screen.getByText('Check In')).toBeInTheDocument();
+    });
 
-  it('shows attendance already marked when marked today', async () => {
-    mockApiGet.mockResolvedValue({ ...mockMemberHome, marked_attendance_today: true });
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByText(/attendance marked for today/i)).toBeInTheDocument(); });
-  });
-
-  it('calls mark attendance API on button click', async () => {
-    const user = userEvent.setup();
-    mockApiGet.mockResolvedValue(mockMemberHome);
-    mockApiPost.mockResolvedValue({});
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByRole('button', { name: /mark attendance/i })).toBeInTheDocument(); });
-    await user.click(screen.getByRole('button', { name: /mark attendance/i }));
-    expect(mockApiPost).toHaveBeenCalledWith('/api/me/sessions');
-  });
-
-  it('shows renewal warning when ends_soon', async () => {
-    mockApiGet.mockResolvedValue({ ...mockMemberHome, renewal: mockRenewalEndsSoon } as MemberHome);
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getAllByText('Your subscription ends in 3 days').length).toBeGreaterThanOrEqual(1); });
-  });
-
-  it('shows no active subscription message', async () => {
-    mockApiGet.mockResolvedValue({ ...mockMemberHome, active_subscription: null, consistency: null, renewal: mockRenewalNoActive } as MemberHome);
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByText('No active subscription')).toBeInTheDocument(); });
-  });
-
-  it('shows consistency card', async () => {
-    mockApiGet.mockResolvedValue(mockMemberHome);
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
-    await waitFor(() => { expect(screen.getByText('Consistency')).toBeInTheDocument(); });
     expect(screen.getByText('14')).toBeInTheDocument();
     expect(screen.getByText('DAYS!')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mark today/i })).toBeInTheDocument();
+  });
+
+  it('updates the check in panel after marking attendance', async () => {
+    const user = userEvent.setup();
+    const updatedHome: MemberHome = { ...mockMemberHome, marked_attendance_today: true };
+    let fetchCount = 0;
+
+    mockApiGet.mockImplementation(async () => {
+      fetchCount += 1;
+      return fetchCount === 1 ? mockMemberHome : updatedHome;
+    });
+    mockApiPost.mockResolvedValue({});
+
+    renderWithProviders(<MemberHomePage />, { route: '/home' });
+
+    await user.click(await screen.findByRole('button', { name: /mark today/i }));
+
+    await waitFor(() => {
+      expect(mockApiPost).toHaveBeenCalledWith('/api/me/sessions');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Good Job!')).toBeInTheDocument();
+      expect(screen.getByText('Get some rest!')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: /mark today/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the rest state when attendance is already marked', async () => {
+    mockApiGet.mockResolvedValue({ ...mockMemberHome, marked_attendance_today: true } as MemberHome);
+    renderWithProviders(<MemberHomePage />, { route: '/home' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Good Job!')).toBeInTheDocument();
+      expect(screen.getByText('Get some rest!')).toBeInTheDocument();
+    });
+  });
+
+  it('shows fallback when there is no active consistency data', async () => {
+    mockApiGet.mockResolvedValue({ ...mockMemberHome, active_subscription: null, consistency: null } as MemberHome);
+    renderWithProviders(<MemberHomePage />, { route: '/home' });
+
+    await waitFor(() => {
+      expect(screen.getByText('No active consistency data yet.')).toBeInTheDocument();
+    });
   });
 
   it('renders nav links', async () => {
     mockApiGet.mockResolvedValue(mockMemberHome);
     renderWithProviders(<MemberHomePage />, { route: '/home' });
+
     await waitFor(() => {
       expect(screen.getByText('Billing')).toBeInTheDocument();
       expect(screen.getByText('Profile')).toBeInTheDocument();

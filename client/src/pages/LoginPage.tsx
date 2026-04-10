@@ -110,7 +110,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder={isPasswordOptionalInDev ? 'Optional in local dev' : '••••••••••'}
-                    className="w-full rounded-2xl border border-line bg-white/92 px-4 py-3.5 pr-12 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all [color-scheme:light] placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/82 dark:text-gray-100 dark:placeholder:text-gray-500 dark:[color-scheme:dark]"
+                    className="w-full rounded-2xl border border-line bg-white/90 px-4 py-3.5 pr-12 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/80 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-accent-400 dark:focus:ring-accent-400/25"
                   />
                   <button
                     type="button"

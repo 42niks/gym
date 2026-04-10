@@ -22,6 +22,58 @@ vi.mock('react-router-dom', async () => {
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('LoginPage', () => {
+  it('keeps email and password inputs on the same base visual styling', () => {
+    renderWithProviders(<LoginPage />);
+
+    const emailInput = screen.getByLabelText(/email/i);
+    const passwordInput = screen.getByLabelText(/^password$/i);
+
+    const emailClasses = emailInput.className.split(/\s+/);
+    const passwordClasses = passwordInput.className.split(/\s+/);
+    const sharedVisualClasses = [
+      'w-full',
+      'rounded-2xl',
+      'border',
+      'border-line',
+      'bg-white/90',
+      'px-4',
+      'py-3.5',
+      'text-sm',
+      'font-medium',
+      'text-gray-900',
+      'shadow-sm',
+      'shadow-black/5',
+      'transition-all',
+      'placeholder:text-gray-400',
+      'focus:border-brand-300',
+      'focus:outline-none',
+      'focus:ring-4',
+      'focus:ring-brand-300/25',
+      'dark:bg-gray-900/80',
+      'dark:text-gray-100',
+      'dark:placeholder:text-gray-500',
+      'dark:focus:border-accent-400',
+      'dark:focus:ring-accent-400/25',
+    ];
+
+    expect(emailClasses).toEqual(expect.arrayContaining(sharedVisualClasses));
+    expect(passwordClasses).toEqual(expect.arrayContaining(sharedVisualClasses));
+  });
+
+  it('uses teal focus in light theme and red focus in dark theme for both inputs', () => {
+    renderWithProviders(<LoginPage />);
+
+    const emailInput = screen.getByLabelText(/email/i);
+    const passwordInput = screen.getByLabelText(/^password$/i);
+
+    for (const input of [emailInput, passwordInput]) {
+      expect(input).toHaveClass('focus:border-brand-300');
+      expect(input).toHaveClass('focus:ring-brand-300/25');
+      expect(input).toHaveClass('dark:focus:border-accent-400');
+      expect(input).toHaveClass('dark:focus:ring-accent-400/25');
+    }
+  });
+
   it('renders login form with email and password fields', () => {
     renderWithProviders(<LoginPage />);
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();

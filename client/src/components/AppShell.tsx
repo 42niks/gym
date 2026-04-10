@@ -110,7 +110,7 @@ export default function AppShell({ links, children }: AppShellProps) {
         >
           <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-shell border border-white/65 bg-white/94 px-4 py-5 shadow-panel backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/94">
             <div className="border-b border-black/5 pb-4 dark:border-white/10">
-              <p className="font-label text-[0.68rem] font-bold uppercase tracking-[0.24em] text-gray-400 dark:text-gray-500">
+              <p className="font-label text-[0.68rem] font-bold uppercase tracking-[0.24em] text-gray-600 dark:text-gray-500">
                 Navigation
               </p>
             </div>
@@ -138,7 +138,7 @@ export default function AppShell({ links, children }: AppShellProps) {
             <div className="mt-4 space-y-3 border-t border-black/5 pt-4 dark:border-white/10">
               <div className="flex items-center justify-between rounded-2xl bg-black/[0.03] px-4 py-3 dark:bg-white/[0.04]">
                 <div>
-                  <p className="font-label text-[0.62rem] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+                  <p className="font-label text-[0.62rem] font-bold uppercase tracking-[0.18em] text-gray-600 dark:text-gray-500">
                     Theme
                   </p>
                   <p className="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-100">Appearance</p>
