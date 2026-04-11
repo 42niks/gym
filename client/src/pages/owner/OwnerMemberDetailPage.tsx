@@ -42,14 +42,14 @@ function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{sub.service_type}</p>
-          <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             {new Date(sub.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             {' – '}
             {new Date(sub.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {sub.attended_sessions} / {sub.total_sessions} sessions
-            <span className="mx-1.5 text-gray-300 dark:text-gray-700">·</span>
+            <span className="mx-1.5 text-gray-500 dark:text-gray-400">·</span>
             <span className="font-semibold text-gray-700 dark:text-gray-300">₹{sub.amount.toLocaleString('en-IN')}</span>
           </p>
         </div>
@@ -169,8 +169,8 @@ export default function OwnerMemberDetailPage() {
             <div className="min-w-0">
               <h2 className="font-headline text-3xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{detail.full_name}</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">{detail.email}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{detail.phone}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{detail.phone}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Joined {new Date(detail.join_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
               {detail.consistency && (

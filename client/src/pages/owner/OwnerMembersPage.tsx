@@ -75,19 +75,19 @@ export default function OwnerMembersPage() {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-gray-900 dark:text-white">{m.full_name}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{m.email}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{m.email}</p>
                   {m.consistency && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{m.consistency.message}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{m.consistency.message}</p>
                   )}
                 </div>
                 <div className="text-right shrink-0 ml-4">
                   {m.active_subscription ? (
                     <>
                       <p className="text-xs font-bold text-brand-600 dark:text-brand-300">{m.active_subscription.remaining_sessions} left</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">{m.active_subscription.service_type}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{m.active_subscription.service_type}</p>
                     </>
                   ) : (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">No plan</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">No plan</span>
                   )}
                   {m.marked_attendance_today && (
                     <p className="mt-0.5 text-xs font-medium text-brand-600 dark:text-brand-300">In today</p>

@@ -22,7 +22,7 @@ describe('MemberProfilePage', () => {
   it('renders profile heading', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
     renderWithProviders(<MemberProfilePage />, { route: '/profile' });
-    expect(screen.getByRole('heading', { name: 'Profile' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'PROFILE' })).toBeInTheDocument();
   });
 
   it('displays member profile data', async () => {
@@ -43,6 +43,15 @@ describe('MemberProfilePage', () => {
       expect(screen.getByText('Email')).toBeInTheDocument();
       expect(screen.getByText('Phone')).toBeInTheDocument();
       expect(screen.getByText('Member since')).toBeInTheDocument();
+    });
+  });
+
+  it('uses darker label text in light mode and lighter label text in dark mode', async () => {
+    mockApiGet.mockResolvedValue(mockMemberProfile);
+    renderWithProviders(<MemberProfilePage />, { route: '/profile' });
+    await waitFor(() => {
+      expect(screen.getByText('Name')).toHaveClass('text-gray-500');
+      expect(screen.getByText('Name')).toHaveClass('dark:text-gray-400');
     });
   });
 

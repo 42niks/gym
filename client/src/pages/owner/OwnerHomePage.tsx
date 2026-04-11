@@ -21,10 +21,10 @@ function MemberRow({ item, badge }: { item: DashboardItem; badge?: string }) {
       <div>
         <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.full_name}</p>
         {item.renewal && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.renewal.message}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.renewal.message}</p>
         )}
         {item.consistency && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{item.consistency.message}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.consistency.message}</p>
         )}
       </div>
       <div className="shrink-0 ml-3">
@@ -40,7 +40,7 @@ function Section({ title, items, badge }: { title: string; items: DashboardItem[
     <Card className="p-5">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="section-eyebrow">{title}</h3>
-        <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+        <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
           {items.length} total
         </span>
       </div>

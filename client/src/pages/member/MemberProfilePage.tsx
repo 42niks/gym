@@ -13,7 +13,7 @@ const memberLinks = [
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <span className="font-label text-[0.66rem] font-bold italic uppercase tracking-[0.22em] text-gray-400 dark:text-gray-500">{label}</span>
+      <span className="font-label text-[0.66rem] font-bold italic uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">{label}</span>
       <span className="text-sm font-semibold text-gray-900 dark:text-white sm:text-right">{value}</span>
     </div>
   );
@@ -29,11 +29,7 @@ export default function MemberProfilePage() {
     <AppShell links={memberLinks}>
       <div className="page-stack">
           <div>
-            <p className="section-eyebrow">Member record</p>
-            <h2 className="page-title mt-2">Profile</h2>
-            <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              Your account details live here, including the contact information used for membership access.
-            </p>
+            <h2 className="page-title">PROFILE</h2>
           </div>
 
           {isLoading ? <div className="flex justify-center py-16"><Spinner /></div> : (

@@ -90,7 +90,7 @@ export default function OwnerNewSubscriptionPage() {
                         }`}
                       >
                         <p className="font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{pkg.sessions} sessions</p>
-                        <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{pkg.duration_months}mo</p>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{pkg.duration_months}mo</p>
                         <p className={`mt-2 text-sm font-black ${selectedPackage?.id === pkg.id ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                           ₹{pkg.price.toLocaleString('en-IN')}
                         </p>

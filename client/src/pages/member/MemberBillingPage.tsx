@@ -46,7 +46,7 @@ function SectionHeader({ label, count }: { label: string; count?: number }) {
         {label}
       </h3>
       {typeof count === 'number' && count > 0 ? (
-        <span className="font-label text-[0.66rem] font-bold italic tracking-[0.18em] text-gray-400 dark:text-gray-500">
+        <span className="font-label text-[0.66rem] font-bold italic tracking-[0.18em] text-gray-500 dark:text-gray-400">
           {count}
         </span>
       ) : null}
@@ -179,7 +179,7 @@ function PastCard({ sub }: { sub: Subscription }) {
           <p className="font-headline text-[1.2rem] font-black italic uppercase leading-[1.02] tracking-tight text-gray-900 dark:text-white">
             {sub.service_type}
           </p>
-          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-500">
+          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
             {formatDateRange(sub.start_date, sub.end_date)}
           </p>
         </div>
