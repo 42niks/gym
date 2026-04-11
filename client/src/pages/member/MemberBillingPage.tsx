@@ -60,66 +60,68 @@ function CurrentCard({ sub }: { sub: Subscription }) {
   const isEndingSoon = daysLeft <= 14;
 
   return (
-    <Card className="billing-current-card relative overflow-hidden px-5 py-6 sm:px-6 sm:py-7">
-      <div className="space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="font-headline text-[1.45rem] font-black italic uppercase leading-[0.96] tracking-tight text-gray-900 dark:text-white sm:text-[1.6rem]">
-              {sub.service_type}
-            </p>
-            <p className="mt-1.5 text-xs font-medium text-gray-700/80 dark:text-white/65">
-              {formatDateRange(sub.start_date, sub.end_date)}
-            </p>
+    <Card className="billing-current-card">
+      <div className="billing-current-card-inner px-5 py-6 sm:px-6 sm:py-7">
+        <div className="space-y-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-headline text-[1.45rem] font-black italic uppercase leading-[0.96] tracking-tight text-gray-900 dark:text-white sm:text-[1.6rem]">
+                {sub.service_type}
+              </p>
+              <p className="mt-1.5 text-xs font-medium text-gray-700/80 dark:text-white/65">
+                {formatDateRange(sub.start_date, sub.end_date)}
+              </p>
+            </div>
+            <Badge variant="orange" icon="bolt">
+              active
+            </Badge>
           </div>
-          <Badge variant="orange" icon="bolt">
-            active
-          </Badge>
-        </div>
 
-        <div className="flex items-end gap-4">
-          <span className="font-headline text-[4.6rem] font-black italic leading-[0.78] tracking-[-0.05em] text-gray-900 dark:text-white sm:text-[5.4rem]">
-            {sub.remaining_sessions}
-          </span>
-          <span className="pb-2 font-label text-[0.72rem] font-bold italic uppercase leading-[1.15] tracking-[0.18em] text-gray-700/85 dark:text-white/75">
-            sessions
-            <br />
-            left
-          </span>
-        </div>
-
-        <div>
-          <div className="h-2 overflow-hidden rounded-full bg-black/[0.08] dark:bg-white/[0.08]">
-            <div
-              className="h-full rounded-full bg-energy-400 dark:bg-energy-300"
-              style={{ width: `${completion}%` }}
-            />
-          </div>
-          <div className="mt-2.5 flex items-center justify-between text-[0.74rem] font-semibold text-gray-700/80 dark:text-white/70">
-            <span>
-              {sub.attended_sessions} of {sub.total_sessions} used
+          <div className="flex items-end gap-4">
+            <span className="font-headline text-[4.6rem] font-black italic leading-[0.78] tracking-[-0.05em] text-gray-900 dark:text-white sm:text-[5.4rem]">
+              {sub.remaining_sessions}
             </span>
-            <span
-              className={
-                isEndingSoon
-                  ? 'flex items-center gap-1 text-accent-500 dark:text-accent-400'
-                  : ''
-              }
-            >
-              {isEndingSoon ? (
-                <span className="material-symbols-outlined text-[0.95rem]">schedule</span>
-              ) : null}
-              {daysLeft} days left
+            <span className="pb-2 font-label text-[0.72rem] font-bold italic uppercase leading-[1.15] tracking-[0.18em] text-gray-700/85 dark:text-white/75">
+              sessions
+              <br />
+              left
             </span>
           </div>
-        </div>
 
-        <div className="flex items-center justify-between border-t border-black/[0.08] pt-3.5 dark:border-white/[0.08]">
-          <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-            Paid
-          </span>
-          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-            {formatAmount(sub.amount)}
-          </span>
+          <div>
+            <div className="h-2 overflow-hidden rounded-full bg-black/[0.08] dark:bg-white/[0.08]">
+              <div
+                className="h-full rounded-full bg-energy-400 dark:bg-energy-300"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
+            <div className="mt-2.5 flex items-center justify-between text-[0.74rem] font-semibold text-gray-700/80 dark:text-white/70">
+              <span>
+                {sub.attended_sessions} of {sub.total_sessions} used
+              </span>
+              <span
+                className={
+                  isEndingSoon
+                    ? 'flex items-center gap-1 text-accent-500 dark:text-accent-400'
+                    : ''
+                }
+              >
+                {isEndingSoon ? (
+                  <span className="material-symbols-outlined text-[0.95rem]">schedule</span>
+                ) : null}
+                {daysLeft} days left
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-black/[0.08] pt-3.5 dark:border-white/[0.08]">
+            <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+              Paid
+            </span>
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              {formatAmount(sub.amount)}
+            </span>
+          </div>
         </div>
       </div>
     </Card>
@@ -217,8 +219,7 @@ export default function MemberBillingPage() {
     <AppShell links={memberLinks}>
       <div className="page-stack space-y-6">
         <div>
-          <p className="section-eyebrow">Your packages</p>
-          <h2 className="page-title mt-2">Billing</h2>
+          <h2 className="page-title">Billing</h2>
         </div>
 
         {isLoading ? (

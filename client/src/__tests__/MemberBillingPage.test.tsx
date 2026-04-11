@@ -22,7 +22,7 @@ describe('MemberBillingPage', () => {
   it('renders billing shell while loading', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
     renderWithProviders(<MemberBillingPage />, { route: '/billing' });
-    expect(screen.getByText('Billing')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Billing', level: 2 })).toBeInTheDocument();
   });
 
   it('shows upcoming, current, and past sections', async () => {
@@ -49,8 +49,8 @@ describe('MemberBillingPage', () => {
     mockApiGet.mockResolvedValue({ completed_and_active: [], upcoming: [] });
     renderWithProviders(<MemberBillingPage />, { route: '/billing' });
     await waitFor(() => {
-      expect(screen.getByText('No current subscriptions')).toBeInTheDocument();
-      expect(screen.getByText('No past subscriptions')).toBeInTheDocument();
+      expect(screen.getByText('No active package')).toBeInTheDocument();
+      expect(screen.getByText('No past packages')).toBeInTheDocument();
     });
   });
 

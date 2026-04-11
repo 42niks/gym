@@ -76,8 +76,7 @@ export default function MemberHomePage() {
     <AppShell links={memberLinks}>
       <div className="page-stack">
         <div>
-          <p className="section-eyebrow">Today</p>
-          <h2 className="page-title mt-2">Home</h2>
+          <h2 className="page-title">Home</h2>
         </div>
         {consistency && sub ? (
           <div className="grid gap-5 xl:grid-cols-12">
