@@ -29,7 +29,7 @@ export async function listAttendanceDatesForMember(db: AppDatabase, memberId: nu
   return rows.map(r => r.date);
 }
 
-export async function getMembersCheckedInToday(db: AppDatabase, date: string): Promise<{ member_id: number; created_at: string }[]> {
+export async function getMembersCheckedInOnDate(db: AppDatabase, date: string): Promise<{ member_id: number; created_at: string }[]> {
   return db.all(
     `SELECT member_id, created_at FROM sessions WHERE date = ? ORDER BY created_at DESC, member_id ASC`
   , [date]);

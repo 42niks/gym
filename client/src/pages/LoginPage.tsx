@@ -26,8 +26,8 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const user = await login(email.trim(), password.trim());
-      navigate(user.role === 'owner' ? '/owner' : '/home', { replace: true });
+      await login(email.trim(), password.trim());
+      navigate('/home', { replace: true });
     } catch (err) {
       setError(err instanceof ApiError && err.status === 401 ? 'Authentication Failed' : err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {

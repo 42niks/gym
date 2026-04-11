@@ -5,11 +5,7 @@ import AppShell from '../../components/AppShell.js';
 import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
-
-const ownerLinks = [
-  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/owner/members', label: 'Members', icon: 'groups' },
-];
+import { ownerLinks } from './ownerLinks.js';
 
 export default function OwnerNewMemberPage() {
   const navigate = useNavigate();
@@ -31,7 +27,7 @@ export default function OwnerNewMemberPage() {
         phone: phone.trim(),
         join_date: joinDate,
       });
-      navigate(`/owner/members/${member.id}`);
+      navigate(`/members/${member.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
@@ -42,7 +38,7 @@ export default function OwnerNewMemberPage() {
   return (
     <AppShell links={ownerLinks}>
       <div className="page-stack max-w-3xl">
-        <Link to="/owner/members" className="back-link">
+        <Link to="/members" className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Members
         </Link>

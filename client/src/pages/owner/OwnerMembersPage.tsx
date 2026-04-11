@@ -6,11 +6,7 @@ import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
-
-const ownerLinks = [
-  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/owner/members', label: 'Members', icon: 'groups' },
-];
+import { ownerLinks } from './ownerLinks.js';
 
 export default function OwnerMembersPage() {
   const [showArchived, setShowArchived] = useState(false);
@@ -25,13 +21,9 @@ export default function OwnerMembersPage() {
       <div className="page-stack">
         <div className="page-header">
           <div>
-            <p className="section-eyebrow">Member roster</p>
-            <h2 className="page-title mt-2">Members</h2>
-            <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              Review the full roster, switch between active and archived members, and jump into individual records quickly.
-            </p>
+            <h2 className="page-title">MEMBERS</h2>
           </div>
-          <Link to="/owner/members/new">
+          <Link to="/members/new">
             <Button className="text-sm py-2" icon="person_add">
               + New
             </Button>
@@ -70,7 +62,7 @@ export default function OwnerMembersPage() {
             {members.map(m => (
               <Link
                 key={m.id}
-                to={`/owner/members/${m.id}`}
+                to={`/members/${m.id}`}
                 className="flex items-center justify-between rounded-2xl px-4 py-4 transition-all hover:bg-surface-raised/80 dark:hover:bg-surface-raised/60"
               >
                 <div className="min-w-0">

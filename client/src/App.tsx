@@ -11,6 +11,15 @@ import OwnerMembersPage from './pages/owner/OwnerMembersPage.js';
 import OwnerNewMemberPage from './pages/owner/OwnerNewMemberPage.js';
 import OwnerMemberDetailPage from './pages/owner/OwnerMemberDetailPage.js';
 import OwnerNewSubscriptionPage from './pages/owner/OwnerNewSubscriptionPage.js';
+import OwnerPackagesPage from './pages/owner/OwnerPackagesPage.js';
+import { ownerLinks } from './pages/owner/ownerLinks.js';
+import NotFoundPage from './pages/NotFoundPage.js';
+
+const memberLinks = [
+  { to: '/home', label: 'Home', icon: 'home' },
+  { to: '/billing', label: 'Billing', icon: 'credit_card' },
+  { to: '/profile', label: 'Profile', icon: 'person' },
+];
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -35,22 +44,25 @@ function AppRoutes() {
   if (user.role === 'owner') {
     return (
       <Routes>
-        <Route path="/owner" element={<OwnerHomePage />} />
-        <Route path="/owner/members" element={<OwnerMembersPage />} />
-        <Route path="/owner/members/new" element={<OwnerNewMemberPage />} />
-        <Route path="/owner/members/:id" element={<OwnerMemberDetailPage />} />
-        <Route path="/owner/members/:id/subscriptions/new" element={<OwnerNewSubscriptionPage />} />
-        <Route path="*" element={<Navigate to="/owner" replace />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<OwnerHomePage />} />
+        <Route path="/members" element={<OwnerMembersPage />} />
+        <Route path="/members/new" element={<OwnerNewMemberPage />} />
+        <Route path="/members/:id" element={<OwnerMemberDetailPage />} />
+        <Route path="/members/:id/subscriptions/new" element={<OwnerNewSubscriptionPage />} />
+        <Route path="/packages" element={<OwnerPackagesPage />} />
+        <Route path="*" element={<NotFoundPage links={ownerLinks} />} />
       </Routes>
     );
   }
 
   return (
     <Routes>
+      <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/home" element={<MemberHomePage />} />
       <Route path="/billing" element={<MemberBillingPage />} />
       <Route path="/profile" element={<MemberProfilePage />} />
-      <Route path="*" element={<Navigate to="/home" replace />} />
+      <Route path="*" element={<NotFoundPage links={memberLinks} />} />
     </Routes>
   );
 }

@@ -19,50 +19,37 @@ vi.mock('../lib/api.js', async () => {
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('OwnerHomePage', () => {
-  it('renders dashboard heading and new member button', () => {
+  it('renders home heading', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
-    renderWithProviders(<OwnerHomePage />, { route: '/owner' });
-    expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
-    expect(screen.getByText('+ New member')).toBeInTheDocument();
+    renderWithProviders(<OwnerHomePage />, { route: '/home' });
+    expect(screen.getByRole('heading', { name: 'HOME' })).toBeInTheDocument();
   });
 
-  it('renders dashboard sections', async () => {
+  it('renders attendance card', async () => {
     mockApiGet.mockResolvedValue(mockDashboard);
-    renderWithProviders(<OwnerHomePage />, { route: '/owner' });
+    renderWithProviders(<OwnerHomePage />, { route: '/home' });
     await waitFor(() => {
-      expect(screen.getByText(/Need renewal/)).toBeInTheDocument();
-      expect(screen.getByText(/Checked in today/)).toBeInTheDocument();
-      expect(screen.getByText(/Active members/)).toBeInTheDocument();
+      expect(screen.getByText("Today's Attendance")).toBeInTheDocument();
+      expect(screen.getByText('Marked today')).toBeInTheDocument();
+      expect(screen.getByText('+1 vs yesterday')).toBeInTheDocument();
     });
   });
 
-  it('shows member names in dashboard', async () => {
-    mockApiGet.mockResolvedValue(mockDashboard);
-    renderWithProviders(<OwnerHomePage />, { route: '/owner' });
-    await waitFor(() => {
-      expect(screen.getByText('Test User')).toBeInTheDocument();
-      expect(screen.getAllByText('Alex Kumar').length).toBeGreaterThanOrEqual(1);
+  it('shows zero state delta copy', async () => {
+    mockApiGet.mockResolvedValue({
+      ...mockDashboard,
+      attendance_summary: { present_today: 0, present_yesterday: 0, delta: 0 },
     });
-  });
-
-  it('shows badges for no plan', async () => {
-    mockApiGet.mockResolvedValue(mockDashboard);
-    renderWithProviders(<OwnerHomePage />, { route: '/owner' });
-    await waitFor(() => { expect(screen.getByText('No plan')).toBeInTheDocument(); });
-  });
-
-  it('does not render empty sections', async () => {
-    mockApiGet.mockResolvedValue({ ...mockDashboard, archived_members: [], renewal_nearing_end: [] });
-    renderWithProviders(<OwnerHomePage />, { route: '/owner' });
+    renderWithProviders(<OwnerHomePage />, { route: '/home' });
     await waitFor(() => {
-      expect(screen.queryByText(/Archived/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Nearing end/)).not.toBeInTheDocument();
+      expect(screen.getByText('0')).toBeInTheDocument();
+      expect(screen.getByText('No change vs yesterday')).toBeInTheDocument();
     });
   });
 
   it('has nav link to members', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
-    renderWithProviders(<OwnerHomePage />, { route: '/owner' });
+    renderWithProviders(<OwnerHomePage />, { route: '/home' });
     expect(screen.getByText('Members')).toBeInTheDocument();
   });
 });

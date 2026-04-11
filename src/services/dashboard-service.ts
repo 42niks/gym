@@ -1,16 +1,16 @@
 import type { AppDatabase } from '../db/client.js';
-import { listMembersByStatus, type MemberRow } from '../repositories/members-repo.js';
+import { listMembersByStatus } from '../repositories/members-repo.js';
 import { listSubscriptionsForMember, getEarliestSubscriptionStart } from '../repositories/subscriptions-repo.js';
-import { listAttendanceDatesForMember, hasAttendanceForDate, getMembersCheckedInToday } from '../repositories/sessions-repo.js';
+import { listAttendanceDatesForMember, hasAttendanceForDate, getMembersCheckedInOnDate } from '../repositories/sessions-repo.js';
 import { findPackageById } from '../repositories/packages-repo.js';
-import { deriveLifecycleState } from '../lib/subscription.js';
 import { computeRenewal } from '../lib/renewal.js';
 import { computeConsistency } from '../lib/consistency.js';
-import { getIstDate } from '../lib/date.js';
+import { addDays, getIstDate } from '../lib/date.js';
 import { formatSubscription, getActiveSub, getUpcomingSubs } from './member-service.js';
 
 export async function getDashboard(db: AppDatabase) {
   const today = getIstDate();
+  const yesterday = addDays(today, -1);
   const activeMembers = await listMembersByStatus(db, 'active');
   const archivedMembers = await listMembersByStatus(db, 'archived');
 
@@ -83,7 +83,8 @@ export async function getDashboard(db: AppDatabase) {
   }
 
   // Checked in today
-  const checkedInRows = await getMembersCheckedInToday(db, today);
+  const checkedInRows = await getMembersCheckedInOnDate(db, today);
+  const checkedInYesterday = await getMembersCheckedInOnDate(db, yesterday);
   const checkedInToday: any[] = [];
   for (const row of checkedInRows) {
     const memberEntry = activeMembersList.find(m => m.member_id === row.member_id);
@@ -106,6 +107,11 @@ export async function getDashboard(db: AppDatabase) {
   })));
 
   return {
+    attendance_summary: {
+      present_today: checkedInToday.length,
+      present_yesterday: checkedInYesterday.length,
+      delta: checkedInToday.length - checkedInYesterday.length,
+    },
     renewal_no_active: renewalNoActive,
     renewal_nearing_end: renewalNearingEnd,
     checked_in_today: checkedInToday,

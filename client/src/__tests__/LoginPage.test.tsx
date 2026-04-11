@@ -93,7 +93,7 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
-  it('calls login and navigates to /owner for owner role', async () => {
+  it('calls login and navigates to /home for owner role', async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValue({ id: 1, role: 'owner', full_name: 'Sam', email: 'owner@thebase.fit' });
     renderWithProviders(<LoginPage />);
@@ -104,7 +104,7 @@ describe('LoginPage', () => {
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith('owner@thebase.fit', '9999999999');
-      expect(mockNavigate).toHaveBeenCalledWith('/owner', { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith('/home', { replace: true });
     });
   });
 

@@ -1,7 +1,7 @@
 import type {
   User, MemberHome, MemberProfile, GroupedSubscriptions,
   Subscription, Dashboard, DashboardItem, MemberListItem,
-  MemberDetail, Package, Consistency, Renewal,
+  MemberDetail, Package, Consistency, Renewal, ManagedPackage,
 } from '../lib/api.js';
 
 export const mockOwner: User = {
@@ -73,9 +73,31 @@ export const mockGroupedSubscriptions: GroupedSubscriptions = {
 };
 
 export const mockPackages: Package[] = [
-  { id: 1, service_type: '1:1 Personal Training', sessions: 12, duration_months: 1, price: 29500, consistency_window_days: 7, consistency_min_days: 3 },
-  { id: 2, service_type: '1:1 Personal Training', sessions: 24, duration_months: 3, price: 59000, consistency_window_days: 7, consistency_min_days: 2 },
-  { id: 3, service_type: 'Group Personal Training', sessions: 12, duration_months: 1, price: 14500, consistency_window_days: 7, consistency_min_days: 3 },
+  { id: 1, service_type: '1:1 Personal Training', sessions: 12, duration_months: 1, price: 29500, consistency_window_days: 7, consistency_min_days: 3, is_active: true },
+  { id: 2, service_type: '1:1 Personal Training', sessions: 24, duration_months: 3, price: 59000, consistency_window_days: 7, consistency_min_days: 2, is_active: true },
+  { id: 3, service_type: 'Group Personal Training', sessions: 12, duration_months: 1, price: 14500, consistency_window_days: 7, consistency_min_days: 3, is_active: true },
+];
+
+export const mockManagedPackages: ManagedPackage[] = [
+  {
+    ...mockPackages[0],
+    subscription_count: 6,
+    active_subscription_count: 2,
+    upcoming_subscription_count: 1,
+  },
+  {
+    ...mockPackages[1],
+    subscription_count: 0,
+    active_subscription_count: 0,
+    upcoming_subscription_count: 0,
+  },
+  {
+    ...mockPackages[2],
+    is_active: false,
+    subscription_count: 3,
+    active_subscription_count: 0,
+    upcoming_subscription_count: 0,
+  },
 ];
 
 export const mockMemberListItem: MemberListItem = {
@@ -94,6 +116,11 @@ export const mockMemberDetail: MemberDetail = {
 };
 
 export const mockDashboard: Dashboard = {
+  attendance_summary: {
+    present_today: 1,
+    present_yesterday: 0,
+    delta: 1,
+  },
   renewal_no_active: [
     { member_id: 3, full_name: 'Test User', status: 'active', renewal: mockRenewalNoActive },
   ],

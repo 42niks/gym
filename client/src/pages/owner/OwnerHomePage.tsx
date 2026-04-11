@@ -1,51 +1,54 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { api, type Dashboard, type DashboardItem } from '../../lib/api.js';
+import { api, type Dashboard } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
-import Badge from '../../components/Badge.js';
-import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
+import { ownerLinks } from './ownerLinks.js';
 
-const ownerLinks = [
-  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/owner/members', label: 'Members', icon: 'groups' },
-];
-
-function MemberRow({ item, badge }: { item: DashboardItem; badge?: string }) {
-  return (
-    <Link
-      to={`/owner/members/${item.member_id}`}
-      className="flex items-center justify-between rounded-2xl px-3 py-3.5 transition-all hover:bg-surface-raised/80 dark:hover:bg-surface-raised/60"
-    >
-      <div>
-        <p className="text-sm font-semibold text-gray-900 dark:text-white">{item.full_name}</p>
-        {item.renewal && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.renewal.message}</p>
-        )}
-        {item.consistency && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{item.consistency.message}</p>
-        )}
-      </div>
-      <div className="shrink-0 ml-3">
-        {badge ? <Badge variant="gray" icon="label">{badge}</Badge> : item.marked_attendance_today && <Badge variant="green" icon="check_circle">In today</Badge>}
-      </div>
-    </Link>
-  );
+function getDeltaTone(delta: number) {
+  if (delta > 0) return 'text-brand-600 dark:text-brand-300';
+  if (delta < 0) return 'text-accent-600 dark:text-accent-300';
+  return 'text-gray-500 dark:text-gray-400';
 }
 
-function Section({ title, items, badge }: { title: string; items: DashboardItem[]; badge?: string }) {
-  if (items.length === 0) return null;
+function getAttendanceCardClass(delta: number) {
+  if (delta > 0) return 'owner-home-attendance-card owner-home-attendance-card-positive';
+  if (delta < 0) return 'owner-home-attendance-card owner-home-attendance-card-negative';
+  return 'owner-home-attendance-card owner-home-attendance-card-neutral';
+}
+
+function formatDelta(delta: number) {
+  if (delta > 0) return `+${delta} vs yesterday`;
+  if (delta < 0) return `${delta} vs yesterday`;
+  return 'No change vs yesterday';
+}
+
+function AttendanceCard({
+  title,
+  count,
+  delta,
+}: {
+  title: string;
+  count: number;
+  delta: number;
+}) {
   return (
-    <Card className="p-5">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="section-eyebrow">{title}</h3>
-        <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-          {items.length} total
-        </span>
-      </div>
-      <div className="space-y-1.5">
-        {items.map(item => <MemberRow key={item.member_id} item={item} badge={badge} />)}
+    <Card className="owner-home-attendance-frame">
+      <div className={`${getAttendanceCardClass(delta)} owner-home-attendance-inner px-5 py-5 sm:px-6 sm:py-6`}>
+        <p className="section-eyebrow">{title}</p>
+        <div className="mt-5 flex items-end justify-between gap-6">
+          <div>
+            <p className="font-headline text-5xl font-black leading-none tracking-[-0.05em] text-gray-900 sm:text-6xl dark:text-white">
+              {count}
+            </p>
+            <p className="mt-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
+              Marked today
+            </p>
+          </div>
+          <p className={`pb-1 text-right text-sm font-semibold tracking-[0.02em] ${getDeltaTone(delta)}`}>
+            {formatDelta(delta)}
+          </p>
+        </div>
       </div>
     </Card>
   );
@@ -62,29 +65,20 @@ export default function OwnerHomePage() {
       <div className="page-stack">
         <div className="page-header">
           <div>
-            <p className="section-eyebrow">Owner command center</p>
-            <h2 className="page-title mt-2">Dashboard</h2>
-            <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              Monitor renewals, daily check-ins, and the active roster from one ambient overview.
-            </p>
+            <h2 className="page-title">HOME</h2>
           </div>
-          <Link to="/owner/members/new">
-            <Button className="text-sm py-2" icon="person_add">
-              + New member
-            </Button>
-          </Link>
         </div>
 
         {isLoading ? (
           <div className="flex justify-center py-16"><Spinner /></div>
         ) : !data ? null : (
-          <>
-            <Section title="Need renewal" items={data.renewal_no_active} badge="No plan" />
-            <Section title="Nearing end" items={data.renewal_nearing_end} />
-            <Section title="Checked in today" items={data.checked_in_today} />
-            <Section title="Active members" items={data.active_members} />
-            <Section title="Archived" items={data.archived_members} badge="Archived" />
-          </>
+          <div className="max-w-xl">
+            <AttendanceCard
+              title={"Today's Attendance"}
+              count={data.attendance_summary.present_today}
+              delta={data.attendance_summary.delta}
+            />
+          </div>
         )}
       </div>
     </AppShell>

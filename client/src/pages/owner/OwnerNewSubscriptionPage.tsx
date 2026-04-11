@@ -8,11 +8,7 @@ import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
 import Alert from '../../components/Alert.js';
-
-const ownerLinks = [
-  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/owner/members', label: 'Members', icon: 'groups' },
-];
+import { ownerLinks } from './ownerLinks.js';
 
 export default function OwnerNewSubscriptionPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +40,7 @@ export default function OwnerNewSubscriptionPage() {
         start_date: startDate,
         amount: parseFloat(amount),
       });
-      navigate(`/owner/members/${id}`);
+      navigate(`/members/${id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
@@ -61,7 +57,7 @@ export default function OwnerNewSubscriptionPage() {
   return (
     <AppShell links={ownerLinks}>
       <div className="page-stack max-w-4xl">
-        <Link to={`/owner/members/${id}`} className="back-link">
+        <Link to={`/members/${id}`} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Member
         </Link>

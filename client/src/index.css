@@ -191,6 +191,71 @@
     @apply rounded-[1.5rem] border border-white/60 bg-white/80 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/80;
   }
 
+  .owner-home-attendance-frame {
+    position: relative;
+    isolation: isolate;
+    contain: paint;
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    background: rgb(var(--surface-card) / 0.86);
+    border-color: rgb(255 255 255 / 0.7);
+  }
+
+  .owner-home-attendance-inner {
+    border-radius: calc(1.5rem - 1px);
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .owner-home-attendance-card-positive {
+    background:
+      radial-gradient(circle at left center, rgb(var(--color-energy-100) / 0.95), transparent 34%),
+      radial-gradient(circle at bottom right, rgb(var(--color-brand-100) / 0.86), transparent 40%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.96) 0%, rgb(248 248 248 / 0.92) 100%);
+  }
+
+  .owner-home-attendance-card-negative {
+    background:
+      radial-gradient(circle at left center, rgb(var(--color-energy-100) / 0.95), transparent 34%),
+      radial-gradient(circle at bottom right, rgb(var(--color-accent-100) / 0.82), transparent 40%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.96) 0%, rgb(248 248 248 / 0.92) 100%);
+  }
+
+  .owner-home-attendance-card-neutral {
+    background:
+      radial-gradient(circle at left center, rgb(var(--color-energy-100) / 0.95), transparent 34%),
+      radial-gradient(circle at bottom right, rgb(var(--gray-200) / 0.88), transparent 40%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.96) 0%, rgb(248 248 248 / 0.92) 100%);
+  }
+
+  .dark .owner-home-attendance-card-positive {
+    background:
+      radial-gradient(circle at left center, rgb(var(--color-energy-300) / 0.26), transparent 36%),
+      radial-gradient(circle at bottom right, rgb(var(--color-brand-500) / 0.24), transparent 42%),
+      linear-gradient(180deg, rgb(var(--surface-dark) / 0.94) 0%, rgb(var(--surface-card) / 0.9) 100%);
+  }
+
+  .dark .owner-home-attendance-card-negative {
+    background:
+      radial-gradient(circle at left center, rgb(var(--color-energy-300) / 0.26), transparent 36%),
+      radial-gradient(circle at bottom right, rgb(var(--color-accent-500) / 0.24), transparent 42%),
+      linear-gradient(180deg, rgb(var(--surface-dark) / 0.94) 0%, rgb(var(--surface-card) / 0.9) 100%);
+  }
+
+  .dark .owner-home-attendance-card-neutral {
+    background:
+      radial-gradient(circle at left center, rgb(var(--color-energy-300) / 0.26), transparent 36%),
+      radial-gradient(circle at bottom right, rgb(var(--gray-500) / 0.24), transparent 42%),
+      linear-gradient(180deg, rgb(var(--surface-dark) / 0.94) 0%, rgb(var(--surface-card) / 0.9) 100%);
+  }
+
+  .dark .owner-home-attendance-frame {
+    background: rgb(var(--surface-dark) / 0.82);
+    border-color: rgb(255 255 255 / 0.14);
+  }
+
   .glass-panel.billing-current-card {
     position: relative;
     isolation: isolate;

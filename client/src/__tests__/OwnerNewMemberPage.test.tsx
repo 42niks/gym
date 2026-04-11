@@ -28,7 +28,7 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 describe('OwnerNewMemberPage', () => {
   it('renders the new member form', () => {
-    renderWithProviders(<OwnerNewMemberPage />, { route: '/owner/members/new' });
+    renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
     expect(screen.getByText('New member')).toBeInTheDocument();
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -38,14 +38,14 @@ describe('OwnerNewMemberPage', () => {
   });
 
   it('has a back link to members', () => {
-    renderWithProviders(<OwnerNewMemberPage />, { route: '/owner/members/new' });
+    renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
     expect(screen.getByRole('link', { name: /arrow_back Members$/ })).toBeInTheDocument();
   });
 
   it('submits form and navigates to member detail', async () => {
     const user = userEvent.setup();
     mockApiPost.mockResolvedValue({ id: 5, full_name: 'Jane Doe', email: 'jane@example.com', phone: '9876543210', join_date: '2026-04-07', status: 'active' });
-    renderWithProviders(<OwnerNewMemberPage />, { route: '/owner/members/new' });
+    renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
 
     await user.type(screen.getByLabelText(/full name/i), 'Jane Doe');
     await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
@@ -58,7 +58,7 @@ describe('OwnerNewMemberPage', () => {
         email: 'jane@example.com',
         phone: '9876543210',
       }));
-      expect(mockNavigate).toHaveBeenCalledWith('/owner/members/5');
+      expect(mockNavigate).toHaveBeenCalledWith('/members/5');
     });
   });
 
@@ -66,7 +66,7 @@ describe('OwnerNewMemberPage', () => {
     const user = userEvent.setup();
     const { ApiError } = await import('../lib/api.js');
     mockApiPost.mockRejectedValue(new ApiError(400, 'Email already exists'));
-    renderWithProviders(<OwnerNewMemberPage />, { route: '/owner/members/new' });
+    renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
 
     await user.type(screen.getByLabelText(/full name/i), 'Jane');
     await user.type(screen.getByLabelText(/email/i), 'dup@test.com');

@@ -13,8 +13,9 @@ describe('Owner Dashboard', () => {
   });
 
   describe('GET /api/owner/dashboard', () => {
-    it('should return all five dashboard sections', async () => {
+    it('should return attendance summary and dashboard sections', async () => {
       const body = await (await api('/api/owner/dashboard', { headers: { Cookie: ownerCookie } })).json();
+      expect(body).toHaveProperty('attendance_summary');
       expect(body).toHaveProperty('renewal_no_active');
       expect(body).toHaveProperty('renewal_nearing_end');
       expect(body).toHaveProperty('checked_in_today');
@@ -52,6 +53,8 @@ describe('Owner Dashboard', () => {
       const found = body.checked_in_today.find((m: any) => m.full_name === 'Alpha');
       expect(found).toBeTruthy();
       expect(found.marked_attendance_today).toBe(true);
+      expect(body.attendance_summary.present_today).toBe(1);
+      expect(body.attendance_summary.delta).toBe(1);
     });
 
     it('should show active members with subscription and consistency', async () => {

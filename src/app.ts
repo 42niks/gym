@@ -3,7 +3,6 @@ import { getCookie, setCookie } from 'hono/cookie';
 import type { AppDatabase } from './db/client.js';
 import { findMemberByEmail, findMemberById } from './repositories/members-repo.js';
 import { createSession, deleteSession, deleteExpiredSessions } from './repositories/user-sessions-repo.js';
-import { listPackages } from './repositories/packages-repo.js';
 import { authMiddleware } from './middleware/auth.js';
 import { requireOwner } from './middleware/require-owner.js';
 import { requireMember } from './middleware/require-member.js';
@@ -15,6 +14,13 @@ import { createNewSubscription, completeSubscription } from './services/subscrip
 import { markAttendance } from './services/attendance-service.js';
 import { getDashboard } from './services/dashboard-service.js';
 import { getIstDate } from './lib/date.js';
+import {
+  createManagedPackage,
+  deleteManagedPackage,
+  listManagedPackages,
+  listSelectablePackages,
+  updateManagedPackage,
+} from './services/package-service.js';
 
 const SESSION_MAX_AGE = 864000;
 
@@ -110,7 +116,51 @@ export function createApp(
   // ─── Packages ───
 
   app.get('/api/packages', authMiddleware, async (c) => {
-    return c.json(await listPackages(db));
+    return c.json(await listSelectablePackages(db));
+  });
+
+  // ─── Owner: Packages ───
+
+  app.get('/api/owner/packages', authMiddleware, requireOwner, async (c) => {
+    return c.json(await listManagedPackages(db));
+  });
+
+  app.post('/api/owner/packages', authMiddleware, requireOwner, async (c) => {
+    let body: any;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const result = await createManagedPackage(db, body);
+    if ('error' in result) return c.json({ error: result.error }, result.status);
+    return c.json(result.data, result.status);
+  });
+
+  app.patch('/api/owner/packages/:id', authMiddleware, requireOwner, async (c) => {
+    const id = parseInt(c.req.param('id') ?? '', 10);
+    if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid package id' }, 400);
+
+    let body: any;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const result = await updateManagedPackage(db, id, body);
+    if ('error' in result) return c.json({ error: result.error }, result.status);
+    return c.json(result.data, result.status);
+  });
+
+  app.delete('/api/owner/packages/:id', authMiddleware, requireOwner, async (c) => {
+    const id = parseInt(c.req.param('id') ?? '', 10);
+    if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid package id' }, 400);
+
+    const result = await deleteManagedPackage(db, id);
+    if ('error' in result) return c.json({ error: result.error }, result.status);
+    return c.json(result.data, result.status);
   });
 
   // ─── Member self routes ───

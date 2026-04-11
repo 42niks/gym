@@ -27,7 +27,7 @@ export async function createNewSubscription(db: AppDatabase, input: CreateSubscr
   const member = await findMemberById(db, input.member_id);
   if (!member) return { error: 'Member not found', status: 404 as const };
 
-  const pkg = await findPackageById(db, input.package_id);
+  const pkg = await findPackageById(db, input.package_id, { activeOnly: true });
   if (!pkg) return { error: 'Package not found', status: 404 as const };
 
   const endDate = computeEndDate(input.start_date, pkg.duration_months);

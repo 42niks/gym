@@ -7,11 +7,7 @@ import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
-
-const ownerLinks = [
-  { to: '/owner', label: 'Dashboard', icon: 'dashboard' },
-  { to: '/owner/members', label: 'Members', icon: 'groups' },
-];
+import { ownerLinks } from './ownerLinks.js';
 
 function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
   const queryClient = useQueryClient();
@@ -154,7 +150,7 @@ export default function OwnerMemberDetailPage() {
   return (
     <AppShell links={ownerLinks}>
       <div className="page-stack">
-        <Link to="/owner/members" className="back-link">
+        <Link to="/members" className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Members
         </Link>
@@ -189,7 +185,7 @@ export default function OwnerMemberDetailPage() {
             {detail.active_subscription && (
               <AttendanceButton memberId={id!} markedToday={detail.marked_attendance_today} />
             )}
-            <Link to={`/owner/members/${id}/subscriptions/new`}>
+            <Link to={`/members/${id}/subscriptions/new`}>
               <Button variant="secondary" className="py-2.5 text-sm" icon="add_card">
                 Subscription
               </Button>

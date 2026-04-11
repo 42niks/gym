@@ -23,6 +23,8 @@ export function registerTestRoutes(
       DELETE FROM sessions;
       DELETE FROM subscriptions;
       DELETE FROM members;
+      DELETE FROM packages;
+      DELETE FROM sqlite_sequence WHERE name IN ('members', 'packages', 'subscriptions', 'sessions');
     `).then(async () => {
       await applyPackageSeed(db);
       return c.json({ ok: true });

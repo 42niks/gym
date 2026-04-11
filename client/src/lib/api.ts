@@ -33,6 +33,8 @@ export const api = {
     request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  delete: <T>(path: string) =>
+    request<T>(path, { method: 'DELETE' }),
 };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -106,6 +108,13 @@ export interface Package {
   price: number;
   consistency_window_days: number;
   consistency_min_days: number;
+  is_active: boolean;
+}
+
+export interface ManagedPackage extends Package {
+  subscription_count: number;
+  active_subscription_count: number;
+  upcoming_subscription_count: number;
 }
 
 export interface MemberListItem extends MemberProfile {
@@ -131,7 +140,14 @@ export interface DashboardItem {
   renewal?: Renewal;
 }
 
+export interface AttendanceSummary {
+  present_today: number;
+  present_yesterday: number;
+  delta: number;
+}
+
 export interface Dashboard {
+  attendance_summary: AttendanceSummary;
   renewal_no_active: DashboardItem[];
   renewal_nearing_end: DashboardItem[];
   checked_in_today: DashboardItem[];
