@@ -69,6 +69,11 @@ export interface Subscription {
   lifecycle_state: 'active' | 'upcoming' | 'completed';
 }
 
+export interface MemberSubscriptionAttendance {
+  subscription: Subscription;
+  attended_dates: string[];
+}
+
 export interface Consistency {
   status: 'consistent' | 'building';
   days?: number;

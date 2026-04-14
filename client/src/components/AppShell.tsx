@@ -69,14 +69,14 @@ export default function AppShell({ links, children }: AppShellProps) {
 
       <header className="fixed inset-x-0 top-0 z-50 pt-2 sm:pt-4">
         <div className="mx-auto max-w-6xl px-2 sm:px-4">
-          <nav className="w-full overflow-hidden rounded-shell border border-white/60 bg-white/88 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/88">
+          <nav className="w-full overflow-hidden rounded-shell border border-black bg-white/88 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white dark:bg-surface-dark/88">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={drawerOpen}
                 onClick={() => setDrawerOpen(open => !open)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-transparent text-gray-600 transition-all hover:bg-black/[0.05] hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.06] dark:hover:text-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-black text-black transition-all hover:bg-black/[0.05] hover:text-black dark:border-white dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white"
               >
                 <Icon name={drawerOpen ? 'close' : 'menu'} className="text-[1.35rem]" />
               </button>
@@ -109,9 +109,9 @@ export default function AppShell({ links, children }: AppShellProps) {
             drawerOpen ? 'translate-x-0' : '-translate-x-[calc(100%+1rem)]'
           }`}
         >
-          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-shell border border-white/65 bg-white/94 px-4 py-5 shadow-panel backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/94">
-            <div className="border-b border-black/5 pb-4 dark:border-white/10">
-              <p className="font-label text-[0.68rem] font-bold uppercase tracking-[0.24em] text-gray-600 dark:text-gray-300">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-shell border border-black bg-white/94 px-4 py-5 shadow-panel backdrop-blur-xl dark:border-white dark:bg-surface-dark/94">
+            <div className="border-b border-black pb-4 dark:border-white">
+              <p className="font-label text-[0.68rem] font-bold uppercase tracking-[0.24em] text-black dark:text-white">
                 Navigation
               </p>
             </div>
@@ -125,8 +125,8 @@ export default function AppShell({ links, children }: AppShellProps) {
                     to={link.to}
                     className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 font-label text-[0.74rem] font-bold uppercase tracking-[0.16em] transition-all ${
                       active
-                        ? 'bg-brand-500 text-white shadow-panel dark:bg-accent-500'
-                        : 'text-gray-600 hover:bg-black/[0.04] hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.06] dark:hover:text-white'
+                        ? 'bg-brand-500 text-white shadow-panel dark:bg-accent-500 dark:text-black'
+                        : 'text-black hover:bg-black/[0.04] hover:text-black dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white'
                     }`}
                   >
                     <Icon name={link.icon} className="text-[1.15rem]" />
@@ -136,13 +136,13 @@ export default function AppShell({ links, children }: AppShellProps) {
               })}
             </nav>
 
-            <div className="mt-4 space-y-3 border-t border-black/5 pt-4 dark:border-white/10">
-              <div className="flex items-center justify-between rounded-2xl bg-black/[0.03] px-4 py-3 dark:bg-white/[0.04]">
+            <div className="mt-4 space-y-3 border-t border-black pt-4 dark:border-white">
+              <div className="flex items-center justify-between rounded-2xl border border-black bg-black/[0.03] px-4 py-3 dark:border-white dark:bg-white/[0.04]">
                 <div>
-                  <p className="font-label text-[0.62rem] font-bold uppercase tracking-[0.18em] text-gray-600 dark:text-gray-300">
+                  <p className="font-label text-[0.62rem] font-bold uppercase tracking-[0.18em] text-black dark:text-white">
                     Theme
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-100">{themeLabel}</p>
+                  <p className="mt-1 text-sm font-semibold text-black dark:text-white">{themeLabel}</p>
                 </div>
                 <ThemeToggle />
               </div>
@@ -150,7 +150,7 @@ export default function AppShell({ links, children }: AppShellProps) {
               <button
                 type="button"
                 onClick={logout}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-black/[0.04] px-4 py-3 font-label text-[0.74rem] font-bold uppercase tracking-[0.16em] text-gray-700 transition-all hover:bg-black/[0.08] hover:text-gray-900 dark:bg-white/[0.04] dark:text-gray-200 dark:hover:bg-white/[0.08] dark:hover:text-white"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-4 py-3 font-label text-[0.74rem] font-bold uppercase tracking-[0.16em] text-black transition-all hover:bg-black/[0.08] hover:text-black dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white"
               >
                 <Icon name="logout" className="text-[1.1rem]" />
                 Sign out

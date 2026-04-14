@@ -8,7 +8,7 @@ import { ownerLinks } from './ownerLinks.js';
 function getDeltaTone(delta: number) {
   if (delta > 0) return 'text-brand-600 dark:text-brand-300';
   if (delta < 0) return 'text-accent-600 dark:text-accent-300';
-  return 'text-gray-500 dark:text-gray-400';
+  return 'text-black/60 dark:text-white/70';
 }
 
 function getAttendanceCardClass(delta: number) {
@@ -38,10 +38,10 @@ function AttendanceCard({
         <p className="section-eyebrow">{title}</p>
         <div className="mt-5 flex items-end justify-between gap-6">
           <div>
-            <p className="font-headline text-5xl font-black leading-none tracking-[-0.05em] text-gray-900 sm:text-6xl dark:text-white">
+            <p className="font-headline text-5xl font-black leading-none tracking-[-0.05em] text-black sm:text-6xl dark:text-white">
               {count}
             </p>
-            <p className="mt-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
+            <p className="mt-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.28em] text-black/60 dark:text-white/70">
               Marked today
             </p>
           </div>

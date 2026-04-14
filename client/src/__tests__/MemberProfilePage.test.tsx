@@ -50,8 +50,8 @@ describe('MemberProfilePage', () => {
     mockApiGet.mockResolvedValue(mockMemberProfile);
     renderWithProviders(<MemberProfilePage />, { route: '/profile' });
     await waitFor(() => {
-      expect(screen.getByText('Name')).toHaveClass('text-gray-500');
-      expect(screen.getByText('Name')).toHaveClass('dark:text-gray-400');
+      expect(screen.getByText('Name')).toHaveClass('text-black');
+      expect(screen.getByText('Name')).toHaveClass('dark:text-white');
     });
   });
 

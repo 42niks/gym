@@ -3,18 +3,13 @@ import { api, type MemberProfile } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
-
-const memberLinks = [
-  { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
-  { to: '/profile', label: 'Profile', icon: 'person' },
-];
+import { memberLinks } from './memberLinks.js';
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <span className="font-label text-[0.66rem] font-bold italic uppercase tracking-[0.22em] text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="text-sm font-semibold text-gray-900 dark:text-white sm:text-right">{value}</span>
+    <div className="flex items-center justify-between gap-4 py-4">
+      <span className="font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white">{label}</span>
+      <span className="min-w-0 text-right text-sm font-semibold text-black dark:text-white">{value}</span>
     </div>
   );
 }

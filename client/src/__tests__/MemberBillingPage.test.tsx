@@ -29,9 +29,9 @@ describe('MemberBillingPage', () => {
     mockApiGet.mockResolvedValue(mockSubscriptions);
     renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
     await waitFor(() => {
-      expect(screen.getByText('Upcoming')).toBeInTheDocument();
-      expect(screen.getByText('Current')).toBeInTheDocument();
-      expect(screen.getByText('Past')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /upcoming/i, level: 3 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /current/i, level: 3 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /past/i, level: 3 })).toBeInTheDocument();
     });
   });
 
@@ -42,6 +42,17 @@ describe('MemberBillingPage', () => {
       expect(screen.getByText('active')).toBeInTheDocument();
       expect(screen.getByText('completed')).toBeInTheDocument();
       expect(screen.getByText('upcoming')).toBeInTheDocument();
+    });
+  });
+
+  it('shows exact dates links for active and past subscriptions only', async () => {
+    mockApiGet.mockResolvedValue(mockSubscriptions);
+    renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
+    await waitFor(() => {
+      const links = screen.getAllByRole('link', { name: /view exact dates/i });
+      expect(links).toHaveLength(2);
+      expect(links[0]).toHaveAttribute('href', '/subscription/1/attendance');
+      expect(links[1]).toHaveAttribute('href', '/subscription/2/attendance');
     });
   });
 

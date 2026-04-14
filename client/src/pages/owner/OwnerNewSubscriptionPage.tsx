@@ -65,7 +65,7 @@ export default function OwnerNewSubscriptionPage() {
         </Link>
         <p className="section-eyebrow">Owner actions</p>
         <h2 className="page-title mb-6 mt-2">New subscription</h2>
-        <p className="-mt-3 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+        <p className="-mt-3 max-w-2xl text-sm text-black/60 dark:text-white/70">
           Pick a package, confirm the start date, and lock in the final amount collected for this member.
         </p>
 
@@ -83,13 +83,13 @@ export default function OwnerNewSubscriptionPage() {
                         onClick={() => handlePackageSelect(pkg)}
                         className={`rounded-[1.5rem] border p-4 text-left shadow-sm shadow-black/5 transition-all ${
                           selectedPackage?.id === pkg.id
-                            ? 'border-white/70 bg-white bg-brand-gradient shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark'
-                            : 'border-white/55 bg-white/80 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white/10 dark:bg-surface-dark/80 dark:hover:bg-surface-raised/85'
+                            ? 'border-black bg-white bg-brand-gradient shadow-panel dark:border-white dark:bg-surface-dark dark:bg-brand-gradient-dark'
+                            : 'border-black bg-white/80 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white dark:bg-surface-dark/80 dark:hover:bg-surface-raised/85'
                         }`}
                       >
-                        <p className="font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{pkg.sessions} sessions</p>
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{pkg.duration_months}mo</p>
-                        <p className={`mt-2 text-sm font-black ${selectedPackage?.id === pkg.id ? 'text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                        <p className="font-headline text-xl font-black italic uppercase tracking-tight text-black dark:text-white">{pkg.sessions} sessions</p>
+                        <p className="mt-1 text-xs text-black/60 dark:text-white/70">{pkg.duration_months}mo</p>
+                        <p className={`mt-2 text-sm font-black ${selectedPackage?.id === pkg.id ? 'text-black dark:text-white' : 'text-black/75 dark:text-white/80'}`}>
                           ₹{pkg.price.toLocaleString('en-IN')}
                         </p>
                       </button>

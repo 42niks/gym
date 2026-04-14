@@ -44,7 +44,7 @@ export default function OwnerNewMemberPage() {
         </Link>
         <p className="section-eyebrow">Owner actions</p>
         <h2 className="page-title mb-6 mt-2">New member</h2>
-        <p className="-mt-3 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+        <p className="-mt-3 max-w-2xl text-sm text-black/60 dark:text-white/70">
           Create a member record with the contact details they’ll use to log in and manage their training.
         </p>
 

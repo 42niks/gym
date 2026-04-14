@@ -2,6 +2,7 @@ import type {
   User, MemberHome, MemberProfile,
   Subscription, Dashboard, DashboardItem, MemberListItem,
   MemberDetail, Package, Consistency, Renewal, ManagedPackage,
+  MemberSubscriptionAttendance,
 } from '../lib/api.js';
 
 export const mockOwner: User = {
@@ -72,6 +73,11 @@ export const mockSubscriptions: Subscription[] = [
   mockUpcomingSubscription,
   mockSubscription,
 ];
+
+export const mockMemberSubscriptionAttendance: MemberSubscriptionAttendance = {
+  subscription: mockSubscription,
+  attended_dates: ['2026-04-03', '2026-04-07', '2026-04-14'],
+};
 
 export const mockPackages: Package[] = [
   { id: 1, service_type: '1:1 Personal Training', sessions: 12, duration_months: 1, price: 29500, consistency_window_days: 7, consistency_min_days: 3, is_active: true },

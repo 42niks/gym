@@ -1,11 +1,11 @@
 import Icon from './Icon.js';
 
 const variants = {
-  green: 'bg-brand-500 text-brand-800 dark:bg-brand-300 dark:text-gray-950',
-  blue: 'bg-accent-500 text-white dark:bg-accent-400 dark:text-gray-950',
-  orange: 'bg-energy-300 text-gray-950 dark:bg-energy-300 dark:text-gray-950',
-  gray: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-100',
-  red: 'bg-red-500 text-white dark:bg-red-400 dark:text-gray-950',
+  green: 'bg-brand-500 text-white dark:bg-brand-300 dark:text-black',
+  blue: 'bg-accent-500 text-white dark:bg-accent-400 dark:text-black',
+  orange: 'bg-energy-300 text-black dark:bg-energy-300 dark:text-black',
+  gray: 'bg-black/10 text-black dark:bg-white/12 dark:text-white',
+  red: 'bg-red-500 text-white dark:bg-red-400 dark:text-black',
 } as const;
 
 interface BadgeProps {

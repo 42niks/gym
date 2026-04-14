@@ -28,50 +28,17 @@ describe('LoginPage', () => {
     const emailInput = screen.getByLabelText(/email/i);
     const passwordInput = screen.getByLabelText(/^password$/i);
 
-    const emailClasses = emailInput.className.split(/\s+/);
-    const passwordClasses = passwordInput.className.split(/\s+/);
-    const sharedVisualClasses = [
-      'w-full',
-      'rounded-2xl',
-      'border',
-      'border-line',
-      'bg-white/90',
-      'px-4',
-      'py-3.5',
-      'text-sm',
-      'font-medium',
-      'text-gray-900',
-      'shadow-sm',
-      'shadow-black/5',
-      'transition-all',
-      'placeholder:text-gray-500',
-      'focus:border-brand-300',
-      'focus:outline-none',
-      'focus:ring-4',
-      'focus:ring-brand-300/25',
-      'dark:bg-gray-900/80',
-      'dark:text-gray-100',
-      'dark:placeholder:text-gray-400',
-      'dark:focus:border-accent-400',
-      'dark:focus:ring-accent-400/25',
-    ];
-
-    expect(emailClasses).toEqual(expect.arrayContaining(sharedVisualClasses));
-    expect(passwordClasses).toEqual(expect.arrayContaining(sharedVisualClasses));
+    expect(emailInput).toHaveClass('field-control');
+    expect(passwordInput).toHaveClass('field-control');
   });
 
-  it('uses teal focus in light theme and red focus in dark theme for both inputs', () => {
+  it('keeps the password field on the shared control styling while reserving space for the visibility toggle', () => {
     renderWithProviders(<LoginPage />);
 
-    const emailInput = screen.getByLabelText(/email/i);
     const passwordInput = screen.getByLabelText(/^password$/i);
 
-    for (const input of [emailInput, passwordInput]) {
-      expect(input).toHaveClass('focus:border-brand-300');
-      expect(input).toHaveClass('focus:ring-brand-300/25');
-      expect(input).toHaveClass('dark:focus:border-accent-400');
-      expect(input).toHaveClass('dark:focus:ring-accent-400/25');
-    }
+    expect(passwordInput).toHaveClass('field-control');
+    expect(passwordInput).toHaveClass('pr-12');
   });
 
   it('renders login form with email and password fields', () => {
@@ -84,6 +51,12 @@ describe('LoginPage', () => {
   it('does not require a password in local dev', () => {
     renderWithProviders(<LoginPage />);
     expect(screen.getByLabelText(/^password$/i)).not.toBeRequired();
+  });
+
+  it('does not hint at password length in the placeholder', () => {
+    renderWithProviders(<LoginPage />);
+    expect(screen.getByLabelText(/^password$/i)).toHaveAttribute('placeholder', 'Optional in local dev');
+    expect(screen.getByLabelText(/^password$/i)).not.toHaveAttribute('placeholder', '••••••••••');
   });
 
   it('renders the BASE brand lockup', () => {

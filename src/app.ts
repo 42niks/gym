@@ -8,7 +8,7 @@ import { requireOwner } from './middleware/require-owner.js';
 import { requireMember } from './middleware/require-member.js';
 import {
   getMemberDetail, listMembers, createNewMember, updateExistingMember,
-  archiveMemberById, listFormattedSubscriptions, toProfile, computeMemberEnrichment,
+  archiveMemberById, listFormattedSubscriptions, getFormattedSubscriptionAttendance, toProfile, computeMemberEnrichment,
 } from './services/member-service.js';
 import { createNewSubscription, completeSubscription } from './services/subscription-service.js';
 import { markAttendance } from './services/attendance-service.js';
@@ -172,6 +172,20 @@ export function createApp(
   app.get('/api/member/subscription', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
     return c.json(await listFormattedSubscriptions(db, user.member_id));
+  });
+
+  app.get('/api/member/subscription/:id/attendance', authMiddleware, requireMember, async (c) => {
+    const user = c.get('user');
+    const member = await findMemberById(db, user.member_id);
+    if (!member) return c.json({ error: 'Not found' }, 404);
+
+    const id = parseInt(c.req.param('id') ?? '', 10);
+    if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid subscription id' }, 400);
+
+    const attendance = await getFormattedSubscriptionAttendance(db, user.member_id, id);
+    if (!attendance) return c.json({ error: 'Subscription not found' }, 404);
+
+    return c.json(attendance);
   });
 
   app.post('/api/member/session', authMiddleware, requireMember, async (c) => {

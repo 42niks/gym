@@ -115,9 +115,12 @@ export default function OwnerPackagesPage() {
           <h2 className="page-title">PACKAGES</h2>
           <Link
             to="/packages/new"
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-[1rem] border border-white/70 bg-white bg-brand-gradient px-3.5 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] text-gray-900 shadow-panel transition-all hover:-translate-y-0.5 hover:shadow-glow-brand dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white"
+            className="owner-packages-cta-frame inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-black p-px font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] text-black shadow-panel transition-all hover:-translate-y-0.5 hover:shadow-glow-brand dark:border-white dark:text-white"
           >
-            + NEW
+            <span aria-hidden="true" className="owner-packages-cta-surface brand-duotone-button" style={{ backgroundSize: '62% 185%, 86% 235%, 100% 100%' }} />
+            <span className="relative z-10 inline-flex h-full w-full items-center justify-center rounded-[calc(9999px-1px)] px-3.5">
+              + NEW
+            </span>
           </Link>
         </div>
 
@@ -140,31 +143,39 @@ export default function OwnerPackagesPage() {
                     aria-label={tab.serviceType}
                     title={tab.serviceType}
                     onClick={() => setSearchParams({ type: tab.serviceType })}
-                    className={`group relative aspect-square w-[4.9rem] shrink-0 rounded-[1.55rem] p-px transition-all duration-200 sm:w-[5.4rem] ${
+                    className={`owner-packages-tab-frame group aspect-square w-[4.9rem] shrink-0 border border-black transition-all duration-200 sm:w-[5.4rem] dark:border-white ${
                       active
-                        ? '-translate-y-0.5 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(255,230,23,0.72),rgba(224,11,11,0.52))] shadow-[0_18px_40px_rgba(0,0,0,0.14)] dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.18),rgba(222,252,0,0.34),rgba(224,11,11,0.42))]'
-                        : 'bg-white/70 shadow-sm shadow-black/5 hover:-translate-y-0.5 hover:shadow-panel dark:bg-white/10'
+                        ? '-translate-y-0.5 shadow-[0_18px_40px_rgba(0,0,0,0.14)]'
+                        : 'shadow-sm shadow-black/5 hover:-translate-y-0.5 hover:shadow-panel'
                     }`}
                   >
-                    {active ? (
-                      <span
-                        aria-hidden="true"
-                        className="absolute inset-2 -rotate-6 rounded-[1.35rem] bg-accent-400/20 blur-md dark:bg-energy-300/18"
-                      />
-                    ) : null}
                     <span
-                      className={`relative flex h-full w-full items-center justify-center rounded-[calc(1.55rem-1px)] border ${
+                      aria-hidden="true"
+                      className={`absolute inset-0 rounded-[calc(1.55rem-1px)] ${
                         active
-                          ? 'border-white/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(255,255,255,0.86)_48%,rgba(241,248,245,0.82)_100%)] text-gray-900 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,rgba(42,41,43,0.98),rgba(24,24,27,0.96)_56%,rgba(18,18,20,0.98)_100%)] dark:text-white'
-                          : 'border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,245,245,0.84))] text-gray-500 group-hover:border-brand-300 group-hover:text-gray-900 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(39,39,42,0.94),rgba(24,24,27,0.9))] dark:text-gray-300 dark:group-hover:text-white'
+                          ? 'bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(255,230,23,0.72),rgba(224,11,11,0.52))] dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.18),rgba(222,252,0,0.34),rgba(224,11,11,0.42))]'
+                          : 'bg-white/70 dark:bg-white/10'
+                      }`}
+                    />
+                    <span
+                      className={`owner-packages-tab-surface flex items-center justify-center ${
+                        active
+                          ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(255,255,255,0.86)_48%,rgba(241,248,245,0.82)_100%)] text-black dark:bg-[radial-gradient(circle_at_top,rgba(42,41,43,0.98),rgba(24,24,27,0.96)_56%,rgba(18,18,20,0.98)_100%)] dark:text-white'
+                          : 'bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,245,245,0.84))] text-black/60 group-hover:text-black dark:bg-[linear-gradient(180deg,rgba(39,39,42,0.94),rgba(24,24,27,0.9))] dark:text-white/70 dark:group-hover:text-white'
                       }`}
                     >
+                      {active ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute inset-2 -rotate-6 rounded-[1.35rem] bg-accent-400/20 blur-md dark:bg-energy-300/18"
+                        />
+                      ) : null}
                       <span
                         aria-hidden="true"
                         className={`absolute right-2 top-2 h-2.5 w-2.5 rounded-full transition-all ${
                           active
                             ? 'bg-accent-500 shadow-[0_0_0_4px_rgba(224,11,11,0.12)] dark:bg-energy-300 dark:shadow-[0_0_0_4px_rgba(222,252,0,0.12)]'
-                            : 'border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5'
+                            : 'border border-black bg-black/5 dark:border-white dark:bg-white/5'
                         }`}
                       />
                       <Icon
@@ -183,13 +194,13 @@ export default function OwnerPackagesPage() {
 
             {selectedTab ? (
               <Card className="overflow-hidden p-0">
-                <div className="border-b border-black/5 px-4 py-4 dark:border-white/10 sm:px-5">
+                <div className="border-b border-black px-4 py-4 dark:border-white sm:px-5">
                   <div className="flex items-center gap-3">
-                    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-white/60 bg-white/70 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-white/5">
-                      <Icon name={selectedTab.icon} className="text-[1.35rem] text-gray-700 dark:text-gray-200" />
+                    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-black bg-white/70 shadow-sm shadow-black/5 dark:border-white dark:bg-white/5">
+                      <Icon name={selectedTab.icon} className="text-[1.35rem] text-black/80 dark:text-white/80" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-headline text-2xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
+                      <h3 className="font-headline text-2xl font-black italic uppercase tracking-tight text-black dark:text-white">
                         {selectedTab.serviceType}
                       </h3>
                     </div>
@@ -197,7 +208,7 @@ export default function OwnerPackagesPage() {
                 </div>
 
                 {archiveError ? (
-                  <div className="border-b border-black/5 px-4 py-3 dark:border-white/10 sm:px-5">
+                  <div className="border-b border-black px-4 py-3 dark:border-white sm:px-5">
                     <p className="text-sm font-medium text-red-600 dark:text-red-400">{archiveError}</p>
                   </div>
                 ) : null}
@@ -206,22 +217,22 @@ export default function OwnerPackagesPage() {
                   <table className="min-w-[46rem] w-full border-collapse text-left">
                     <thead>
                       <tr className="bg-black/[0.03] dark:bg-white/[0.03]">
-                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400 sm:px-5">
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-black/60 dark:text-white/70 sm:px-5">
                           Sessions
                         </th>
-                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-black/60 dark:text-white/70">
                           Duration
                         </th>
-                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-black/60 dark:text-white/70">
                           Price
                         </th>
-                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-black/60 dark:text-white/70">
                           Consistency
                         </th>
-                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-black/60 dark:text-white/70">
                           Members subscribed
                         </th>
-                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400 sm:px-5">
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-black/60 dark:text-white/70 sm:px-5">
                           Action
                         </th>
                       </tr>
@@ -234,35 +245,35 @@ export default function OwnerPackagesPage() {
                         return (
                           <tr
                             key={pkg.id}
-                            className={`border-t border-black/5 align-top dark:border-white/10 ${
+                            className={`border-t border-black align-top dark:border-white ${
                               pkg.is_active ? 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]' : 'bg-black/[0.03] dark:bg-white/[0.03]'
                             }`}
                           >
                             <td className="px-4 py-3.5 sm:px-5">
-                              <p className={`text-base font-black ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                              <p className={`text-base font-black ${pkg.is_active ? 'text-black dark:text-white' : 'text-black/60 dark:text-white/70'}`}>
                                 {pkg.sessions}
                               </p>
                             </td>
                             <td className="px-4 py-3.5">
-                              <p className={`text-sm font-semibold ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                              <p className={`text-sm font-semibold ${pkg.is_active ? 'text-black dark:text-white' : 'text-black/60 dark:text-white/70'}`}>
                                 {formatDuration(pkg.duration_months)}
                               </p>
                             </td>
                             <td className="px-4 py-3.5">
-                              <p className={`text-sm font-black ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                              <p className={`text-sm font-black ${pkg.is_active ? 'text-black dark:text-white' : 'text-black/60 dark:text-white/70'}`}>
                                 {formatPrice(pkg.price)}
                               </p>
                             </td>
                             <td className="px-4 py-3.5">
-                              <p className={`text-sm ${pkg.is_active ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                              <p className={`text-sm ${pkg.is_active ? 'text-black/75 dark:text-white/80' : 'text-black/60 dark:text-white/70'}`}>
                                 {formatConsistency(pkg)}
                               </p>
                             </td>
                             <td className="px-4 py-3.5">
-                              <p className={`text-sm font-black ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                              <p className={`text-sm font-black ${pkg.is_active ? 'text-black dark:text-white' : 'text-black/60 dark:text-white/70'}`}>
                                 {subscribedCount}
                               </p>
-                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              <p className="mt-1 text-xs text-black/60 dark:text-white/70">
                                 {subscribedCount > 0
                                   ? `${pkg.active_subscription_count} live · ${pkg.upcoming_subscription_count} upcoming`
                                   : 'No live members'}
@@ -280,7 +291,7 @@ export default function OwnerPackagesPage() {
                                   {isArchiving ? 'Archiving' : 'Archive'}
                                 </button>
                               ) : (
-                                <span className="inline-flex items-center rounded-full border border-white/60 bg-white/70 px-3 py-1.5 font-label text-[0.62rem] font-bold italic uppercase tracking-[0.16em] text-gray-500 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+                                <span className="inline-flex items-center rounded-full border border-black bg-white/70 px-3 py-1.5 font-label text-[0.62rem] font-bold italic uppercase tracking-[0.16em] text-black/60 shadow-sm shadow-black/5 dark:border-white dark:bg-white/5 dark:text-white/70">
                                   Archived
                                 </span>
                               )}

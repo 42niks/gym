@@ -35,8 +35,8 @@ export default function OwnerMembersPage() {
             onClick={() => setShowArchived(false)}
             className={`flex-1 rounded-[1.2rem] border px-4 py-2 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
               !showArchived
-                ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
-                : 'border-transparent text-gray-500 hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white'
+                ? 'border-black bg-white bg-brand-gradient text-black shadow-panel dark:border-white dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
+                : 'border-black text-black/60 hover:border-black hover:bg-white/60 hover:text-black dark:border-white dark:text-white/70 dark:hover:border-white dark:hover:bg-white/5 dark:hover:text-white'
             }`}
           >
             Active
@@ -45,8 +45,8 @@ export default function OwnerMembersPage() {
             onClick={() => setShowArchived(true)}
             className={`flex-1 rounded-[1.2rem] border px-4 py-2 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
               showArchived
-                ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
-                : 'border-transparent text-gray-500 hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white'
+                ? 'border-black bg-white bg-brand-gradient text-black shadow-panel dark:border-white dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
+                : 'border-black text-black/60 hover:border-black hover:bg-white/60 hover:text-black dark:border-white dark:text-white/70 dark:hover:border-white dark:hover:bg-white/5 dark:hover:text-white'
             }`}
           >
             Archived
@@ -66,20 +66,20 @@ export default function OwnerMembersPage() {
                 className="flex items-center justify-between rounded-2xl px-4 py-4 transition-all hover:bg-surface-raised/80 dark:hover:bg-surface-raised/60"
               >
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">{m.full_name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{m.email}</p>
+                  <p className="text-sm font-bold text-black dark:text-white">{m.full_name}</p>
+                  <p className="mt-0.5 text-xs text-black/60 dark:text-white/70">{m.email}</p>
                   {m.consistency && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{m.consistency.message}</p>
+                    <p className="mt-0.5 text-xs text-black/60 dark:text-white/70">{m.consistency.message}</p>
                   )}
                 </div>
                 <div className="text-right shrink-0 ml-4">
                   {m.active_subscription ? (
                     <>
                       <p className="text-xs font-bold text-brand-600 dark:text-brand-300">{m.active_subscription.remaining_sessions} left</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{m.active_subscription.service_type}</p>
+                      <p className="text-xs text-black/60 dark:text-white/70">{m.active_subscription.service_type}</p>
                     </>
                   ) : (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">No plan</span>
+                    <span className="text-xs text-black/60 dark:text-white/70">No plan</span>
                   )}
                   {m.marked_attendance_today && (
                     <p className="mt-0.5 text-xs font-medium text-brand-600 dark:text-brand-300">In today</p>

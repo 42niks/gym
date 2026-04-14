@@ -57,20 +57,20 @@ export default function LoginPage() {
 
         <div className="relative flex min-h-screen items-start justify-center px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8 sm:pb-10 sm:pt-6">
           <div className="w-full max-w-sm">
-            <div className="relative mb-4 overflow-hidden rounded-[2rem] border border-white/65 bg-white/78 px-5 py-5 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/82 sm:mb-5 sm:px-6 sm:py-6">
+            <div className="relative mb-4 overflow-hidden rounded-[2rem] border border-black bg-white/78 px-5 py-5 shadow-panel backdrop-blur-md dark:border-white dark:bg-surface-dark/82 sm:mb-5 sm:px-6 sm:py-6">
               <div className="brand-duotone-panel absolute inset-0" />
               <div className="relative flex min-h-[10.5rem] flex-col justify-between pt-1">
                 <div className="ml-1">
                   <img
                     src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
                     alt="BASE"
-                    className="h-[3.7rem] w-auto sm:h-[4.05rem]"
+                    className="h-[4.44rem] w-auto sm:h-[4.86rem]"
                   />
                 </div>
                 <div className="ml-auto max-w-[13.5rem] text-right">
                   <p
                     aria-label="Your Strength Habitat"
-                    className="font-brand text-[1.1rem] font-black uppercase tracking-[0.16em] text-[#226350] dark:text-[#e00b0b] sm:text-[1.22rem]"
+                    className="font-brand text-[1.53rem] font-black uppercase tracking-[0.16em] text-[#226350] dark:text-[#e00b0b] sm:text-[1.69rem]"
                   >
                     YOUR
                     <br />
@@ -84,7 +84,7 @@ export default function LoginPage() {
 
             <form
               onSubmit={handleSubmit}
-              className="space-y-4 rounded-[2rem] border border-white/60 bg-white/82 p-4 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/84 sm:p-5"
+              className="space-y-4 rounded-[2rem] border border-black bg-white/82 p-4 shadow-panel backdrop-blur-md dark:border-white dark:bg-surface-dark/84 sm:p-5"
             >
               <Input
                 label="Email"
@@ -98,7 +98,7 @@ export default function LoginPage() {
               />
 
               <div>
-                <label htmlFor={passwordInputId} className="mb-2 ml-3 block font-label text-[0.68rem] font-bold not-italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
+                <label htmlFor={passwordInputId} className="field-label ml-3 not-italic">
                   Password
                 </label>
                 <div className="relative">
@@ -109,14 +109,14 @@ export default function LoginPage() {
                     required={!isPasswordOptionalInDev}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder={isPasswordOptionalInDev ? 'Optional in local dev' : '••••••••••'}
-                    className="w-full rounded-2xl border border-line bg-white/90 px-4 py-3.5 pr-12 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all placeholder:text-gray-500 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/80 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:border-accent-400 dark:focus:ring-accent-400/25"
+                    placeholder={isPasswordOptionalInDev ? 'Optional in local dev' : 'Enter password'}
+                    className="field-control pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(v => !v)}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    className="absolute right-2.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-black/[0.04] hover:text-gray-600 dark:hover:bg-white/[0.06] dark:hover:text-gray-200"
+                    className="absolute right-2.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-black/45 transition-colors hover:bg-black/[0.04] hover:text-black/70 dark:text-white/55 dark:hover:bg-white/[0.06] dark:hover:text-white/80"
                   >
                     <Icon name={showPassword ? 'visibility_off' : 'visibility'} className="block text-[1.2rem]" />
                   </button>

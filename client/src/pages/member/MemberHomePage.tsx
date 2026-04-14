@@ -5,12 +5,7 @@ import AppShell from '../../components/AppShell.js';
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
-
-const memberLinks = [
-  { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
-  { to: '/profile', label: 'Profile', icon: 'person' },
-];
+import { memberLinks } from './memberLinks.js';
 
 function extractDayCount(message: string | undefined) {
   const match = message?.match(/\d+/);
@@ -110,21 +105,21 @@ export default function MemberHomePage() {
                           aria-label={`${day.date} ${day.attended ? 'attended' : 'not attended'}`}
                           className={`consistency-day-box h-[4.5rem] text-center shadow-sm transition-colors ${
                             day.attended
-                              ? 'border border-transparent shadow-[0_12px_24px_rgba(34,99,80,0.18)]'
-                              : 'border border-line dark:border-white/10'
+                              ? 'border border-brand-500 shadow-[0_12px_24px_rgba(34,99,80,0.18)] dark:border-accent-500'
+                              : 'border border-black dark:border-white'
                           }`}
                         >
                           <div
                             className={`consistency-day-box-inner flex h-full flex-col items-center justify-between px-2 py-2 ${
                               day.attended
                                 ? 'consistency-day-box-attended text-white'
-                                : 'bg-white/55 text-gray-600 dark:bg-white/[0.04] dark:text-gray-400'
+                                : 'bg-white/55 text-black dark:bg-white/[0.04] dark:text-white'
                             } ${isToday ? 'consistency-day-box-today' : ''}`}
                           >
                             <span className={`text-[0.68rem] font-bold uppercase ${day.attended ? 'text-white/85' : 'text-inherit'}`}>
                               {getWeekdayLetter(day.date)}
                             </span>
-                            <span className={`font-headline text-[1.1rem] font-black italic leading-none ${day.attended ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                            <span className={`font-headline text-[1.1rem] font-black italic leading-none ${day.attended ? 'text-white' : 'text-black dark:text-white'}`}>
                               {formatDayNumber(day.date)}
                             </span>
                           </div>
@@ -143,7 +138,7 @@ export default function MemberHomePage() {
                   <p className="font-headline text-[2.2rem] font-black italic leading-[0.92] tracking-[-0.05em] text-brand-600 dark:text-accent-500 sm:text-[2.8rem]">
                     Good Job!
                   </p>
-                  <p className="ml-1 mt-3 text-sm text-gray-600 dark:text-gray-400">
+                  <p className="ml-1 mt-3 text-sm text-black dark:text-white">
                     Get some rest.
                   </p>
                 </div>
@@ -167,7 +162,7 @@ export default function MemberHomePage() {
         ) : (
           <Card className="p-6 lg:p-7">
             <p className="section-eyebrow">Consistency</p>
-            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+            <p className="mt-3 text-sm text-black/60 dark:text-white/70">
               No active consistency data yet.
             </p>
           </Card>

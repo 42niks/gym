@@ -23,42 +23,42 @@ export default function NavBar({ links, fixed = false }: { links: NavLink[]; fix
           : ''
       }
     >
-      <nav className="border-b border-white/60 bg-white/72 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white/10 dark:bg-surface-dark/72">
+      <nav className="border-b border-black bg-white/72 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white dark:bg-surface-dark/72">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
           <Link to="/" className="flex flex-col items-start gap-1">
             <img
               src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
               alt="BASE"
               className="h-8 w-auto"
-          />
-          <span className="hidden font-brand text-[0.5rem] font-black uppercase tracking-[0.22em] text-[#226350] dark:text-[#e00b0b] sm:inline">
-            YOUR STRENGTH HABITAT
-          </span>
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          {links.map(l => (
-            <Link
-              key={l.to}
-              to={l.to}
-              className={`inline-flex items-center gap-1.5 rounded-2xl border px-3 py-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
-                location.pathname === l.to
-                  ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white'
-              }`}
+            />
+            <span className="hidden font-brand text-[0.5rem] font-black uppercase tracking-[0.22em] text-[#226350] dark:text-[#e00b0b] sm:inline">
+              YOUR STRENGTH HABITAT
+            </span>
+          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {links.map(l => (
+              <Link
+                key={l.to}
+                to={l.to}
+                className={`inline-flex items-center gap-1.5 rounded-2xl border px-3 py-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
+                  location.pathname === l.to
+                    ? 'border-black bg-white bg-brand-gradient text-black shadow-panel dark:border-white dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
+                  : 'border-black text-black dark:border-white dark:text-white hover:border-black hover:bg-white/60 hover:text-black dark:hover:border-white dark:hover:bg-white/5 dark:hover:text-white'
+                }`}
+              >
+                {l.icon ? <Icon name={l.icon} className="text-[1rem]" /> : null}
+                {l.label}
+              </Link>
+            ))}
+            <ThemeToggle />
+            <button
+              onClick={logout}
+              className="inline-flex items-center gap-1.5 rounded-2xl border border-black px-3 py-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.18em] text-black transition-all hover:border-black hover:bg-white/60 hover:text-black dark:border-white dark:text-white dark:hover:border-white dark:hover:bg-white/5 dark:hover:text-white"
             >
-              {l.icon ? <Icon name={l.icon} className="text-[1rem]" /> : null}
-              {l.label}
-            </Link>
-          ))}
-          <ThemeToggle />
-          <button
-            onClick={logout}
-            className="inline-flex items-center gap-1.5 rounded-2xl border border-transparent px-3 py-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 transition-all hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white"
-          >
-            <Icon name="logout" className="text-[1rem]" />
-            Out
-          </button>
-        </div>
+              <Icon name="logout" className="text-[1rem]" />
+              Out
+            </button>
+          </div>
         </div>
       </nav>
     </div>

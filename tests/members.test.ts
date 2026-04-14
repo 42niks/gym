@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { api, reset, seedOwner, seedMember, seedUserSession, getUserSessionCount, utcDatetime } from './setup.js';
-import { loginAs, seedSubscription } from './helpers.js';
+import { loginAs, seedSession, seedSubscription } from './helpers.js';
 
 describe('Member Management', () => {
   let ownerCookie: string;
@@ -352,6 +352,58 @@ describe('Member Management', () => {
       expect(body.filter((sub: any) => sub.lifecycle_state === 'completed').length).toBe(1);
       expect(body.filter((sub: any) => sub.lifecycle_state === 'active').length).toBe(1);
       expect(body.filter((sub: any) => sub.lifecycle_state === 'upcoming').length).toBe(1);
+    });
+  });
+
+  describe('GET /api/member/subscription/:id/attendance', () => {
+    it('should return attended dates for the member subscription', async () => {
+      const memberId = await seedMember({ email: 'member@test.com', phone: '1234567890' });
+      const subscriptionId = await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2026-04-01',
+        end_date: '2026-04-30',
+        total_sessions: 8,
+        attended_sessions: 2,
+        amount: 19900,
+      });
+      await seedSession({ member_id: memberId, subscription_id: subscriptionId, date: '2026-04-03' });
+      await seedSession({ member_id: memberId, subscription_id: subscriptionId, date: '2026-04-07' });
+
+      const memberCookie = await loginAs('member@test.com', '1234567890');
+      const res = await api(`/api/member/subscription/${subscriptionId}/attendance`, {
+        headers: { Cookie: memberCookie },
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.subscription).toMatchObject({
+        id: subscriptionId,
+        service_type: '1:1 Personal Training',
+      });
+      expect(body.attended_dates).toEqual(['2026-04-03', '2026-04-07']);
+    });
+
+    it('should return 404 for another members subscription', async () => {
+      const memberId = await seedMember({ email: 'member@test.com', phone: '1234567890' });
+      const otherMemberId = await seedMember({ email: 'other@test.com', phone: '9999999998' });
+      const subscriptionId = await seedSubscription({
+        member_id: otherMemberId,
+        package_id: 1,
+        start_date: '2026-04-01',
+        end_date: '2026-04-30',
+        total_sessions: 8,
+        amount: 19900,
+      });
+
+      const memberCookie = await loginAs('member@test.com', '1234567890');
+      const res = await api(`/api/member/subscription/${subscriptionId}/attendance`, {
+        headers: { Cookie: memberCookie },
+      });
+
+      expect(memberId).toBeGreaterThan(0);
+      expect(res.status).toBe(404);
+      expect((await res.json()).error).toBe('Subscription not found');
     });
   });
 });

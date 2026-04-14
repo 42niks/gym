@@ -2,11 +2,11 @@ import Icon from './Icon.js';
 
 const variants = {
   primary:
-    'border border-white/70 dark:border-white/10 text-gray-900 dark:text-white font-label font-bold italic uppercase tracking-[0.18em] shadow-panel hover:-translate-y-0.5 hover:shadow-glow-brand active:translate-y-0',
+    'border border-black dark:border-white text-black dark:text-white font-label font-bold italic uppercase tracking-[0.18em] shadow-panel hover:-translate-y-0.5 hover:shadow-glow-brand active:translate-y-0',
   secondary:
-    'border border-white/55 bg-white/80 text-gray-900 shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white/10 dark:bg-surface-dark/75 dark:text-white hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:hover:bg-surface-raised/85',
+    'border border-black bg-white/80 text-black shadow-sm shadow-black/5 backdrop-blur-sm dark:border-white dark:bg-surface-dark/75 dark:text-white hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:hover:bg-surface-raised/85',
   ghost:
-    'text-gray-600 dark:text-gray-300 font-label font-semibold italic uppercase tracking-[0.16em] hover:bg-white/60 hover:text-gray-900 dark:hover:bg-white/5 dark:hover:text-white',
+    'text-black dark:text-white font-label font-semibold italic uppercase tracking-[0.16em] hover:bg-white/60 hover:text-black dark:hover:bg-white/5 dark:hover:text-white',
   danger:
     'border border-red-200 bg-red-50/90 text-red-700 font-label font-bold italic uppercase tracking-[0.16em] shadow-sm shadow-black/5 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 hover:-translate-y-0.5 hover:bg-red-100 dark:hover:bg-red-950/45',
 } as const;

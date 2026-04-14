@@ -49,7 +49,7 @@
     --surface-raised: 244 244 244;
     --surface-dark: 26 25 27;
     --surface-inverse: 14 14 15;
-    --line-soft: 225 225 225;
+    --line-soft: 14 14 15;
     --ink: 14 14 15;
   }
 
@@ -91,7 +91,7 @@
     --surface-raised: 29 29 33;
     --surface-dark: 18 18 20;
     --surface-inverse: 244 244 245;
-    --line-soft: 45 45 50;
+    --line-soft: 244 244 245;
     --ink: 244 244 245;
   }
 
@@ -126,7 +126,7 @@
 
 @layer base {
   body {
-    @apply bg-shell text-gray-900 antialiased dark:text-gray-100;
+    @apply bg-shell text-black antialiased dark:text-white;
   }
 
   body.drawer-open {
@@ -180,15 +180,73 @@
   }
 
   .page-title {
-    @apply font-headline text-3xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white;
+    @apply font-headline text-3xl font-black italic uppercase tracking-tight text-black dark:text-white;
   }
 
   .section-eyebrow {
-    @apply font-label text-[0.7rem] font-bold italic uppercase tracking-[0.32em] text-gray-500 dark:text-gray-400;
+    @apply font-label text-[0.7rem] font-bold italic uppercase tracking-[0.32em] text-black dark:text-white;
+  }
+
+  .field-label {
+    @apply mb-2 block font-label text-[0.68rem] font-bold italic uppercase tracking-[0.28em] text-black dark:text-white;
+  }
+
+  .field-control {
+    @apply w-full rounded-2xl border bg-white/90 px-4 py-3.5 text-sm font-medium text-black shadow-sm shadow-black/5 transition-all focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-surface-dark/80 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent-400/25;
+    border-color: rgb(var(--line-soft));
+  }
+
+  .field-control::placeholder {
+    color: rgb(var(--ink) / 0.45);
   }
 
   .glass-panel {
-    @apply rounded-[1.5rem] border border-white/60 bg-white/80 shadow-panel backdrop-blur-md dark:border-white/10 dark:bg-surface-dark/80;
+    @apply rounded-[1.5rem] border bg-white/80 shadow-panel backdrop-blur-md dark:border-white dark:bg-surface-dark/80;
+    border-color: rgb(var(--line-soft));
+  }
+
+  .owner-packages-cta-frame {
+    position: relative;
+    isolation: isolate;
+    contain: paint;
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    border-radius: 9999px;
+  }
+
+  .owner-packages-cta-surface {
+    position: absolute;
+    inset: 1px;
+    border-radius: calc(9999px - 1px);
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  .owner-packages-tab-frame {
+    position: relative;
+    isolation: isolate;
+    contain: paint;
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    border-radius: 1.55rem;
+    background: rgb(var(--surface-card));
+  }
+
+  .dark .owner-packages-tab-frame {
+    background: rgb(var(--surface-dark));
+  }
+
+  .owner-packages-tab-surface {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    border-radius: calc(1.55rem - 1px);
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .owner-home-attendance-frame {
@@ -199,7 +257,7 @@
     transform: translateZ(0);
     backface-visibility: hidden;
     background: rgb(var(--surface-card) / 0.86);
-    border-color: rgb(255 255 255 / 0.7);
+    border-color: rgb(var(--line-soft));
   }
 
   .owner-home-attendance-inner {
@@ -226,7 +284,7 @@
   .owner-home-attendance-card-neutral {
     background:
       radial-gradient(circle at left center, rgb(var(--color-energy-100) / 0.95), transparent 34%),
-      radial-gradient(circle at bottom right, rgb(var(--gray-200) / 0.88), transparent 40%),
+      radial-gradient(circle at bottom right, rgb(var(--ink) / 0.08), transparent 40%),
       linear-gradient(180deg, rgb(255 255 255 / 0.96) 0%, rgb(248 248 248 / 0.92) 100%);
   }
 
@@ -247,13 +305,13 @@
   .dark .owner-home-attendance-card-neutral {
     background:
       radial-gradient(circle at left center, rgb(var(--color-energy-300) / 0.26), transparent 36%),
-      radial-gradient(circle at bottom right, rgb(var(--gray-500) / 0.24), transparent 42%),
+      radial-gradient(circle at bottom right, rgb(var(--ink) / 0.16), transparent 42%),
       linear-gradient(180deg, rgb(var(--surface-dark) / 0.94) 0%, rgb(var(--surface-card) / 0.9) 100%);
   }
 
   .dark .owner-home-attendance-frame {
     background: rgb(var(--surface-dark) / 0.82);
-    border-color: rgb(255 255 255 / 0.14);
+    border-color: rgb(var(--line-soft));
   }
 
   .glass-panel.billing-current-card {
@@ -264,7 +322,7 @@
     transform: translateZ(0);
     backface-visibility: hidden;
     background: rgb(var(--surface-card) / 0.86);
-    border-color: rgb(255 255 255 / 0.7);
+    border-color: rgb(var(--line-soft));
   }
 
   .billing-current-card-inner {
@@ -283,7 +341,7 @@
 
   .dark .glass-panel.billing-current-card {
     background: rgb(var(--surface-dark) / 0.82);
-    border-color: rgb(255 255 255 / 0.14);
+    border-color: rgb(var(--line-soft));
   }
 
   .dark .billing-current-card-inner {
@@ -360,15 +418,16 @@
   }
 
   .back-link {
-    @apply inline-flex items-center gap-1.5 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white;
+    @apply inline-flex items-center gap-1.5 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] text-black transition-colors hover:text-black dark:text-white dark:hover:text-white;
   }
 
   .surface-inset {
-    @apply rounded-2xl border border-white/45 bg-surface-raised/85 px-4 py-3 shadow-sm shadow-black/5 dark:border-white/[0.08] dark:bg-surface-raised/70;
+    @apply rounded-2xl border bg-surface-raised/85 px-4 py-3 shadow-sm shadow-black/5 dark:border-white dark:bg-surface-raised/70;
+    border-color: rgb(var(--line-soft));
   }
 
   .empty-state {
-    @apply glass-panel px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400;
+    @apply glass-panel px-6 py-10 text-center text-sm text-black dark:text-white;
   }
 
   .consistency-panel-frame {

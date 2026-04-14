@@ -118,20 +118,20 @@ function StepperInput({
   }
 
   const buttonClass =
-    'inline-flex h-[3.35rem] w-[3.35rem] shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white/80 text-gray-700 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-black/10 disabled:hover:bg-white/80 dark:border-white/10 dark:bg-surface-dark/75 dark:text-gray-100 dark:hover:bg-surface-raised/85 dark:disabled:hover:border-white/10 dark:disabled:hover:bg-surface-dark/75';
+    'inline-flex h-[3.35rem] w-[3.35rem] shrink-0 items-center justify-center rounded-2xl border border-black bg-white/80 text-black/80 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-black disabled:hover:bg-white/80 dark:border-white dark:bg-surface-dark/75 dark:text-white/80 dark:hover:bg-surface-raised/85 dark:disabled:hover:border-white dark:disabled:hover:bg-surface-dark/75';
 
   const inputClass =
-    'w-full rounded-2xl border border-line bg-white/90 px-4 py-3.5 text-center text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all placeholder:text-gray-500 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/80 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:border-accent-400 dark:focus:ring-accent-400/25';
+    'field-control min-w-0 flex-1 text-center';
 
   return (
     <div>
       <label
         htmlFor={id}
-        className="mb-2 block font-label text-[0.68rem] font-bold italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400"
+        className="field-label"
       >
         {label}
       </label>
-      <div className="flex items-center gap-2">
+      <div className="mx-auto flex w-3/4 items-center gap-2">
         <button
           type="button"
           onClick={() => handleClick(-1, decrementDisabled)}
@@ -367,7 +367,7 @@ export default function OwnerNewPackagePage() {
           <div>
             <label
               htmlFor="service-type"
-              className="mb-2 block font-label text-[0.68rem] font-bold italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400"
+              className="field-label"
             >
               Service type
             </label>
@@ -377,7 +377,7 @@ export default function OwnerNewPackagePage() {
                 required
                 value={serviceTypeChoice}
                 onChange={handleServiceTypeChange}
-                className="w-full appearance-none rounded-2xl border border-line bg-white/90 px-4 py-3.5 pr-12 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/80 dark:text-gray-100 dark:focus:border-accent-400 dark:focus:ring-accent-400/25"
+                className="field-control appearance-none pr-12"
               >
                 <option value="">Select service type</option>
                 {serviceTypeOptions.map(option => (
@@ -389,7 +389,7 @@ export default function OwnerNewPackagePage() {
               </select>
               <span
                 aria-hidden="true"
-                className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[1.1rem] text-gray-500 dark:text-gray-400"
+                className="material-symbols-outlined pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[1.1rem] text-black/60 dark:text-white/70"
               >
                 expand_more
               </span>
@@ -400,7 +400,7 @@ export default function OwnerNewPackagePage() {
             <div>
               <label
                 htmlFor="custom-service-type"
-                className="mb-2 flex items-center gap-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400"
+                className="field-label flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-base">bolt</span>
                 New service type
@@ -412,7 +412,7 @@ export default function OwnerNewPackagePage() {
                 value={customServiceType}
                 onChange={handleCustomServiceTypeChange}
                 placeholder="Specify service type"
-                className="w-full rounded-2xl border border-line bg-white/90 px-4 py-3.5 text-sm font-medium text-gray-900 shadow-sm shadow-black/5 transition-all placeholder:text-gray-500 focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-gray-900/80 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:border-accent-400 dark:focus:ring-accent-400/25"
+                className="field-control"
               />
             </div>
           ) : null}
@@ -448,6 +448,7 @@ export default function OwnerNewPackagePage() {
               required
               value={form.price}
               onChange={handlePriceChange}
+              className="mx-auto block w-3/4"
             />
             <StepperInput
               id="consistency-window-days"

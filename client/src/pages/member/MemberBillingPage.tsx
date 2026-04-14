@@ -1,15 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { api, type Subscription } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
+import Icon from '../../components/Icon.js';
 import Spinner from '../../components/Spinner.js';
-
-const memberLinks = [
-  { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
-  { to: '/profile', label: 'Profile', icon: 'person' },
-];
+import { memberLinks } from './memberLinks.js';
 
 function formatDateRange(startDate: string, endDate: string) {
   return `${formatLongDate(startDate)} – ${formatLongDate(endDate)}`;
@@ -53,16 +50,22 @@ function sortCurrent(subs: Subscription[]) {
 
 function SectionHeader({ label, count }: { label: string; count?: number }) {
   return (
-    <div className="flex items-baseline gap-2">
-      <h3 className="font-label text-[0.7rem] font-bold italic uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">
-        {label}
-      </h3>
-      {typeof count === 'number' && count > 0 ? (
-        <span className="font-label text-[0.66rem] font-bold italic tracking-[0.18em] text-gray-500 dark:text-gray-400">
-          {count}
-        </span>
-      ) : null}
-    </div>
+    <h3 className="font-label text-[0.7rem] font-bold uppercase tracking-[0.3em] text-black dark:text-white">
+      {label}
+      {typeof count === 'number' && count > 0 ? ` ${count}` : ''}
+    </h3>
+  );
+}
+
+function AttendanceDatesLink({ subscriptionId }: { subscriptionId: number }) {
+  return (
+    <Link
+      to={`/subscription/${subscriptionId}/attendance`}
+      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-4 py-3 font-label text-[0.68rem] font-bold uppercase tracking-[0.16em] text-black transition-all hover:-translate-y-0.5 hover:bg-black/[0.08] hover:text-black dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white"
+    >
+      <Icon name="calendar_month" className="text-[1.05rem]" />
+      View exact dates
+    </Link>
   );
 }
 
@@ -77,10 +80,10 @@ function CurrentCard({ sub }: { sub: Subscription }) {
         <div className="space-y-6">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="font-headline text-[1.45rem] font-black italic uppercase leading-[0.96] tracking-tight text-gray-900 dark:text-white sm:text-[1.6rem]">
+              <p className="font-headline text-[1.45rem] font-black italic uppercase leading-[0.96] tracking-tight text-black dark:text-white sm:text-[1.6rem]">
                 {sub.service_type}
               </p>
-              <p className="mt-1.5 text-xs font-medium text-gray-700/80 dark:text-white/65">
+              <p className="mt-1.5 text-xs font-medium text-black/70 dark:text-white/75">
                 {formatDateRange(sub.start_date, sub.end_date)}
               </p>
             </div>
@@ -90,10 +93,10 @@ function CurrentCard({ sub }: { sub: Subscription }) {
           </div>
 
           <div className="flex items-end gap-4">
-            <span className="font-headline text-[4.6rem] font-black italic leading-[0.78] tracking-[-0.05em] text-gray-900 dark:text-white sm:text-[5.4rem]">
+            <span className="font-headline text-[4.6rem] font-black italic leading-[0.78] tracking-[-0.05em] text-black dark:text-white sm:text-[5.4rem]">
               {sub.remaining_sessions}
             </span>
-            <span className="pb-2 font-label text-[0.72rem] font-bold italic uppercase leading-[1.15] tracking-[0.18em] text-gray-700/85 dark:text-white/75">
+            <span className="pb-2 font-label text-[0.72rem] font-bold italic uppercase leading-[1.15] tracking-[0.18em] text-black/70 dark:text-white/75">
               sessions
               <br />
               left
@@ -107,7 +110,7 @@ function CurrentCard({ sub }: { sub: Subscription }) {
                 style={{ width: `${completion}%` }}
               />
             </div>
-            <div className="mt-2.5 flex items-center justify-between text-[0.74rem] font-semibold text-gray-700/80 dark:text-white/70">
+            <div className="mt-2.5 flex items-center justify-between text-[0.74rem] font-semibold text-black/70 dark:text-white/75">
               <span>
                 {sub.attended_sessions} of {sub.total_sessions} used
               </span>
@@ -126,13 +129,16 @@ function CurrentCard({ sub }: { sub: Subscription }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between border-t border-black/[0.08] pt-3.5 dark:border-white/[0.08]">
-            <span className="font-label text-[0.62rem] font-bold italic uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-              Paid
-            </span>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-              {formatAmount(sub.amount)}
-            </span>
+          <div className="space-y-3 border-t border-black pt-3.5 dark:border-white">
+            <div className="flex items-center justify-between">
+              <span className="font-label text-[0.62rem] font-bold uppercase tracking-[0.2em] text-black/60 dark:text-white/70">
+                Paid
+              </span>
+              <span className="text-sm font-semibold text-black dark:text-white">
+                {formatAmount(sub.amount)}
+              </span>
+            </div>
+            <AttendanceDatesLink subscriptionId={sub.id} />
           </div>
         </div>
       </div>
@@ -150,10 +156,10 @@ function UpcomingCard({ sub }: { sub: Subscription }) {
       <div className="ml-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-headline text-[1.3rem] font-black italic uppercase leading-[0.98] tracking-tight text-gray-900 dark:text-white">
+            <p className="font-headline text-[1.3rem] font-black italic uppercase leading-[0.98] tracking-tight text-black dark:text-white">
               {sub.service_type}
             </p>
-            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1.5 text-xs text-black/60 dark:text-white/70">
               Starts {formatLongDate(sub.start_date)}
             </p>
           </div>
@@ -163,10 +169,10 @@ function UpcomingCard({ sub }: { sub: Subscription }) {
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-4">
-          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+          <span className="text-xs font-semibold text-black/70 dark:text-white/75">
             {sub.total_sessions} sessions
           </span>
-          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          <span className="text-sm font-semibold text-black dark:text-white">
             {formatAmount(sub.amount)}
           </span>
         </div>
@@ -181,17 +187,17 @@ function PastCard({ sub }: { sub: Subscription }) {
     completion >= 80
       ? 'bg-brand-500 dark:bg-brand-300'
       : completion >= 30
-      ? 'bg-gray-400 dark:bg-gray-500'
-      : 'bg-gray-300 dark:bg-gray-700';
+      ? 'bg-black/25 dark:bg-white/25'
+      : 'bg-black/15 dark:bg-white/15';
 
   return (
     <Card className="px-5 py-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="font-headline text-[1.2rem] font-black italic uppercase leading-[1.02] tracking-tight text-gray-900 dark:text-white">
+          <p className="font-headline text-[1.2rem] font-black italic uppercase leading-[1.02] tracking-tight text-black dark:text-white">
             {sub.service_type}
           </p>
-          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1.5 text-xs text-black/60 dark:text-white/70">
             {formatDateRange(sub.start_date, sub.end_date)}
           </p>
         </div>
@@ -204,14 +210,18 @@ function PastCard({ sub }: { sub: Subscription }) {
         <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
           <div className={`h-full rounded-full ${barClass}`} style={{ width: `${completion}%` }} />
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-2 flex items-center justify-between text-xs text-black/60 dark:text-white/70">
           <span>
             {sub.attended_sessions} of {sub.total_sessions} used · {completion}%
           </span>
-          <span className="font-semibold text-gray-700 dark:text-gray-300">
+          <span className="font-semibold text-black/70 dark:text-white/75">
             {formatAmount(sub.amount)}
           </span>
         </div>
+      </div>
+
+      <div className="mt-4 border-t border-black pt-3 dark:border-white">
+        <AttendanceDatesLink subscriptionId={sub.id} />
       </div>
     </Card>
   );

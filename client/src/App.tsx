@@ -5,6 +5,7 @@ import Spinner from './components/Spinner.js';
 import LoginPage from './pages/LoginPage.js';
 import MemberHomePage from './pages/member/MemberHomePage.js';
 import MemberBillingPage from './pages/member/MemberBillingPage.js';
+import MemberSubscriptionAttendancePage from './pages/member/MemberSubscriptionAttendancePage.js';
 import MemberProfilePage from './pages/member/MemberProfilePage.js';
 import OwnerHomePage from './pages/owner/OwnerHomePage.js';
 import OwnerMembersPage from './pages/owner/OwnerMembersPage.js';
@@ -14,13 +15,8 @@ import OwnerNewSubscriptionPage from './pages/owner/OwnerNewSubscriptionPage.js'
 import OwnerPackagesPage from './pages/owner/OwnerPackagesPage.js';
 import OwnerNewPackagePage from './pages/owner/OwnerNewPackagePage.js';
 import { ownerLinks } from './pages/owner/ownerLinks.js';
+import { memberLinks } from './pages/member/memberLinks.js';
 import NotFoundPage from './pages/NotFoundPage.js';
-
-const memberLinks = [
-  { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
-  { to: '/profile', label: 'Profile', icon: 'person' },
-];
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -62,6 +58,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/home" element={<MemberHomePage />} />
+      <Route path="/subscription/:id/attendance" element={<MemberSubscriptionAttendancePage />} />
       <Route path="/subscription" element={<MemberBillingPage />} />
       <Route path="/profile" element={<MemberProfilePage />} />
       <Route path="*" element={<NotFoundPage links={memberLinks} />} />

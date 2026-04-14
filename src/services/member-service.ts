@@ -1,7 +1,11 @@
 import type { AppDatabase } from '../db/client.js';
 import { findMemberById, listMembersByStatus, createMember as repoCreateMember, updateMember as repoUpdateMember, archiveMember as repoArchiveMember, type MemberRow } from '../repositories/members-repo.js';
 import { listSubscriptionsForMember, getEarliestSubscriptionStart, type SubscriptionWithType } from '../repositories/subscriptions-repo.js';
-import { listAttendanceDatesForMember, hasAttendanceForDate } from '../repositories/sessions-repo.js';
+import {
+  listAttendanceDatesForMember,
+  listAttendanceDatesForSubscription,
+  hasAttendanceForDate,
+} from '../repositories/sessions-repo.js';
 import { deleteAllSessionsForMember } from '../repositories/user-sessions-repo.js';
 import { deriveLifecycleState } from '../lib/subscription.js';
 import { computeRenewal } from '../lib/renewal.js';
@@ -181,4 +185,21 @@ export async function listFormattedSubscriptions(db: AppDatabase, memberId: numb
   const subs = await listSubscriptionsForMember(db, memberId);
   const today = getIstDate();
   return subs.map(sub => formatSubscription(sub, today));
+}
+
+export async function getFormattedSubscriptionAttendance(
+  db: AppDatabase,
+  memberId: number,
+  subscriptionId: number,
+) {
+  const subs = await listSubscriptionsForMember(db, memberId);
+  const today = getIstDate();
+  const subscription = subs.find(sub => sub.id === subscriptionId);
+
+  if (!subscription) return null;
+
+  return {
+    subscription: formatSubscription(subscription, today),
+    attended_dates: await listAttendanceDatesForSubscription(db, memberId, subscriptionId),
+  };
 }

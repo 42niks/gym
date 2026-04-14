@@ -37,16 +37,16 @@ function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
     <Card className="px-5 py-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-headline text-xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{sub.service_type}</p>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          <p className="font-headline text-xl font-black italic uppercase tracking-tight text-black dark:text-white">{sub.service_type}</p>
+          <p className="mt-2 text-xs text-black/60 dark:text-white/70">
             {new Date(sub.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
             {' – '}
             {new Date(sub.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-sm text-black/60 dark:text-white/70">
             {sub.attended_sessions} / {sub.total_sessions} sessions
-            <span className="mx-1.5 text-gray-500 dark:text-gray-400">·</span>
-            <span className="font-semibold text-gray-700 dark:text-gray-300">₹{sub.amount.toLocaleString('en-IN')}</span>
+            <span className="mx-1.5 text-black/60 dark:text-white/70">·</span>
+            <span className="font-semibold text-black/75 dark:text-white/80">₹{sub.amount.toLocaleString('en-IN')}</span>
           </p>
         </div>
         <Badge variant={variant} icon={sub.lifecycle_state === 'active' ? 'bolt' : sub.lifecycle_state === 'upcoming' ? 'schedule' : 'history'}>
@@ -54,7 +54,7 @@ function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
         </Badge>
       </div>
       {sub.lifecycle_state === 'active' && !sub.owner_completed && (
-        <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+        <div className="mt-4 border-t border-black pt-4 dark:border-white">
           <Button variant="ghost" onClick={handleComplete} disabled={completing} className="text-xs px-0 py-0" icon={completing ? 'progress_activity' : 'task_alt'}>
             {completing ? 'Completing…' : 'Mark complete'}
           </Button>
@@ -180,14 +180,14 @@ export default function OwnerMemberDetailPage() {
         <Card className="px-5 py-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 className="font-headline text-3xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">{detail.full_name}</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-all">{detail.email}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{detail.phone}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <h2 className="font-headline text-3xl font-black italic uppercase tracking-tight text-black dark:text-white">{detail.full_name}</h2>
+              <p className="mt-1 break-all text-sm text-black/60 dark:text-white/70">{detail.email}</p>
+              <p className="mt-0.5 text-xs text-black/60 dark:text-white/70">{detail.phone}</p>
+              <p className="mt-1 text-xs text-black/60 dark:text-white/70">
                 Joined {new Date(detail.join_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
               {detail.consistency && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{detail.consistency.message}</p>
+                <p className="mt-1 text-xs text-black/60 dark:text-white/70">{detail.consistency.message}</p>
               )}
               {detail.renewal && (detail.renewal.kind === 'ends_soon' || detail.renewal.kind === 'no_active') && (
                 <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">{detail.renewal.message}</p>
@@ -198,7 +198,7 @@ export default function OwnerMemberDetailPage() {
             </Badge>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-black pt-4 dark:border-white">
             {detail.active_subscription && (
               <AttendanceButton memberId={id!} markedToday={detail.marked_attendance_today} />
             )}

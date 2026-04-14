@@ -21,6 +21,7 @@ vi.mock('../context/ThemeContext.js', () => ({
 vi.mock('../pages/LoginPage.js', () => ({ default: () => <div>Login Page</div> }));
 vi.mock('../pages/member/MemberHomePage.js', () => ({ default: () => <div>Member Home Page</div> }));
 vi.mock('../pages/member/MemberBillingPage.js', () => ({ default: () => <div>Member Billing Page</div> }));
+vi.mock('../pages/member/MemberSubscriptionAttendancePage.js', () => ({ default: () => <div>Member Subscription Attendance Page</div> }));
 vi.mock('../pages/member/MemberProfilePage.js', () => ({ default: () => <div>Member Profile Page</div> }));
 vi.mock('../pages/owner/OwnerHomePage.js', () => ({ default: () => <div>Owner Home Page</div> }));
 vi.mock('../pages/owner/OwnerMembersPage.js', () => ({ default: () => <div>Owner Members Page</div> }));
@@ -89,6 +90,12 @@ describe('App routes', () => {
     authState.user = { id: 2, role: 'member', full_name: 'Alex', email: 'member@thebase.fit' };
     renderApp('/subscription');
     expect(screen.getByText('Member Billing Page')).toBeInTheDocument();
+  });
+
+  it('opens subscription attendance at /subscription/:id/attendance for members', () => {
+    authState.user = { id: 2, role: 'member', full_name: 'Alex', email: 'member@thebase.fit' };
+    renderApp('/subscription/1/attendance');
+    expect(screen.getByText('Member Subscription Attendance Page')).toBeInTheDocument();
   });
 
   it('does not keep /owner as a valid owner route', () => {
