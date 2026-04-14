@@ -150,14 +150,17 @@ describe('Subscriptions', () => {
   // ─── GET /api/members/:id/subscriptions ───
 
   describe('GET /api/members/:id/subscriptions', () => {
-    it('should return grouped subscriptions for a member', async () => {
+    it('should return a flat subscription list for a member', async () => {
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, -7), end_date: addDays(today, 7), total_sessions: 8, amount: 19900 });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, 20), end_date: addDays(today, 50), total_sessions: 8, amount: 19900 });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: addDays(today, -50), end_date: addDays(today, -20), total_sessions: 8, amount: 19900 });
 
       const body = await (await api(`/api/members/${memberId}/subscriptions`, { headers: { Cookie: ownerCookie } })).json();
-      expect(body.completed_and_active.length).toBe(2);
-      expect(body.upcoming.length).toBe(1);
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBe(3);
+      expect(body.filter((sub: any) => sub.lifecycle_state === 'completed').length).toBe(1);
+      expect(body.filter((sub: any) => sub.lifecycle_state === 'active').length).toBe(1);
+      expect(body.filter((sub: any) => sub.lifecycle_state === 'upcoming').length).toBe(1);
     });
   });
 

@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerNewSubscriptionPage from '../pages/owner/OwnerNewSubscriptionPage.js';
 import { renderWithProviders } from './test-utils.js';
-import { mockPackages } from './mocks.js';
+import { mockManagedPackages, mockPackages } from './mocks.js';
 
 const { mockApiGet, mockApiPost, mockNavigate } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
@@ -43,6 +43,17 @@ describe('OwnerNewSubscriptionPage', () => {
       expect(screen.getByText('1:1 Personal Training')).toBeInTheDocument();
       expect(screen.getByText('Group Personal Training')).toBeInTheDocument();
     });
+  });
+
+  it('filters archived packages out of the selection grid', async () => {
+    mockApiGet.mockResolvedValue(mockManagedPackages);
+    renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
+
+    await waitFor(() => {
+      expect(screen.getByText('1:1 Personal Training')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Group Personal Training')).not.toBeInTheDocument();
   });
 
   it('shows start date and amount fields after selecting a package', async () => {

@@ -177,31 +177,8 @@ export async function archiveMemberById(db: AppDatabase, id: number): Promise<{ 
   return {};
 }
 
-export async function getGroupedSubscriptions(db: AppDatabase, memberId: number) {
+export async function listFormattedSubscriptions(db: AppDatabase, memberId: number) {
   const subs = await listSubscriptionsForMember(db, memberId);
   const today = getIstDate();
-
-  const completedAndActive: any[] = [];
-  const upcoming: any[] = [];
-
-  for (const sub of subs) {
-    const formatted = formatSubscription(sub, today);
-    if (formatted.lifecycle_state === 'upcoming') {
-      upcoming.push(formatted);
-    } else {
-      completedAndActive.push(formatted);
-    }
-  }
-
-  // completed_and_active: active first, then completed by start_date DESC, id DESC
-  completedAndActive.sort((a, b) => {
-    if (a.lifecycle_state === 'active' && b.lifecycle_state !== 'active') return -1;
-    if (b.lifecycle_state === 'active' && a.lifecycle_state !== 'active') return 1;
-    return b.start_date.localeCompare(a.start_date) || b.id - a.id;
-  });
-
-  // upcoming: start_date ASC, id ASC
-  upcoming.sort((a, b) => a.start_date.localeCompare(b.start_date) || a.id - b.id);
-
-  return { completed_and_active: completedAndActive, upcoming };
+  return subs.map(sub => formatSubscription(sub, today));
 }

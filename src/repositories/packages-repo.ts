@@ -139,7 +139,3 @@ export async function updatePackage(
   const sql = `UPDATE packages SET ${entries.map(([key]) => `${key} = ?`).join(', ')} WHERE id = ?`;
   await db.run(sql, [...entries.map(([, value]) => value), id]);
 }
-
-export async function deletePackage(db: AppDatabase, id: number): Promise<void> {
-  await db.run(`DELETE FROM packages WHERE id = ?`, [id]);
-}

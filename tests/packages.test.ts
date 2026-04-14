@@ -17,8 +17,25 @@ describe('Package Management', () => {
     today = getIstDate();
   });
 
-  it('lists only active packages for the sellable package endpoint', async () => {
-    await api('/api/owner/packages/1', {
+  async function createManagedPackage(body?: Record<string, unknown>) {
+    return api('/api/packages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+      body: JSON.stringify({
+        service_type: 'MMA/Kickboxing Personal Training',
+        sessions: 10,
+        duration_months: 2,
+        price: 12000,
+        consistency_window_days: 7,
+        consistency_min_days: 2,
+        is_active: true,
+        ...body,
+      }),
+    });
+  }
+
+  it('lists managed packages including archived rows for the owner package endpoint', async () => {
+    await api('/api/packages/1', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
       body: JSON.stringify({ is_active: false }),
@@ -27,27 +44,19 @@ describe('Package Management', () => {
     const res = await api('/api/packages', { headers: { Cookie: ownerCookie } });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.some((pkg: any) => pkg.id === 1)).toBe(false);
+    expect(body.find((pkg: any) => pkg.id === 1)).toMatchObject({
+      id: 1,
+      is_active: false,
+      subscription_count: expect.any(Number),
+    });
   });
 
   it('creates a package for owner management', async () => {
-    const res = await api('/api/owner/packages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-      body: JSON.stringify({
-        service_type: 'Mobility Coaching',
-        sessions: 10,
-        duration_months: 2,
-        price: 12000,
-        consistency_window_days: 7,
-        consistency_min_days: 2,
-        is_active: true,
-      }),
-    });
+    const res = await createManagedPackage();
 
     expect(res.status).toBe(201);
     expect(await res.json()).toMatchObject({
-      service_type: 'Mobility Coaching',
+      service_type: 'MMA/Kickboxing Personal Training',
       sessions: 10,
       duration_months: 2,
       price: 12000,
@@ -55,30 +64,48 @@ describe('Package Management', () => {
       consistency_min_days: 2,
       is_active: true,
       subscription_count: 0,
+      active_subscription_count: 0,
+      upcoming_subscription_count: 0,
     });
   });
 
-  it('blocks commercial edits for packages already in use', async () => {
-    await seedSubscription({
-      member_id: memberId,
-      package_id: 1,
-      start_date: today,
-      end_date: computeEndDate(today, 1),
-      total_sessions: 8,
-      amount: 19900,
-    });
+  it('rejects a consistency window smaller than 5 days', async () => {
+    const res = await createManagedPackage({ consistency_window_days: 4, consistency_min_days: 2 });
 
-    const res = await api('/api/owner/packages/1', {
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('consistency_window_days must be at least 5');
+  });
+
+  it('rejects min days that are not strictly less than the window', async () => {
+    const res = await createManagedPackage({ consistency_window_days: 7, consistency_min_days: 7 });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('consistency_min_days must be less than consistency_window_days');
+  });
+
+  it('rejects duplicate package definitions', async () => {
+    await createManagedPackage();
+
+    const res = await createManagedPackage();
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain('already exists');
+  });
+
+  it('blocks editing package fields even when the package is unused', async () => {
+    const created = await (await createManagedPackage({ service_type: 'Unused Test Package' })).json();
+
+    const res = await api(`/api/packages/${created.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-      body: JSON.stringify({ price: 20900 }),
+      body: JSON.stringify({ price: 12999 }),
     });
 
     expect(res.status).toBe(409);
-    expect((await res.json()).error).toContain('already in use');
+    expect((await res.json()).error).toBe('Packages are not editable. Create a new package row instead.');
   });
 
-  it('allows rule updates and retirement for packages already in use', async () => {
+  it('allows archiving a package that already has active subscriptions', async () => {
     await seedSubscription({
       member_id: memberId,
       package_id: 1,
@@ -88,53 +115,27 @@ describe('Package Management', () => {
       amount: 19900,
     });
 
-    const res = await api('/api/owner/packages/1', {
+    const res = await api('/api/packages/1', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-      body: JSON.stringify({
-        consistency_min_days: 4,
-        is_active: false,
-      }),
+      body: JSON.stringify({ is_active: false }),
     });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
       id: 1,
-      consistency_min_days: 4,
       is_active: false,
       subscription_count: 1,
-    });
-  });
-
-  it('deletes unused packages', async () => {
-    const created = await (await api('/api/owner/packages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-      body: JSON.stringify({
-        service_type: 'Mobility Coaching',
-        sessions: 10,
-        duration_months: 2,
-        price: 12000,
-        consistency_window_days: 7,
-        consistency_min_days: 2,
-        is_active: true,
-      }),
-    })).json();
-
-    const deleteRes = await api(`/api/owner/packages/${created.id}`, {
-      method: 'DELETE',
-      headers: { Cookie: ownerCookie },
+      active_subscription_count: 1,
     });
 
-    expect(deleteRes.status).toBe(200);
-
-    const listRes = await api('/api/owner/packages', { headers: { Cookie: ownerCookie } });
-    const body = await listRes.json();
-    expect(body.some((pkg: any) => pkg.id === created.id)).toBe(false);
+    const listRes = await api('/api/packages', { headers: { Cookie: ownerCookie } });
+    const packages = await listRes.json();
+    expect(packages.find((pkg: any) => pkg.id === 1)).toMatchObject({ is_active: false });
   });
 
-  it('rejects subscription creation on retired packages', async () => {
-    await api('/api/owner/packages/1', {
+  it('rejects subscription creation on archived packages', async () => {
+    await api('/api/packages/1', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
       body: JSON.stringify({ is_active: false }),

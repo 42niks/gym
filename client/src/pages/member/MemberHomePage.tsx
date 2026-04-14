@@ -8,7 +8,7 @@ import Spinner from '../../components/Spinner.js';
 
 const memberLinks = [
   { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/billing', label: 'Billing', icon: 'credit_card' },
+  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
   { to: '/profile', label: 'Profile', icon: 'person' },
 ];
 
@@ -46,14 +46,15 @@ export default function MemberHomePage() {
   const [attendanceError, setAttendanceError] = useState('');
   const { data, isLoading } = useQuery<MemberHome>({
     queryKey: ['member-home'],
-    queryFn: () => api.get('/api/me/home'),
+    queryFn: () => api.get('/api/member/home'),
   });
 
   const markAttendance = useMutation({
-    mutationFn: () => api.post('/api/me/sessions'),
+    mutationFn: () => api.post('/api/member/session'),
     onSuccess: () => {
       setAttendanceError('');
       queryClient.invalidateQueries({ queryKey: ['member-home'] });
+      queryClient.invalidateQueries({ queryKey: ['member-subscription'] });
     },
     onError: (err: any) => setAttendanceError(err.message ?? 'Could not mark attendance'),
   });

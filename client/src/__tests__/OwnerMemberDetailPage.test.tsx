@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerMemberDetailPage from '../pages/owner/OwnerMemberDetailPage.js';
 import { renderWithProviders } from './test-utils.js';
-import { mockMemberDetail, mockGroupedSubscriptions } from './mocks.js';
+import { mockMemberDetail, mockSubscriptions } from './mocks.js';
 
 const { mockApiGet, mockApiPost, mockApiPatch } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock('../lib/api.js', async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mockApiGet.mockImplementation((url: string) => {
-    if (url.includes('/subscriptions')) return Promise.resolve(mockGroupedSubscriptions);
+    if (url.includes('/subscriptions')) return Promise.resolve(mockSubscriptions);
     return Promise.resolve(mockMemberDetail);
   });
 });
@@ -60,7 +60,7 @@ describe('OwnerMemberDetailPage', () => {
 
   it('shows attendance marked when already done today', async () => {
     mockApiGet.mockImplementation((url: string) => {
-      if (url.includes('/subscriptions')) return Promise.resolve(mockGroupedSubscriptions);
+      if (url.includes('/subscriptions')) return Promise.resolve(mockSubscriptions);
       return Promise.resolve({ ...mockMemberDetail, marked_attendance_today: true });
     });
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
@@ -91,7 +91,7 @@ describe('OwnerMemberDetailPage', () => {
 
   it('shows no subscriptions message when empty', async () => {
     mockApiGet.mockImplementation((url: string) => {
-      if (url.includes('/subscriptions')) return Promise.resolve({ completed_and_active: [], upcoming: [] });
+      if (url.includes('/subscriptions')) return Promise.resolve([]);
       return Promise.resolve(mockMemberDetail);
     });
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });

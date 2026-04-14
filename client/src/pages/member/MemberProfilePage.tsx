@@ -6,7 +6,7 @@ import Spinner from '../../components/Spinner.js';
 
 const memberLinks = [
   { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/billing', label: 'Billing', icon: 'credit_card' },
+  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
   { to: '/profile', label: 'Profile', icon: 'person' },
 ];
 
@@ -22,7 +22,7 @@ function Row({ label, value }: { label: string; value: string }) {
 export default function MemberProfilePage() {
   const { data, isLoading } = useQuery<MemberProfile>({
     queryKey: ['member-profile'],
-    queryFn: () => api.get('/api/me/profile'),
+    queryFn: () => api.get('/api/member/profile'),
   });
 
   return (

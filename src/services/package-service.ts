@@ -2,9 +2,7 @@ import type { AppDatabase } from '../db/client.js';
 import { getIstDate } from '../lib/date.js';
 import {
   createPackage,
-  deletePackage,
   findPackageWithUsageById,
-  listPackages,
   listPackagesWithUsage,
   updatePackage,
   type PackageRow,
@@ -55,25 +53,13 @@ function validateDraft(data: PackageDraft): string | null {
   if (data.sessions <= 0) return 'sessions must be a positive integer';
   if (data.duration_months <= 0) return 'duration_months must be a positive integer';
   if (data.price <= 0) return 'price must be a positive integer';
-  if (data.consistency_window_days <= 0) return 'consistency_window_days must be a positive integer';
+  if (data.consistency_window_days < 5) return 'consistency_window_days must be at least 5';
   if (data.consistency_min_days <= 0) return 'consistency_min_days must be a positive integer';
-  if (data.consistency_min_days > data.consistency_window_days) {
-    return 'consistency_min_days cannot exceed consistency_window_days';
+  if (data.consistency_min_days >= data.consistency_window_days) {
+    return 'consistency_min_days must be less than consistency_window_days';
   }
 
   return null;
-}
-
-function toDraftFromRow(row: PackageRow): PackageDraft {
-  return {
-    service_type: row.service_type,
-    sessions: row.sessions,
-    duration_months: row.duration_months,
-    price: row.price,
-    consistency_window_days: row.consistency_window_days,
-    consistency_min_days: row.consistency_min_days,
-    is_active: row.is_active === 1,
-  };
 }
 
 function formatPackage(row: PackageRow) {
@@ -157,11 +143,6 @@ function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Error && error.message.includes('UNIQUE constraint failed');
 }
 
-export async function listSelectablePackages(db: AppDatabase) {
-  const rows = await listPackages(db);
-  return rows.map(formatPackage);
-}
-
 export async function listManagedPackages(db: AppDatabase) {
   const rows = await listPackagesWithUsage(db, getIstDate());
   return rows.map(formatManagedPackage);
@@ -209,28 +190,11 @@ export async function updateManagedPackage(db: AppDatabase, id: number, body: an
   if (Object.keys(updates).length === 0) {
     return { error: 'No editable field provided', status: 400 as const };
   }
-
-  const hasHistoricalUsage = Number(existing.subscription_count) > 0;
-  const isChangingHistoricalField =
-    'service_type' in updates ||
-    'sessions' in updates ||
-    'duration_months' in updates ||
-    'price' in updates;
-
-  if (hasHistoricalUsage && isChangingHistoricalField) {
+  if (Object.keys(updates).some(key => key !== 'is_active')) {
     return {
-      error: 'This package is already in use. Create a new package row to change service type, sessions, duration, or price.',
+      error: 'Packages are not editable. Create a new package row instead.',
       status: 409 as const,
     };
-  }
-
-  const merged = {
-    ...toDraftFromRow(existing),
-    ...updates,
-  };
-  const validationError = validateDraft(merged);
-  if (validationError) {
-    return { error: validationError, status: 400 as const };
   }
 
   try {
@@ -251,21 +215,4 @@ export async function updateManagedPackage(db: AppDatabase, id: number, body: an
 
     throw error;
   }
-}
-
-export async function deleteManagedPackage(db: AppDatabase, id: number) {
-  const existing = await findPackageWithUsageById(db, id, getIstDate());
-  if (!existing) {
-    return { error: 'Package not found', status: 404 as const };
-  }
-
-  if (Number(existing.subscription_count) > 0) {
-    return {
-      error: 'Package cannot be deleted because subscriptions already reference it',
-      status: 409 as const,
-    };
-  }
-
-  await deletePackage(db, id);
-  return { data: { ok: true }, status: 200 as const };
 }

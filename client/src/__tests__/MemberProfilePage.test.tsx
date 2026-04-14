@@ -55,10 +55,10 @@ describe('MemberProfilePage', () => {
     });
   });
 
-  it('has nav links to Home and Billing', () => {
+  it('has nav links to Home and Subscription', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
     renderWithProviders(<MemberProfilePage />, { route: '/profile' });
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Billing')).toBeInTheDocument();
+    expect(screen.getByText('Subscription')).toBeInTheDocument();
   });
 });

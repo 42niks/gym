@@ -28,6 +28,7 @@ vi.mock('../pages/owner/OwnerNewMemberPage.js', () => ({ default: () => <div>Own
 vi.mock('../pages/owner/OwnerMemberDetailPage.js', () => ({ default: () => <div>Owner Member Detail Page</div> }));
 vi.mock('../pages/owner/OwnerNewSubscriptionPage.js', () => ({ default: () => <div>Owner New Subscription Page</div> }));
 vi.mock('../pages/owner/OwnerPackagesPage.js', () => ({ default: () => <div>Owner Packages Page</div> }));
+vi.mock('../pages/owner/OwnerNewPackagePage.js', () => ({ default: () => <div>Owner New Package Page</div> }));
 vi.mock('../pages/NotFoundPage.js', () => ({ default: () => <div>Not Found Page</div> }));
 vi.mock('../components/Spinner.js', () => ({ default: () => <div>Loading</div> }));
 
@@ -72,10 +73,22 @@ describe('App routes', () => {
     expect(screen.getByText('Owner Packages Page')).toBeInTheDocument();
   });
 
+  it('opens new package at /packages/new for owners', () => {
+    authState.user = { id: 1, role: 'owner', full_name: 'Sam', email: 'owner@thebase.fit' };
+    renderApp('/packages/new');
+    expect(screen.getByText('Owner New Package Page')).toBeInTheDocument();
+  });
+
   it('shows 404 for members who visit /members', () => {
     authState.user = { id: 2, role: 'member', full_name: 'Alex', email: 'member@thebase.fit' };
     renderApp('/members');
     expect(screen.getByText('Not Found Page')).toBeInTheDocument();
+  });
+
+  it('opens subscription at /subscription for members', () => {
+    authState.user = { id: 2, role: 'member', full_name: 'Alex', email: 'member@thebase.fit' };
+    renderApp('/subscription');
+    expect(screen.getByText('Member Billing Page')).toBeInTheDocument();
   });
 
   it('does not keep /owner as a valid owner route', () => {

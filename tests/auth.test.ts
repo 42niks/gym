@@ -313,7 +313,7 @@ describe('Auth', () => {
       expect((await api('/api/packages')).status).toBe(401);
     });
 
-    it('should allow authenticated request to /api/packages with 14 packages', async () => {
+    it('should allow owner request to /api/packages with 14 packages', async () => {
       await seedOwner({ email: 'owner@base.gym', phone: '9999999999' });
       const loginRes = await api('/api/auth/login', {
         method: 'POST',
@@ -327,6 +327,20 @@ describe('Auth', () => {
       const body = await res.json();
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBe(14);
+    });
+
+    it('should reject member request to /api/packages with 403', async () => {
+      await seedMember({ email: 'member@test.com', phone: '1234567890' });
+      const loginRes = await api('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'member@test.com', password: '1234567890' }),
+      });
+      const token = loginRes.headers.get('set-cookie')!.match(/session_id=([^;]+)/)![1];
+
+      const res = await api('/api/packages', { headers: { Cookie: `session_id=${token}` } });
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ error: 'Forbidden' });
     });
 
     it('should reject member from owner routes with 403', async () => {
@@ -350,7 +364,7 @@ describe('Auth', () => {
       });
       const token = loginRes.headers.get('set-cookie')!.match(/session_id=([^;]+)/)![1];
 
-      expect((await api('/api/me/home', { headers: { Cookie: `session_id=${token}` } })).status).toBe(403);
+      expect((await api('/api/member/home', { headers: { Cookie: `session_id=${token}` } })).status).toBe(403);
     });
   });
 });

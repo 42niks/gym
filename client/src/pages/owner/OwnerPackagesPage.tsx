@@ -1,683 +1,300 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, ApiError, type ManagedPackage } from '../../lib/api.js';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, type ManagedPackage, ApiError } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
-import Badge from '../../components/Badge.js';
-import Button from '../../components/Button.js';
-import Input from '../../components/Input.js';
 import Spinner from '../../components/Spinner.js';
-import Alert from '../../components/Alert.js';
+import Icon from '../../components/Icon.js';
 import { ownerLinks } from './ownerLinks.js';
 
-type StatusFilter = 'all' | 'active' | 'inactive';
-type EditorMode = 'create' | 'edit';
-
-interface PackageFormState {
-  service_type: string;
-  sessions: string;
-  duration_months: string;
-  price: string;
-  consistency_window_days: string;
-  consistency_min_days: string;
-  is_active: boolean;
+interface PackageTab {
+  serviceType: string;
+  icon: string;
+  packages: ManagedPackage[];
 }
 
-const serviceTypePresets = [
-  '1:1 Personal Training',
-  'MMA/Kickboxing Personal Training',
-  'Group Personal Training',
-];
+const tabMeta = [
+  { match: '1:1 personal training', icon: 'person' },
+  { match: 'group personal training', icon: 'groups' },
+  { match: 'mma/kickboxing personal training', icon: 'sports_mma' },
+  { match: 'boxing', icon: 'sports_mma' },
+] as const;
 
-function emptyForm(): PackageFormState {
-  return {
-    service_type: '',
-    sessions: '',
-    duration_months: '',
-    price: '',
-    consistency_window_days: '7',
-    consistency_min_days: '',
-    is_active: true,
-  };
+function getTabRank(serviceType: string) {
+  const normalized = serviceType.trim().toLowerCase();
+  const index = tabMeta.findIndex(item => normalized.includes(item.match));
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
-function sameFormState(a: PackageFormState, b: PackageFormState) {
-  return (
-    a.service_type === b.service_type &&
-    a.sessions === b.sessions &&
-    a.duration_months === b.duration_months &&
-    a.price === b.price &&
-    a.consistency_window_days === b.consistency_window_days &&
-    a.consistency_min_days === b.consistency_min_days &&
-    a.is_active === b.is_active
-  );
+function getTabIcon(serviceType: string) {
+  const normalized = serviceType.trim().toLowerCase();
+  return tabMeta.find(item => normalized.includes(item.match))?.icon ?? 'inventory_2';
 }
 
-function toFormState(pkg: ManagedPackage): PackageFormState {
-  return {
-    service_type: pkg.service_type,
-    sessions: String(pkg.sessions),
-    duration_months: String(pkg.duration_months),
-    price: String(pkg.price),
-    consistency_window_days: String(pkg.consistency_window_days),
-    consistency_min_days: String(pkg.consistency_min_days),
-    is_active: pkg.is_active,
-  };
+function buildTabs(packages: ManagedPackage[]): PackageTab[] {
+  const grouped = new Map<string, ManagedPackage[]>();
+
+  for (const pkg of packages) {
+    const current = grouped.get(pkg.service_type) ?? [];
+    current.push(pkg);
+    grouped.set(pkg.service_type, current);
+  }
+
+  return Array.from(grouped.entries())
+    .sort(([left], [right]) => {
+      const rankDiff = getTabRank(left) - getTabRank(right);
+      return rankDiff !== 0 ? rankDiff : left.localeCompare(right);
+    })
+    .map(([serviceType, items]) => ({
+      serviceType,
+      icon: getTabIcon(serviceType),
+      packages: items,
+    }));
 }
 
-function formatCurrency(value: number) {
-  return `₹${value.toLocaleString('en-IN')}`;
+function formatPrice(price: number) {
+  return `₹${price.toLocaleString('en-IN')}`;
 }
 
-function formatMonths(value: number) {
-  return `${value} month${value === 1 ? '' : 's'}`;
+function formatDuration(months: number) {
+  return `${months} ${months === 1 ? 'month' : 'months'}`;
 }
 
-function getErrorMessage(error: unknown) {
-  return error instanceof ApiError ? error.message : 'Something went wrong';
+function formatConsistency(pkg: Pick<ManagedPackage, 'consistency_min_days' | 'consistency_window_days'>) {
+  return `${pkg.consistency_min_days} in ${pkg.consistency_window_days} days`;
 }
 
-function statLabel(value: number, singular: string, plural: string) {
-  return `${value} ${value === 1 ? singular : plural}`;
+function getSubscribedCount(pkg: ManagedPackage) {
+  return pkg.active_subscription_count + pkg.upcoming_subscription_count;
 }
 
 export default function OwnerPackagesPage() {
   const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [search, setSearch] = useState('');
-  const [serviceFilter, setServiceFilter] = useState('all');
-  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
-  const [editorMode, setEditorMode] = useState<EditorMode>('edit');
-  const [form, setForm] = useState<PackageFormState>(emptyForm);
-  const [formError, setFormError] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [archivingId, setArchivingId] = useState<number | null>(null);
+  const [archiveError, setArchiveError] = useState('');
 
   const { data: packages = [], isLoading } = useQuery<ManagedPackage[]>({
     queryKey: ['owner-packages'],
-    queryFn: () => api.get('/api/owner/packages'),
+    queryFn: () => api.get('/api/packages'),
   });
 
-  const selectedPackage = packages.find(pkg => pkg.id === selectedPackageId) ?? null;
+  const tabs = buildTabs(packages);
+  const requestedType = searchParams.get('type');
+  const selectedType = tabs.some(tab => tab.serviceType === requestedType)
+    ? requestedType
+    : tabs[0]?.serviceType ?? null;
+  const selectedTab = tabs.find(tab => tab.serviceType === selectedType) ?? null;
 
-  useEffect(() => {
-    if (editorMode === 'create') {
-      return;
+  async function handleArchive(pkg: ManagedPackage) {
+    if (!pkg.is_active) return;
+
+    const confirmed = confirm(
+      `Archive "${pkg.service_type}" (${pkg.sessions} sessions, ${pkg.duration_months}mo)? Existing members keep it, but it will no longer be available for renewal.`
+    );
+    if (!confirmed) return;
+
+    setArchiveError('');
+    setArchivingId(pkg.id);
+
+    try {
+      await api.patch(`/api/packages/${pkg.id}`, { is_active: false });
+      await queryClient.invalidateQueries({ queryKey: ['owner-packages'] });
+    } catch (error) {
+      setArchiveError(error instanceof ApiError ? error.message : 'Failed to archive package');
+    } finally {
+      setArchivingId(null);
     }
-
-    if (selectedPackage) {
-      const nextForm = toFormState(selectedPackage);
-      setForm(current => (sameFormState(current, nextForm) ? current : nextForm));
-      return;
-    }
-
-    if (packages.length > 0) {
-      if (selectedPackageId !== packages[0].id) {
-        setSelectedPackageId(packages[0].id);
-      }
-    } else {
-      const nextForm = emptyForm();
-      setForm(current => (sameFormState(current, nextForm) ? current : nextForm));
-    }
-  }, [editorMode, packages, selectedPackage, selectedPackageId]);
-
-  const packageGroups = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    const filtered = packages.filter(pkg => {
-      if (statusFilter === 'active' && !pkg.is_active) return false;
-      if (statusFilter === 'inactive' && pkg.is_active) return false;
-      if (serviceFilter !== 'all' && pkg.service_type !== serviceFilter) return false;
-      if (!normalizedSearch) return true;
-
-      return [
-        pkg.service_type,
-        `${pkg.sessions} sessions`,
-        `${pkg.duration_months} months`,
-        String(pkg.price),
-      ].some(value => value.toLowerCase().includes(normalizedSearch));
-    });
-
-    return filtered.reduce<Record<string, ManagedPackage[]>>((acc, pkg) => {
-      if (!acc[pkg.service_type]) {
-        acc[pkg.service_type] = [];
-      }
-      acc[pkg.service_type].push(pkg);
-      return acc;
-    }, {});
-  }, [packages, search, serviceFilter, statusFilter]);
-
-  const serviceTypes = Array.from(new Set(packages.map(pkg => pkg.service_type)));
-  const activeCount = packages.filter(pkg => pkg.is_active).length;
-  const inactiveCount = packages.length - activeCount;
-  const liveDependencyCount = packages.reduce(
-    (total, pkg) => total + pkg.active_subscription_count + pkg.upcoming_subscription_count,
-    0,
-  );
-
-  const createMutation = useMutation({
-    mutationFn: (payload: Omit<PackageFormState, 'is_active'> & { is_active: boolean }) =>
-      api.post<ManagedPackage>('/api/owner/packages', payload),
-    onSuccess: async (saved) => {
-      setFormError('');
-      setEditorMode('edit');
-      setSelectedPackageId(saved.id);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['owner-packages'] }),
-        queryClient.invalidateQueries({ queryKey: ['packages'] }),
-      ]);
-    },
-    onError: error => setFormError(getErrorMessage(error)),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Omit<PackageFormState, 'is_active'> & { is_active: boolean } }) =>
-      api.patch<ManagedPackage>(`/api/owner/packages/${id}`, payload),
-    onSuccess: async (saved) => {
-      setFormError('');
-      setEditorMode('edit');
-      setSelectedPackageId(saved.id);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['owner-packages'] }),
-        queryClient.invalidateQueries({ queryKey: ['packages'] }),
-      ]);
-    },
-    onError: error => setFormError(getErrorMessage(error)),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => api.delete<{ ok: true }>(`/api/owner/packages/${id}`),
-    onSuccess: async () => {
-      setFormError('');
-      setEditorMode('create');
-      setSelectedPackageId(null);
-      setForm(emptyForm());
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['owner-packages'] }),
-        queryClient.invalidateQueries({ queryKey: ['packages'] }),
-      ]);
-    },
-    onError: error => setFormError(getErrorMessage(error)),
-  });
-
-  function updateField<K extends keyof PackageFormState>(key: K, value: PackageFormState[K]) {
-    setForm(current => ({ ...current, [key]: value }));
   }
-
-  function openCreate(prefill?: ManagedPackage | null) {
-    setFormError('');
-    setEditorMode('create');
-    setSelectedPackageId(null);
-    setForm(prefill ? { ...toFormState(prefill), is_active: true } : emptyForm());
-  }
-
-  function openEdit(pkg: ManagedPackage) {
-    setFormError('');
-    setEditorMode('edit');
-    setSelectedPackageId(pkg.id);
-  }
-
-  function buildPayload() {
-    return {
-      service_type: form.service_type.trim(),
-      sessions: form.sessions.trim(),
-      duration_months: form.duration_months.trim(),
-      price: form.price.trim(),
-      consistency_window_days: form.consistency_window_days.trim(),
-      consistency_min_days: form.consistency_min_days.trim(),
-      is_active: form.is_active,
-    };
-  }
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    setFormError('');
-    const payload = buildPayload();
-
-    if (editorMode === 'create') {
-      createMutation.mutate(payload);
-      return;
-    }
-
-    if (!selectedPackage) {
-      setFormError('Pick a package to edit');
-      return;
-    }
-
-    updateMutation.mutate({ id: selectedPackage.id, payload });
-  }
-
-  function handleDelete() {
-    if (!selectedPackage) return;
-    if (!window.confirm(`Delete ${selectedPackage.service_type} (${selectedPackage.sessions} sessions)?`)) {
-      return;
-    }
-
-    deleteMutation.mutate(selectedPackage.id);
-  }
-
-  const isWorking =
-    createMutation.isPending ||
-    updateMutation.isPending ||
-    deleteMutation.isPending;
-
-  const sessionsValue = Number.parseInt(form.sessions || '0', 10) || 0;
-  const monthsValue = Number.parseInt(form.duration_months || '0', 10) || 0;
-  const priceValue = Number.parseInt(form.price || '0', 10) || 0;
-  const windowValue = Number.parseInt(form.consistency_window_days || '0', 10) || 0;
-  const minDaysValue = Number.parseInt(form.consistency_min_days || '0', 10) || 0;
-  const derivedWeeklyCadence =
-    sessionsValue > 0 && monthsValue > 0 ? Math.max(1, Math.round(sessionsValue / (monthsValue * 4))) : 0;
-  const isUsedPackage = (selectedPackage?.subscription_count ?? 0) > 0;
 
   return (
     <AppShell links={ownerLinks}>
       <div className="page-stack">
-        <div className="page-header">
-          <div>
-            <p className="section-eyebrow">Owner controls</p>
-            <h2 className="page-title mt-2">PACKAGES</h2>
-            <p className="mt-3 max-w-3xl text-sm text-gray-500 dark:text-gray-400">
-              Control the package catalog, retire old offers, and tune consistency rules without losing subscription history.
-            </p>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="page-title">PACKAGES</h2>
+          <Link
+            to="/packages/new"
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-[1rem] border border-white/70 bg-white bg-brand-gradient px-3.5 font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] text-gray-900 shadow-panel transition-all hover:-translate-y-0.5 hover:shadow-glow-brand dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white"
+          >
+            + NEW
+          </Link>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <Spinner />
           </div>
-          <Button onClick={() => openCreate()} icon="add_box" className="text-sm">
-            New package
-          </Button>
-        </div>
+        ) : tabs.length === 0 ? (
+          <div className="empty-state">No packages yet</div>
+        ) : (
+          <>
+            <div className="glass-panel flex gap-3 overflow-x-auto p-2.5 sm:p-3">
+              {tabs.map(tab => {
+                const active = tab.serviceType === selectedType;
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card className="p-5">
-            <p className="section-eyebrow">Live catalog</p>
-            <p className="mt-3 font-headline text-4xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-              {activeCount}
-            </p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Active sellable packages</p>
-          </Card>
-          <Card className="p-5">
-            <p className="section-eyebrow">Retired</p>
-            <p className="mt-3 font-headline text-4xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-              {inactiveCount}
-            </p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Hidden from new subscriptions</p>
-          </Card>
-          <Card className="p-5">
-            <p className="section-eyebrow">Service types</p>
-            <p className="mt-3 font-headline text-4xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-              {serviceTypes.length}
-            </p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Distinct training categories</p>
-          </Card>
-          <Card className="p-5">
-            <p className="section-eyebrow">Live dependencies</p>
-            <p className="mt-3 font-headline text-4xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-              {liveDependencyCount}
-            </p>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Active or upcoming subscriptions</p>
-          </Card>
-        </div>
-
-        <Card className="space-y-4 p-5">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
-            <Input
-              label="Search packages"
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="Search by type, sessions, months, or price"
-            />
-            <div className="flex flex-wrap gap-2">
-              {(['all', 'active', 'inactive'] as StatusFilter[]).map(filter => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setStatusFilter(filter)}
-                  className={`rounded-2xl border px-4 py-3 font-label text-[0.7rem] font-bold uppercase tracking-[0.18em] transition-all ${
-                    statusFilter === filter
-                      ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
-                      : 'border-transparent bg-black/[0.03] text-gray-500 hover:bg-black/[0.05] hover:text-gray-900 dark:bg-white/[0.04] dark:text-gray-300 dark:hover:bg-white/[0.08] dark:hover:text-white'
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
+                return (
+                  <button
+                    key={tab.serviceType}
+                    type="button"
+                    aria-label={tab.serviceType}
+                    title={tab.serviceType}
+                    onClick={() => setSearchParams({ type: tab.serviceType })}
+                    className={`group relative aspect-square w-[4.9rem] shrink-0 rounded-[1.55rem] p-px transition-all duration-200 sm:w-[5.4rem] ${
+                      active
+                        ? '-translate-y-0.5 bg-[linear-gradient(145deg,rgba(255,255,255,0.96),rgba(255,230,23,0.72),rgba(224,11,11,0.52))] shadow-[0_18px_40px_rgba(0,0,0,0.14)] dark:bg-[linear-gradient(145deg,rgba(255,255,255,0.18),rgba(222,252,0,0.34),rgba(224,11,11,0.42))]'
+                        : 'bg-white/70 shadow-sm shadow-black/5 hover:-translate-y-0.5 hover:shadow-panel dark:bg-white/10'
+                    }`}
+                  >
+                    {active ? (
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-2 -rotate-6 rounded-[1.35rem] bg-accent-400/20 blur-md dark:bg-energy-300/18"
+                      />
+                    ) : null}
+                    <span
+                      className={`relative flex h-full w-full items-center justify-center rounded-[calc(1.55rem-1px)] border ${
+                        active
+                          ? 'border-white/70 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(255,255,255,0.86)_48%,rgba(241,248,245,0.82)_100%)] text-gray-900 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,rgba(42,41,43,0.98),rgba(24,24,27,0.96)_56%,rgba(18,18,20,0.98)_100%)] dark:text-white'
+                          : 'border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,245,245,0.84))] text-gray-500 group-hover:border-brand-300 group-hover:text-gray-900 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(39,39,42,0.94),rgba(24,24,27,0.9))] dark:text-gray-300 dark:group-hover:text-white'
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-2 top-2 h-2.5 w-2.5 rounded-full transition-all ${
+                          active
+                            ? 'bg-accent-500 shadow-[0_0_0_4px_rgba(224,11,11,0.12)] dark:bg-energy-300 dark:shadow-[0_0_0_4px_rgba(222,252,0,0.12)]'
+                            : 'border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/5'
+                        }`}
+                      />
+                      <Icon
+                        name={tab.icon}
+                        className={`relative z-10 transition-transform duration-200 ${
+                          active
+                            ? 'text-[2.45rem] sm:text-[2.7rem]'
+                            : 'text-[2.25rem] group-hover:scale-105 sm:text-[2.45rem]'
+                        }`}
+                      />
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setServiceFilter('all')}
-              className={`rounded-2xl px-3 py-2 text-xs font-semibold transition-all ${
-                serviceFilter === 'all'
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-950'
-                  : 'bg-black/[0.04] text-gray-600 hover:bg-black/[0.06] hover:text-gray-900 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:bg-white/[0.09] dark:hover:text-white'
-              }`}
-            >
-              All service types
-            </button>
-            {serviceTypes.map(type => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setServiceFilter(type)}
-                className={`rounded-2xl px-3 py-2 text-xs font-semibold transition-all ${
-                  serviceFilter === type
-                    ? 'bg-brand-500 text-white dark:bg-accent-500'
-                    : 'bg-black/[0.04] text-gray-600 hover:bg-black/[0.06] hover:text-gray-900 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:bg-white/[0.09] dark:hover:text-white'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-        </Card>
-
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,0.8fr)]">
-          <div className="space-y-5">
-            {isLoading ? (
-              <div className="flex justify-center py-16">
-                <Spinner />
-              </div>
-            ) : Object.keys(packageGroups).length === 0 ? (
-              <div className="empty-state">No packages match this view</div>
-            ) : (
-              Object.entries(packageGroups).map(([serviceType, items]) => (
-                <Card key={serviceType} className="p-3 sm:p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3 px-2">
-                    <div>
-                      <p className="section-eyebrow">Service type</p>
-                      <h3 className="mt-2 text-lg font-bold text-gray-900 dark:text-white">{serviceType}</h3>
+            {selectedTab ? (
+              <Card className="overflow-hidden p-0">
+                <div className="border-b border-black/5 px-4 py-4 dark:border-white/10 sm:px-5">
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-white/60 bg-white/70 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-white/5">
+                      <Icon name={selectedTab.icon} className="text-[1.35rem] text-gray-700 dark:text-gray-200" />
                     </div>
-                    <Badge variant="gray" icon="category">
-                      {statLabel(items.length, 'package', 'packages')}
-                    </Badge>
+                    <div className="min-w-0">
+                      <h3 className="font-headline text-2xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
+                        {selectedTab.serviceType}
+                      </h3>
+                    </div>
                   </div>
-
-                  <div className="space-y-3">
-                    {items.map(pkg => {
-                      const selected = editorMode === 'edit' && selectedPackageId === pkg.id;
-                      const dependencyCount = pkg.active_subscription_count + pkg.upcoming_subscription_count;
-
-                      return (
-                        <button
-                          key={pkg.id}
-                          type="button"
-                          onClick={() => openEdit(pkg)}
-                          className={`w-full rounded-[1.6rem] border p-4 text-left transition-all ${
-                            selected
-                              ? 'border-white/70 bg-white bg-brand-gradient shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark'
-                              : 'border-white/60 bg-white/80 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white/10 dark:bg-surface-dark/80 dark:hover:bg-surface-raised/85'
-                          }`}
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="font-headline text-2xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-                                {pkg.sessions} sessions
-                              </p>
-                              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                {formatMonths(pkg.duration_months)} · {formatCurrency(pkg.price)}
-                              </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <Badge variant={pkg.is_active ? 'green' : 'gray'} icon={pkg.is_active ? 'visibility' : 'visibility_off'}>
-                                {pkg.is_active ? 'Sellable' : 'Retired'}
-                              </Badge>
-                              <Badge variant={dependencyCount > 0 ? 'blue' : 'gray'} icon={dependencyCount > 0 ? 'bolt' : 'history'}>
-                                {dependencyCount > 0 ? `${dependencyCount} live` : `${pkg.subscription_count} used`}
-                              </Badge>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl bg-black/[0.03] px-3 py-3 dark:bg-white/[0.04]">
-                              <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                Consistency
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                                {pkg.consistency_min_days} days / {pkg.consistency_window_days}
-                              </p>
-                            </div>
-                            <div className="rounded-2xl bg-black/[0.03] px-3 py-3 dark:bg-white/[0.04]">
-                              <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                Total usage
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                                {statLabel(pkg.subscription_count, 'subscription', 'subscriptions')}
-                              </p>
-                            </div>
-                            <div className="rounded-2xl bg-black/[0.03] px-3 py-3 dark:bg-white/[0.04]">
-                              <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                                Upcoming
-                              </p>
-                              <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                                {statLabel(pkg.upcoming_subscription_count, 'renewal', 'renewals')}
-                              </p>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-
-          <div className="xl:sticky xl:top-[6.6rem] xl:self-start">
-            <Card gradient className="overflow-hidden p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="section-eyebrow">{editorMode === 'create' ? 'Create package' : 'Edit package'}</p>
-                  <h3 className="mt-2 font-headline text-3xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-                    {editorMode === 'create' ? 'New offer' : 'Package detail'}
-                  </h3>
                 </div>
-                {editorMode === 'edit' && selectedPackage ? (
-                  <Badge variant={selectedPackage.is_active ? 'green' : 'gray'} icon={selectedPackage.is_active ? 'sell' : 'block'}>
-                    {selectedPackage.is_active ? 'Sellable' : 'Retired'}
-                  </Badge>
+
+                {archiveError ? (
+                  <div className="border-b border-black/5 px-4 py-3 dark:border-white/10 sm:px-5">
+                    <p className="text-sm font-medium text-red-600 dark:text-red-400">{archiveError}</p>
+                  </div>
                 ) : null}
-              </div>
 
-              <div className="mt-5 rounded-[1.6rem] bg-white/70 p-4 shadow-sm shadow-black/5 dark:bg-black/20">
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">Preview</p>
-                <div className="mt-3 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      {form.service_type || 'Service type'}
-                    </p>
-                    <p className="mt-2 font-headline text-3xl font-black italic uppercase tracking-tight text-gray-900 dark:text-white">
-                      {sessionsValue || 0} sessions
-                    </p>
-                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                      {monthsValue > 0 ? formatMonths(monthsValue) : 'Add duration'} · {priceValue > 0 ? formatCurrency(priceValue) : 'Set price'}
-                    </p>
-                  </div>
-                  <Badge variant={form.is_active ? 'green' : 'gray'} icon={form.is_active ? 'visibility' : 'visibility_off'}>
-                    {form.is_active ? 'Live' : 'Hidden'}
-                  </Badge>
+                <div className="overflow-x-auto">
+                  <table className="min-w-[46rem] w-full border-collapse text-left">
+                    <thead>
+                      <tr className="bg-black/[0.03] dark:bg-white/[0.03]">
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400 sm:px-5">
+                          Sessions
+                        </th>
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Duration
+                        </th>
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Price
+                        </th>
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Consistency
+                        </th>
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+                          Members subscribed
+                        </th>
+                        <th className="px-4 py-3 font-label text-[0.65rem] font-bold italic uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400 sm:px-5">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedTab.packages.map(pkg => {
+                        const subscribedCount = getSubscribedCount(pkg);
+                        const isArchiving = archivingId === pkg.id;
+
+                        return (
+                          <tr
+                            key={pkg.id}
+                            className={`border-t border-black/5 align-top dark:border-white/10 ${
+                              pkg.is_active ? 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]' : 'bg-black/[0.03] dark:bg-white/[0.03]'
+                            }`}
+                          >
+                            <td className="px-4 py-3.5 sm:px-5">
+                              <p className={`text-base font-black ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {pkg.sessions}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <p className={`text-sm font-semibold ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {formatDuration(pkg.duration_months)}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <p className={`text-sm font-black ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {formatPrice(pkg.price)}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <p className={`text-sm ${pkg.is_active ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {formatConsistency(pkg)}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3.5">
+                              <p className={`text-sm font-black ${pkg.is_active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {subscribedCount}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {subscribedCount > 0
+                                  ? `${pkg.active_subscription_count} live · ${pkg.upcoming_subscription_count} upcoming`
+                                  : 'No live members'}
+                              </p>
+                            </td>
+                            <td className="px-4 py-3.5 sm:px-5">
+                              {pkg.is_active ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleArchive(pkg)}
+                                  disabled={isArchiving}
+                                  className="inline-flex items-center gap-2 rounded-full font-label text-[0.68rem] font-bold italic uppercase tracking-[0.18em] text-red-600 transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+                                >
+                                  <Icon name={isArchiving ? 'progress_activity' : 'archive'} className="text-[1rem]" />
+                                  {isArchiving ? 'Archiving' : 'Archive'}
+                                </button>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full border border-white/60 bg-white/70 px-3 py-1.5 font-label text-[0.62rem] font-bold italic uppercase tracking-[0.16em] text-gray-500 shadow-sm shadow-black/5 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+                                  Archived
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-black/[0.04] px-3 py-3 dark:bg-white/[0.05]">
-                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                      Current rule
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                      {minDaysValue || 0} in {windowValue || 0} days
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-black/[0.04] px-3 py-3 dark:bg-white/[0.05]">
-                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                      Derived rhythm
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-                      {derivedWeeklyCadence > 0 ? `~${derivedWeeklyCadence} days / 7` : 'Waiting for inputs'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {editorMode === 'edit' && selectedPackage && isUsedPackage ? (
-                <Alert variant="info">
-                  This package already has {statLabel(selectedPackage.subscription_count, 'subscription', 'subscriptions')}. Commercial fields stay locked to protect history, but you can still retire it or adjust the consistency rule.
-                </Alert>
-              ) : null}
-
-              <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-                <div>
-                  <p className="mb-2 block font-label text-[0.68rem] font-bold uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
-                    Service type presets
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {serviceTypePresets.map(preset => (
-                      <button
-                        key={preset}
-                        type="button"
-                        disabled={editorMode === 'edit' && isUsedPackage}
-                        onClick={() => updateField('service_type', preset)}
-                        className={`rounded-2xl px-3 py-2 text-xs font-semibold transition-all ${
-                          form.service_type === preset
-                            ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-950'
-                            : 'bg-black/[0.04] text-gray-600 hover:bg-black/[0.06] hover:text-gray-900 dark:bg-white/[0.05] dark:text-gray-300 dark:hover:bg-white/[0.09] dark:hover:text-white'
-                        } disabled:cursor-not-allowed disabled:opacity-50`}
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Input
-                  label="Service type"
-                  value={form.service_type}
-                  onChange={event => updateField('service_type', event.target.value)}
-                  placeholder="Custom coaching package"
-                  disabled={editorMode === 'edit' && isUsedPackage}
-                />
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Input
-                    label="Sessions"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.sessions}
-                    onChange={event => updateField('sessions', event.target.value)}
-                    disabled={editorMode === 'edit' && isUsedPackage}
-                  />
-                  <Input
-                    label="Duration (months)"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.duration_months}
-                    onChange={event => updateField('duration_months', event.target.value)}
-                    disabled={editorMode === 'edit' && isUsedPackage}
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <Input
-                    label="Price (INR)"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.price}
-                    onChange={event => updateField('price', event.target.value)}
-                    disabled={editorMode === 'edit' && isUsedPackage}
-                  />
-                  <Input
-                    label="Consistency window"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.consistency_window_days}
-                    onChange={event => updateField('consistency_window_days', event.target.value)}
-                  />
-                  <Input
-                    label="Min exercise days"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.consistency_min_days}
-                    onChange={event => updateField('consistency_min_days', event.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <p className="mb-2 block font-label text-[0.68rem] font-bold uppercase tracking-[0.28em] text-gray-500 dark:text-gray-400">
-                    Selling status
-                  </p>
-                  <div className="glass-panel flex gap-2 p-1">
-                    <button
-                      type="button"
-                      onClick={() => updateField('is_active', true)}
-                      className={`flex-1 rounded-[1.2rem] border px-4 py-2 font-label text-[0.72rem] font-bold uppercase tracking-[0.18em] transition-all ${
-                        form.is_active
-                          ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
-                          : 'border-transparent text-gray-500 hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white'
-                      }`}
-                    >
-                      Active
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateField('is_active', false)}
-                      className={`flex-1 rounded-[1.2rem] border px-4 py-2 font-label text-[0.72rem] font-bold uppercase tracking-[0.18em] transition-all ${
-                        !form.is_active
-                          ? 'border-white/70 bg-white bg-brand-gradient text-gray-900 shadow-panel dark:border-white/10 dark:bg-surface-dark dark:bg-brand-gradient-dark dark:text-white'
-                          : 'border-transparent text-gray-500 hover:border-white/55 hover:bg-white/60 hover:text-gray-900 dark:text-gray-400 dark:hover:border-white/10 dark:hover:bg-white/5 dark:hover:text-white'
-                      }`}
-                    >
-                      Retired
-                    </button>
-                  </div>
-                </div>
-
-                {formError ? <Alert variant="error">{formError}</Alert> : null}
-
-                <div className="flex flex-wrap gap-3 pt-2">
-                  <Button type="submit" disabled={isWorking} icon={isWorking ? 'progress_activity' : editorMode === 'create' ? 'add_box' : 'save'}>
-                    {isWorking ? 'Saving…' : editorMode === 'create' ? 'Create package' : 'Save changes'}
-                  </Button>
-
-                  {editorMode === 'edit' && selectedPackage ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => openCreate(selectedPackage)}
-                      icon="content_copy"
-                      disabled={isWorking}
-                    >
-                      Duplicate as new
-                    </Button>
-                  ) : null}
-
-                  {editorMode === 'create' ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setForm(emptyForm())}
-                      disabled={isWorking}
-                      icon="ink_eraser"
-                    >
-                      Clear
-                    </Button>
-                  ) : null}
-
-                  {editorMode === 'edit' && selectedPackage && selectedPackage.subscription_count === 0 ? (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      onClick={handleDelete}
-                      disabled={isWorking}
-                      icon="delete"
-                    >
-                      Delete unused
-                    </Button>
-                  ) : null}
-                </div>
-              </form>
-            </Card>
-          </div>
-        </div>
+              </Card>
+            ) : null}
+          </>
+        )}
       </div>
     </AppShell>
   );

@@ -1,5 +1,5 @@
 import type {
-  User, MemberHome, MemberProfile, GroupedSubscriptions,
+  User, MemberHome, MemberProfile,
   Subscription, Dashboard, DashboardItem, MemberListItem,
   MemberDetail, Package, Consistency, Renewal, ManagedPackage,
 } from '../lib/api.js';
@@ -67,10 +67,11 @@ export const mockMemberHome: MemberHome = {
   ],
 };
 
-export const mockGroupedSubscriptions: GroupedSubscriptions = {
-  completed_and_active: [mockSubscription, mockCompletedSubscription],
-  upcoming: [mockUpcomingSubscription],
-};
+export const mockSubscriptions: Subscription[] = [
+  mockCompletedSubscription,
+  mockUpcomingSubscription,
+  mockSubscription,
+];
 
 export const mockPackages: Package[] = [
   { id: 1, service_type: '1:1 Personal Training', sessions: 12, duration_months: 1, price: 29500, consistency_window_days: 7, consistency_min_days: 3, is_active: true },

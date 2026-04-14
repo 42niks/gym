@@ -62,7 +62,7 @@ describe('MemberHomePage', () => {
     await user.click(await screen.findByRole('button', { name: /mark today/i }));
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith('/api/me/sessions');
+      expect(mockApiPost).toHaveBeenCalledWith('/api/member/session');
     });
 
     await waitFor(() => {
@@ -97,7 +97,7 @@ describe('MemberHomePage', () => {
     renderWithProviders(<MemberHomePage />, { route: '/home' });
 
     await waitFor(() => {
-      expect(screen.getByText('Billing')).toBeInTheDocument();
+      expect(screen.getByText('Subscription')).toBeInTheDocument();
       expect(screen.getByText('Profile')).toBeInTheDocument();
     });
   });

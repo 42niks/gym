@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import MemberBillingPage from '../pages/member/MemberBillingPage.js';
 import { renderWithProviders } from './test-utils.js';
-import { mockGroupedSubscriptions } from './mocks.js';
+import { mockSubscriptions } from './mocks.js';
 
 const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }));
 
@@ -19,15 +19,15 @@ vi.mock('../lib/api.js', async () => {
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('MemberBillingPage', () => {
-  it('renders billing shell while loading', () => {
+  it('renders subscription shell while loading', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
-    renderWithProviders(<MemberBillingPage />, { route: '/billing' });
-    expect(screen.getByRole('heading', { name: 'Billing', level: 2 })).toBeInTheDocument();
+    renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
+    expect(screen.getByRole('heading', { name: 'SUBSCRIPTION', level: 2 })).toBeInTheDocument();
   });
 
   it('shows upcoming, current, and past sections', async () => {
-    mockApiGet.mockResolvedValue(mockGroupedSubscriptions);
-    renderWithProviders(<MemberBillingPage />, { route: '/billing' });
+    mockApiGet.mockResolvedValue(mockSubscriptions);
+    renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
     await waitFor(() => {
       expect(screen.getByText('Upcoming')).toBeInTheDocument();
       expect(screen.getByText('Current')).toBeInTheDocument();
@@ -36,8 +36,8 @@ describe('MemberBillingPage', () => {
   });
 
   it('renders subscription cards with lifecycle badges', async () => {
-    mockApiGet.mockResolvedValue(mockGroupedSubscriptions);
-    renderWithProviders(<MemberBillingPage />, { route: '/billing' });
+    mockApiGet.mockResolvedValue(mockSubscriptions);
+    renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
     await waitFor(() => {
       expect(screen.getByText('active')).toBeInTheDocument();
       expect(screen.getByText('completed')).toBeInTheDocument();
@@ -46,8 +46,8 @@ describe('MemberBillingPage', () => {
   });
 
   it('shows empty state when no subscriptions', async () => {
-    mockApiGet.mockResolvedValue({ completed_and_active: [], upcoming: [] });
-    renderWithProviders(<MemberBillingPage />, { route: '/billing' });
+    mockApiGet.mockResolvedValue([]);
+    renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
     await waitFor(() => {
       expect(screen.getByText('No active package')).toBeInTheDocument();
       expect(screen.getByText('No past packages')).toBeInTheDocument();
@@ -55,8 +55,8 @@ describe('MemberBillingPage', () => {
   });
 
   it('displays subscription details', async () => {
-    mockApiGet.mockResolvedValue(mockGroupedSubscriptions);
-    renderWithProviders(<MemberBillingPage />, { route: '/billing' });
+    mockApiGet.mockResolvedValue(mockSubscriptions);
+    renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
     await waitFor(() => {
       expect(screen.getAllByText('1:1 Personal Training').length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('Group Personal Training')).toBeInTheDocument();

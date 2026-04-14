@@ -118,7 +118,7 @@ export default function AppShell({ links, children }: AppShellProps) {
 
             <nav className="mt-5 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain">
               {links.map(link => {
-                const active = location.pathname === link.to;
+                const active = location.pathname === link.to || location.pathname.startsWith(`${link.to}/`);
                 return (
                   <Link
                     key={link.to}

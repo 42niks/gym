@@ -12,12 +12,13 @@ import OwnerNewMemberPage from './pages/owner/OwnerNewMemberPage.js';
 import OwnerMemberDetailPage from './pages/owner/OwnerMemberDetailPage.js';
 import OwnerNewSubscriptionPage from './pages/owner/OwnerNewSubscriptionPage.js';
 import OwnerPackagesPage from './pages/owner/OwnerPackagesPage.js';
+import OwnerNewPackagePage from './pages/owner/OwnerNewPackagePage.js';
 import { ownerLinks } from './pages/owner/ownerLinks.js';
 import NotFoundPage from './pages/NotFoundPage.js';
 
 const memberLinks = [
   { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/billing', label: 'Billing', icon: 'credit_card' },
+  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
   { to: '/profile', label: 'Profile', icon: 'person' },
 ];
 
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="/members/:id" element={<OwnerMemberDetailPage />} />
         <Route path="/members/:id/subscriptions/new" element={<OwnerNewSubscriptionPage />} />
         <Route path="/packages" element={<OwnerPackagesPage />} />
+        <Route path="/packages/new" element={<OwnerNewPackagePage />} />
         <Route path="*" element={<NotFoundPage links={ownerLinks} />} />
       </Routes>
     );
@@ -60,7 +62,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/home" element={<MemberHomePage />} />
-      <Route path="/billing" element={<MemberBillingPage />} />
+      <Route path="/subscription" element={<MemberBillingPage />} />
       <Route path="/profile" element={<MemberProfilePage />} />
       <Route path="*" element={<NotFoundPage links={memberLinks} />} />
     </Routes>

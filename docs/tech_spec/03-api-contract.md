@@ -217,25 +217,26 @@ Failure:
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/packages` | Yes | Return all package rows |
+| `GET` | `/api/packages` | Owner auth | Return managed package rows, including archived rows and usage counts |
 
 Response is a flat array sorted by:
 
-1. `service_type ASC`
-2. `duration_months ASC`
-3. `sessions ASC`
+1. `is_active DESC`
+2. `service_type ASC`
+3. `duration_months ASC`
+4. `sessions ASC`
 4. `price ASC`
 
 ### 4.6 Member Self Endpoints
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/me/profile` | Member | Return own profile |
-| `GET` | `/api/me/home` | Member | Return member home screen state |
-| `GET` | `/api/me/subscriptions` | Member | Return own subscriptions grouped for UI |
-| `POST` | `/api/me/sessions` | Member | Mark attendance for today |
+| `GET` | `/api/member/profile` | Member | Return own profile |
+| `GET` | `/api/member/home` | Member | Return member home screen state |
+| `GET` | `/api/member/subscription` | Member | Return own subscriptions as a flat list |
+| `POST` | `/api/member/session` | Member | Mark attendance for today |
 
-#### `GET /api/me/home`
+#### `GET /api/member/home`
 
 ```json
 {
@@ -277,47 +278,42 @@ Notes:
 - `renewal` may be `null`, `ends_soon`, `starts_on`, or `no_active`.
 - `marked_attendance_today` is independent of current subscription state.
 
-#### `GET /api/me/subscriptions`
+#### `GET /api/member/subscription`
+
+Returns a flat array of subscription objects:
 
 ```json
-{
-  "completed_and_active": [
-    {
-      "id": 7,
-      "package_id": 3,
-      "service_type": "1:1 Personal Training",
-      "start_date": "2026-04-10",
-      "end_date": "2026-05-09",
-      "total_sessions": 12,
-      "attended_sessions": 4,
-      "remaining_sessions": 8,
-      "amount": 29500,
-      "owner_completed": false,
-      "lifecycle_state": "active"
-    }
-  ],
-  "upcoming": [
-    {
-      "id": 9,
-      "package_id": 3,
-      "service_type": "1:1 Personal Training",
-      "start_date": "2026-05-10",
-      "end_date": "2026-06-09",
-      "total_sessions": 12,
-      "attended_sessions": 0,
-      "remaining_sessions": 12,
-      "amount": 29500,
-      "owner_completed": false,
-      "lifecycle_state": "upcoming"
-    }
-  ]
-}
+[
+  {
+    "id": 9,
+    "package_id": 3,
+    "service_type": "1:1 Personal Training",
+    "start_date": "2026-05-10",
+    "end_date": "2026-06-09",
+    "total_sessions": 12,
+    "attended_sessions": 0,
+    "remaining_sessions": 12,
+    "amount": 29500,
+    "owner_completed": false,
+    "lifecycle_state": "upcoming"
+  },
+  {
+    "id": 7,
+    "package_id": 3,
+    "service_type": "1:1 Personal Training",
+    "start_date": "2026-04-10",
+    "end_date": "2026-05-09",
+    "total_sessions": 12,
+    "attended_sessions": 4,
+    "remaining_sessions": 8,
+    "amount": 29500,
+    "owner_completed": false,
+    "lifecycle_state": "active"
+  }
+]
 ```
 
-Ordering:
-
-- `completed_and_active`: active subscription first if present, then completed subscriptions by `start_date DESC, id DESC`
-- `upcoming`: `start_date ASC, id ASC`
+Ordering is intentionally unspecified. Clients should sort and group by `lifecycle_state` as needed.
 
 ### 4.7 Owner Member Endpoints
 
@@ -520,11 +516,11 @@ On success:
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/members/:id/subscriptions` | Owner | Return that member's grouped subscriptions |
+| `GET` | `/api/members/:id/subscriptions` | Owner | Return that member's subscriptions as a flat list |
 | `POST` | `/api/members/:id/subscriptions` | Owner | Create a subscription |
 | `POST` | `/api/subscriptions/:id/complete` | Owner | Mark a subscription completed |
 
-`GET /api/members/:id/subscriptions` has the same response shape and ordering as `GET /api/me/subscriptions`.
+`GET /api/members/:id/subscriptions` has the same flat response shape as `GET /api/member/subscription`.
 
 #### `POST /api/members/:id/subscriptions`
 
@@ -594,7 +590,7 @@ Completion means:
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/me/sessions` | Member | Mark own attendance for today |
+| `POST` | `/api/member/session` | Member | Mark own attendance for today |
 | `POST` | `/api/members/:id/sessions` | Owner | Mark attendance for a member for today |
 
 Request body is empty. Attendance is always for the current IST date.
@@ -611,11 +607,11 @@ Failures:
 - `400` -> `{"error":"Cannot mark attendance for an archived member"}`
 - `409` -> `{"error":"Attendance already marked for today"}`
 
-### 4.10 Owner Dashboard
+### 4.10 Owner Home
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/owner/dashboard` | Owner | Return owner home/renewal screen data |
+| `GET` | `/api/owner/home` | Owner | Return owner home/renewal screen data |
 
 Response:
 

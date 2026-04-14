@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { api, type Package, type Subscription, ApiError } from '../../lib/api.js';
+import { api, type ManagedPackage, type Subscription, ApiError } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Input from '../../components/Input.js';
@@ -13,18 +13,18 @@ import { ownerLinks } from './ownerLinks.js';
 export default function OwnerNewSubscriptionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<ManagedPackage | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { data: packages = [], isLoading } = useQuery<Package[]>({
+  const { data: packages = [], isLoading } = useQuery<ManagedPackage[]>({
     queryKey: ['packages'],
     queryFn: () => api.get('/api/packages'),
   });
 
-  function handlePackageSelect(pkg: Package) {
+  function handlePackageSelect(pkg: ManagedPackage) {
     setSelectedPackage(pkg);
     setAmount(String(pkg.price));
   }
@@ -48,7 +48,9 @@ export default function OwnerNewSubscriptionPage() {
     }
   }
 
-  const byType = packages.reduce<Record<string, Package[]>>((acc, pkg) => {
+  const byType = packages
+    .filter(pkg => pkg.is_active)
+    .reduce<Record<string, ManagedPackage[]>>((acc, pkg) => {
     if (!acc[pkg.service_type]) acc[pkg.service_type] = [];
     acc[pkg.service_type].push(pkg);
     return acc;

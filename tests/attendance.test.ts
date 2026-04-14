@@ -15,13 +15,13 @@ describe('Attendance', () => {
     memberCookie = await loginAs('member@test.com', '1234567890');
   });
 
-  // ─── POST /api/me/sessions (member self) ───
+  // ─── POST /api/member/session (member self) ───
 
-  describe('POST /api/me/sessions', () => {
+  describe('POST /api/member/session', () => {
     it('should mark attendance when member has active subscription', async () => {
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
-      const res = await api('/api/me/sessions', { method: 'POST', headers: { Cookie: memberCookie } });
+      const res = await api('/api/member/session', { method: 'POST', headers: { Cookie: memberCookie } });
       expect(res.status).toBe(200);
       expect((await res.json()).ok).toBe(true);
     });
@@ -29,14 +29,14 @@ describe('Attendance', () => {
     it('should increment attended_sessions after marking', async () => {
       const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
-      await api('/api/me/sessions', { method: 'POST', headers: { Cookie: memberCookie } });
+      await api('/api/member/session', { method: 'POST', headers: { Cookie: memberCookie } });
 
       const sub = await getSubscription(subId);
       expect(sub.attended_sessions).toBe(1);
     });
 
     it('should reject when no active subscription', async () => {
-      const res = await api('/api/me/sessions', { method: 'POST', headers: { Cookie: memberCookie } });
+      const res = await api('/api/member/session', { method: 'POST', headers: { Cookie: memberCookie } });
       expect(res.status).toBe(400);
       expect((await res.json()).error).toBe('No active subscription');
     });
@@ -44,8 +44,8 @@ describe('Attendance', () => {
     it('should reject double check-in on same day', async () => {
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
-      await api('/api/me/sessions', { method: 'POST', headers: { Cookie: memberCookie } });
-      const res = await api('/api/me/sessions', { method: 'POST', headers: { Cookie: memberCookie } });
+      await api('/api/member/session', { method: 'POST', headers: { Cookie: memberCookie } });
+      const res = await api('/api/member/session', { method: 'POST', headers: { Cookie: memberCookie } });
       expect(res.status).toBe(409);
       expect((await res.json()).error).toBe('Attendance already marked for today');
     });
@@ -53,7 +53,7 @@ describe('Attendance', () => {
     it('should reject when all sessions used up (subscription becomes completed)', async () => {
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, attended_sessions: 8, amount: 19900 });
 
-      const res = await api('/api/me/sessions', { method: 'POST', headers: { Cookie: memberCookie } });
+      const res = await api('/api/member/session', { method: 'POST', headers: { Cookie: memberCookie } });
       expect(res.status).toBe(400);
       expect((await res.json()).error).toBe('No active subscription');
     });
@@ -86,7 +86,7 @@ describe('Attendance', () => {
     it('should reject double attendance when owner and member both try same day', async () => {
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
-      await api('/api/me/sessions', { method: 'POST', headers: { Cookie: memberCookie } });
+      await api('/api/member/session', { method: 'POST', headers: { Cookie: memberCookie } });
       const res = await api(`/api/members/${memberId}/sessions`, { method: 'POST', headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(409);
       expect((await res.json()).error).toBe('Attendance already marked for today');

@@ -1,15 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerPackagesPage from '../pages/owner/OwnerPackagesPage.js';
 import { renderWithProviders } from './test-utils.js';
-import { mockManagedPackages } from './mocks.js';
 
-const { mockApiGet, mockApiPost, mockApiPatch, mockApiDelete } = vi.hoisted(() => ({
+const { mockApiGet, mockApiPatch, mockConfirm } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
-  mockApiPost: vi.fn(),
   mockApiPatch: vi.fn(),
-  mockApiDelete: vi.fn(),
+  mockConfirm: vi.fn(),
 }));
 
 vi.mock('../context/AuthContext.js', () => ({
@@ -23,93 +21,132 @@ vi.mock('../lib/api.js', async () => {
     ...actual,
     api: {
       get: mockApiGet,
-      post: mockApiPost,
+      post: vi.fn(),
       patch: mockApiPatch,
-      delete: mockApiDelete,
+      delete: vi.fn(),
     },
   };
 });
 
+const managedPackages = [
+  {
+    id: 1,
+    service_type: '1:1 Personal Training',
+    sessions: 12,
+    duration_months: 1,
+    price: 29500,
+    consistency_window_days: 7,
+    consistency_min_days: 3,
+    is_active: true,
+    subscription_count: 6,
+    active_subscription_count: 2,
+    upcoming_subscription_count: 1,
+  },
+  {
+    id: 2,
+    service_type: 'Group Personal Training',
+    sessions: 16,
+    duration_months: 2,
+    price: 18000,
+    consistency_window_days: 7,
+    consistency_min_days: 2,
+    is_active: true,
+    subscription_count: 4,
+    active_subscription_count: 3,
+    upcoming_subscription_count: 0,
+  },
+  {
+    id: 3,
+    service_type: 'MMA/Kickboxing Personal Training',
+    sessions: 8,
+    duration_months: 1,
+    price: 22000,
+    consistency_window_days: 7,
+    consistency_min_days: 2,
+    is_active: false,
+    subscription_count: 1,
+    active_subscription_count: 0,
+    upcoming_subscription_count: 0,
+  },
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal('confirm', mockConfirm);
+  mockConfirm.mockReturnValue(true);
 });
 
 describe('OwnerPackagesPage', () => {
-  it('renders package sections and summary cards', async () => {
-    mockApiGet.mockResolvedValue(mockManagedPackages);
+  it('renders the packages heading, new-link, and icon tabs', async () => {
+    mockApiGet.mockResolvedValue(managedPackages);
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages' });
 
     await waitFor(() => {
       expect(screen.getByText('PACKAGES')).toBeInTheDocument();
-      expect(screen.getByText('1:1 Personal Training')).toBeInTheDocument();
-      expect(screen.getByText('Group Personal Training')).toBeInTheDocument();
-      expect(screen.getByText('Live catalog')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /\+ new/i })).toHaveAttribute('href', '/packages/new');
+      expect(screen.getByRole('button', { name: '1:1 Personal Training' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Group Personal Training' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'MMA/Kickboxing Personal Training' })).toBeInTheDocument();
     });
   });
 
-  it('creates a new package', async () => {
-    const user = userEvent.setup();
-    mockApiGet.mockResolvedValue(mockManagedPackages);
-    mockApiPost.mockResolvedValue({
-      id: 42,
-      service_type: 'Mobility Coaching',
-      sessions: 10,
-      duration_months: 2,
-      price: 12000,
-      consistency_window_days: 7,
-      consistency_min_days: 2,
-      is_active: true,
-      subscription_count: 0,
-      active_subscription_count: 0,
-      upcoming_subscription_count: 0,
-    });
+  it('shows the selected service tab and its table rows', async () => {
+    mockApiGet.mockResolvedValue(managedPackages);
 
-    renderWithProviders(<OwnerPackagesPage />, { route: '/packages' });
-
-    await waitFor(() => expect(screen.getByRole('button', { name: /new package/i })).toBeInTheDocument());
-
-    await user.click(screen.getByRole('button', { name: /new package/i }));
-    await user.type(screen.getByLabelText(/service type/i), 'Mobility Coaching');
-    await user.type(screen.getByLabelText(/^sessions$/i), '10');
-    await user.type(screen.getByLabelText(/duration \(months\)/i), '2');
-    await user.type(screen.getByLabelText(/price \(inr\)/i), '12000');
-    await user.clear(screen.getByLabelText(/min exercise days/i));
-    await user.type(screen.getByLabelText(/min exercise days/i), '2');
-    await user.click(screen.getByRole('button', { name: /create package/i }));
+    renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith('/api/owner/packages', expect.objectContaining({
-        service_type: 'Mobility Coaching',
-        sessions: '10',
-        duration_months: '2',
-        price: '12000',
-        consistency_min_days: '2',
-        is_active: true,
-      }));
+      expect(screen.getByRole('heading', { name: 'Group Personal Training' })).toBeInTheDocument();
+      expect(screen.getByText('16')).toBeInTheDocument();
+      expect(screen.getByText('2 months')).toBeInTheDocument();
+      expect(screen.getByText('₹18,000')).toBeInTheDocument();
+      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument();
     });
   });
 
-  it('updates an existing package', async () => {
+  it('archives an active package from the table', async () => {
     const user = userEvent.setup();
-    mockApiGet.mockResolvedValue(mockManagedPackages);
-    mockApiPatch.mockResolvedValue({
-      ...mockManagedPackages[1],
-      consistency_min_days: 3,
-    });
+    mockApiGet.mockResolvedValue(managedPackages);
+    mockApiPatch.mockResolvedValue({ ...managedPackages[1], is_active: false });
 
-    renderWithProviders(<OwnerPackagesPage />, { route: '/packages' });
+    renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
-    await waitFor(() => expect(screen.getByText('24 sessions')).toBeInTheDocument());
-    await user.click(screen.getByText('24 sessions'));
-    await user.clear(screen.getByLabelText(/min exercise days/i));
-    await user.type(screen.getByLabelText(/min exercise days/i), '3');
-    await user.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /archive/i }));
 
     await waitFor(() => {
-      expect(mockApiPatch).toHaveBeenCalledWith('/api/owner/packages/2', expect.objectContaining({
-        consistency_min_days: '3',
-      }));
+      expect(mockConfirm).toHaveBeenCalled();
+      expect(mockApiPatch).toHaveBeenCalledWith('/api/packages/2', { is_active: false });
+    });
+  });
+
+  it('shows an archive error when the API call fails', async () => {
+    const user = userEvent.setup();
+    const { ApiError } = await import('../lib/api.js');
+    mockApiGet.mockResolvedValue(managedPackages);
+    mockApiPatch.mockRejectedValue(new ApiError(409, 'Archive failed'));
+
+    renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /archive/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Archive failed')).toBeInTheDocument();
+    });
+  });
+
+  it('shows archived state instead of the archive action for inactive packages', async () => {
+    mockApiGet.mockResolvedValue(managedPackages);
+
+    renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=MMA%2FKickboxing%20Personal%20Training' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'MMA/Kickboxing Personal Training' })).toBeInTheDocument();
+      expect(screen.getByText('Archived')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /archive/i })).not.toBeInTheDocument();
     });
   });
 });

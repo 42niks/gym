@@ -10,17 +10,17 @@
 ```text
 /                               -> LoginPage
 
-/home                           -> MemberHomePage
-/billing                        -> MemberBillingPage
+/home                           -> MemberHomePage or OwnerHomePage
+/subscription                   -> MemberBillingPage
 /profile                        -> MemberProfilePage
 
-/owner                          -> OwnerHomePage
-/owner/renewal                  -> OwnerRenewalPage
-/owner/members                  -> OwnerMemberListPage
-/owner/members/new              -> OwnerCreateMemberPage
-/owner/members/:id              -> OwnerMemberDetailPage
-/owner/members/:id/subscriptions/new
+/members                        -> OwnerMemberListPage
+/members/new                    -> OwnerCreateMemberPage
+/members/:id                    -> OwnerMemberDetailPage
+/members/:id/subscriptions/new
                                 -> OwnerCreateSubscriptionPage
+/packages                       -> OwnerPackagesPage
+/packages/new                   -> OwnerNewPackagePage
 ```
 
 ### 7.2 Route Guards
@@ -56,25 +56,25 @@ Recommended keys:
 
 - `['auth-me']`
 - `['packages']`
-- `['me-profile']`
-- `['me-home']`
-- `['me-subscriptions']`
+- `['member-profile']`
+- `['member-home']`
+- `['member-subscription']`
 - `['members', status]`
 - `['member', id]`
 - `['member-subscriptions', id]`
-- `['owner-dashboard']`
+- `['owner-home']`
 
 ### 7.6 Mutation Invalidation
 
 | Mutation | Invalidate |
 |---|---|
 | login / logout | `['auth-me']` and route redirect |
-| member marks attendance | `['me-home']`, `['me-subscriptions']`, `['owner-dashboard']`, `['members', 'active']` |
-| owner marks attendance | `['member', id]`, `['member-subscriptions', id]`, `['owner-dashboard']`, `['members', 'active']` |
-| create member | `['members', 'active']`, `['owner-dashboard']` |
-| update member | `['member', id]`, `['members', 'active']`, `['members', 'archived']`, `['owner-dashboard']` |
-| archive member | `['member', id]`, `['members', 'active']`, `['members', 'archived']`, `['owner-dashboard']` |
-| create subscription | `['member', id]`, `['member-subscriptions', id]`, `['members', 'active']`, `['members', 'archived']`, `['owner-dashboard']` |
+| member marks attendance | `['member-home']`, `['member-subscription']`, `['owner-home']`, `['members', 'active']` |
+| owner marks attendance | `['member', id]`, `['member-subscriptions', id]`, `['owner-home']`, `['members', 'active']` |
+| create member | `['members', 'active']`, `['owner-home']` |
+| update member | `['member', id]`, `['members', 'active']`, `['members', 'archived']`, `['owner-home']` |
+| archive member | `['member', id]`, `['members', 'active']`, `['members', 'archived']`, `['owner-home']` |
+| create subscription | `['member', id]`, `['member-subscriptions', id]`, `['members', 'active']`, `['members', 'archived']`, `['owner-home']` |
 | complete subscription | same as create subscription |
 
 ### 7.7 Page Data Responsibilities
@@ -82,15 +82,14 @@ Recommended keys:
 | Page | Primary API calls |
 |---|---|
 | `LoginPage` | `POST /api/auth/login` |
-| `MemberHomePage` | `GET /api/me/home`, `POST /api/me/sessions` |
-| `MemberBillingPage` | `GET /api/me/subscriptions` |
-| `MemberProfilePage` | `GET /api/me/profile` |
-| `OwnerHomePage` | `GET /api/owner/dashboard` |
-| `OwnerRenewalPage` | `GET /api/owner/dashboard` |
+| `MemberHomePage` | `GET /api/member/home`, `POST /api/member/session` |
+| `MemberBillingPage` | `GET /api/member/subscription` (flat list; page groups/sorts client-side) |
+| `MemberProfilePage` | `GET /api/member/profile` |
+| `OwnerHomePage` | `GET /api/owner/home` |
 | `OwnerMemberListPage` | `GET /api/members?status=active|archived` |
 | `OwnerCreateMemberPage` | `POST /api/members` |
-| `OwnerMemberDetailPage` | `GET /api/members/:id`, `GET /api/members/:id/subscriptions` |
-| `OwnerCreateSubscriptionPage` | `GET /api/packages`, `POST /api/members/:id/subscriptions` |
+| `OwnerMemberDetailPage` | `GET /api/members/:id`, `GET /api/members/:id/subscriptions` (flat list; page sorts client-side) |
+| `OwnerCreateSubscriptionPage` | `GET /api/packages` (owner only; UI filters to active rows), `POST /api/members/:id/subscriptions` |
 
 ### 7.8 UI Behavior
 

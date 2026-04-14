@@ -95,11 +95,6 @@ export interface MemberHome {
   recent_attendance: RecentAttendanceDay[];
 }
 
-export interface GroupedSubscriptions {
-  completed_and_active: Subscription[];
-  upcoming: Subscription[];
-}
-
 export interface Package {
   id: number;
   service_type: string;

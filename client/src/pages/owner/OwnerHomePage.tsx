@@ -56,8 +56,8 @@ function AttendanceCard({
 
 export default function OwnerHomePage() {
   const { data, isLoading } = useQuery<Dashboard>({
-    queryKey: ['owner-dashboard'],
-    queryFn: () => api.get('/api/owner/dashboard'),
+    queryKey: ['owner-home'],
+    queryFn: () => api.get('/api/owner/home'),
   });
 
   return (

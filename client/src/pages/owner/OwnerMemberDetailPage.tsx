@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type MemberDetail, type GroupedSubscriptions, type Subscription, ApiError } from '../../lib/api.js';
+import { api, type MemberDetail, type Subscription, ApiError } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
@@ -97,6 +97,23 @@ function AttendanceButton({ memberId, markedToday }: { memberId: string; markedT
   );
 }
 
+function sortSubscriptions(subs: Subscription[]) {
+  const priority: Record<Subscription['lifecycle_state'], number> = {
+    upcoming: 0,
+    active: 1,
+    completed: 2,
+  };
+
+  return [...subs].sort((a, b) => {
+    const priorityDiff = priority[a.lifecycle_state] - priority[b.lifecycle_state];
+    if (priorityDiff !== 0) return priorityDiff;
+    if (a.lifecycle_state === 'upcoming' && b.lifecycle_state === 'upcoming') {
+      return a.start_date.localeCompare(b.start_date) || a.id - b.id;
+    }
+    return b.start_date.localeCompare(a.start_date) || b.id - a.id;
+  });
+}
+
 export default function OwnerMemberDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -108,7 +125,7 @@ export default function OwnerMemberDetailPage() {
     queryFn: () => api.get(`/api/members/${id}`),
   });
 
-  const { data: subs } = useQuery<GroupedSubscriptions>({
+  const { data: subs = [] } = useQuery<Subscription[]>({
     queryKey: ['member-subs', id],
     queryFn: () => api.get(`/api/members/${id}/subscriptions`),
     enabled: !!id,
@@ -145,7 +162,7 @@ export default function OwnerMemberDetailPage() {
 
   if (!detail) return null;
 
-  const allSubs = [...(subs?.upcoming ?? []), ...(subs?.completed_and_active ?? [])];
+  const allSubs = sortSubscriptions(subs);
 
   return (
     <AppShell links={ownerLinks}>

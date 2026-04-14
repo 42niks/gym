@@ -8,7 +8,7 @@ import { requireOwner } from './middleware/require-owner.js';
 import { requireMember } from './middleware/require-member.js';
 import {
   getMemberDetail, listMembers, createNewMember, updateExistingMember,
-  archiveMemberById, getGroupedSubscriptions, toProfile, computeMemberEnrichment,
+  archiveMemberById, listFormattedSubscriptions, toProfile, computeMemberEnrichment,
 } from './services/member-service.js';
 import { createNewSubscription, completeSubscription } from './services/subscription-service.js';
 import { markAttendance } from './services/attendance-service.js';
@@ -16,9 +16,7 @@ import { getDashboard } from './services/dashboard-service.js';
 import { getIstDate } from './lib/date.js';
 import {
   createManagedPackage,
-  deleteManagedPackage,
   listManagedPackages,
-  listSelectablePackages,
   updateManagedPackage,
 } from './services/package-service.js';
 
@@ -115,17 +113,11 @@ export function createApp(
 
   // ─── Packages ───
 
-  app.get('/api/packages', authMiddleware, async (c) => {
-    return c.json(await listSelectablePackages(db));
-  });
-
-  // ─── Owner: Packages ───
-
-  app.get('/api/owner/packages', authMiddleware, requireOwner, async (c) => {
+  app.get('/api/packages', authMiddleware, requireOwner, async (c) => {
     return c.json(await listManagedPackages(db));
   });
 
-  app.post('/api/owner/packages', authMiddleware, requireOwner, async (c) => {
+  app.post('/api/packages', authMiddleware, requireOwner, async (c) => {
     let body: any;
     try {
       body = await c.req.json();
@@ -138,7 +130,7 @@ export function createApp(
     return c.json(result.data, result.status);
   });
 
-  app.patch('/api/owner/packages/:id', authMiddleware, requireOwner, async (c) => {
+  app.patch('/api/packages/:id', authMiddleware, requireOwner, async (c) => {
     const id = parseInt(c.req.param('id') ?? '', 10);
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid package id' }, 400);
 
@@ -154,25 +146,16 @@ export function createApp(
     return c.json(result.data, result.status);
   });
 
-  app.delete('/api/owner/packages/:id', authMiddleware, requireOwner, async (c) => {
-    const id = parseInt(c.req.param('id') ?? '', 10);
-    if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid package id' }, 400);
-
-    const result = await deleteManagedPackage(db, id);
-    if ('error' in result) return c.json({ error: result.error }, result.status);
-    return c.json(result.data, result.status);
-  });
-
   // ─── Member self routes ───
 
-  app.get('/api/me/profile', authMiddleware, requireMember, async (c) => {
+  app.get('/api/member/profile', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
     const member = await findMemberById(db, user.member_id);
     if (!member) return c.json({ error: 'Not found' }, 404);
     return c.json(toProfile(member));
   });
 
-  app.get('/api/me/home', authMiddleware, requireMember, async (c) => {
+  app.get('/api/member/home', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
     const member = await findMemberById(db, user.member_id);
     if (!member) return c.json({ error: 'Not found' }, 404);
@@ -186,12 +169,12 @@ export function createApp(
     });
   });
 
-  app.get('/api/me/subscriptions', authMiddleware, requireMember, async (c) => {
+  app.get('/api/member/subscription', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
-    return c.json(await getGroupedSubscriptions(db, user.member_id));
+    return c.json(await listFormattedSubscriptions(db, user.member_id));
   });
 
-  app.post('/api/me/sessions', authMiddleware, requireMember, async (c) => {
+  app.post('/api/member/session', authMiddleware, requireMember, async (c) => {
     const user = c.get('user');
     const result = await markAttendance(db, user.member_id);
     if ('error' in result) return c.json({ error: result.error }, result.status);
@@ -301,7 +284,7 @@ export function createApp(
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
     const member = await findMemberById(db, id);
     if (!member) return c.json({ error: 'Member not found' }, 404);
-    return c.json(await getGroupedSubscriptions(db, id));
+    return c.json(await listFormattedSubscriptions(db, id));
   });
 
   app.post('/api/members/:id/subscriptions', authMiddleware, requireOwner, async (c) => {
@@ -352,7 +335,7 @@ export function createApp(
 
   // ─── Owner: Dashboard ───
 
-  app.get('/api/owner/dashboard', authMiddleware, requireOwner, async (c) => {
+  app.get('/api/owner/home', authMiddleware, requireOwner, async (c) => {
     return c.json(await getDashboard(db));
   });
 

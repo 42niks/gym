@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api, type GroupedSubscriptions, type Subscription } from '../../lib/api.js';
+import { api, type Subscription } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
@@ -7,7 +7,7 @@ import Spinner from '../../components/Spinner.js';
 
 const memberLinks = [
   { to: '/home', label: 'Home', icon: 'home' },
-  { to: '/billing', label: 'Billing', icon: 'credit_card' },
+  { to: '/subscription', label: 'Subscription', icon: 'credit_card' },
   { to: '/profile', label: 'Profile', icon: 'person' },
 ];
 
@@ -37,6 +37,18 @@ function formatAmount(amount: number) {
 function getCompletionPercent(sub: Subscription) {
   if (sub.total_sessions === 0) return 0;
   return Math.round((sub.attended_sessions / sub.total_sessions) * 100);
+}
+
+function sortUpcoming(subs: Subscription[]) {
+  return [...subs].sort((a, b) => a.start_date.localeCompare(b.start_date) || a.id - b.id);
+}
+
+function sortPast(subs: Subscription[]) {
+  return [...subs].sort((a, b) => b.start_date.localeCompare(a.start_date) || b.id - a.id);
+}
+
+function sortCurrent(subs: Subscription[]) {
+  return [...subs].sort((a, b) => b.start_date.localeCompare(a.start_date) || b.id - a.id);
 }
 
 function SectionHeader({ label, count }: { label: string; count?: number }) {
@@ -206,20 +218,20 @@ function PastCard({ sub }: { sub: Subscription }) {
 }
 
 export default function MemberBillingPage() {
-  const { data, isLoading } = useQuery<GroupedSubscriptions>({
-    queryKey: ['member-billing'],
-    queryFn: () => api.get('/api/me/subscriptions'),
+  const { data = [], isLoading } = useQuery<Subscription[]>({
+    queryKey: ['member-subscription'],
+    queryFn: () => api.get('/api/member/subscription'),
   });
 
-  const upcoming = data?.upcoming ?? [];
-  const current = (data?.completed_and_active ?? []).filter(s => s.lifecycle_state === 'active');
-  const past = (data?.completed_and_active ?? []).filter(s => s.lifecycle_state !== 'active');
+  const current = sortCurrent(data.filter(s => s.lifecycle_state === 'active'));
+  const upcoming = sortUpcoming(data.filter(s => s.lifecycle_state === 'upcoming'));
+  const past = sortPast(data.filter(s => s.lifecycle_state === 'completed'));
 
   return (
     <AppShell links={memberLinks}>
       <div className="page-stack space-y-6">
         <div>
-          <h2 className="page-title">Billing</h2>
+          <h2 className="page-title">SUBSCRIPTION</h2>
         </div>
 
         {isLoading ? (

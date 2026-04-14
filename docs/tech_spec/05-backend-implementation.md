@@ -73,9 +73,9 @@ Behavior:
 
 Route protection:
 
-- `/api/me/*` -> `authMiddleware` + `requireMember`
-- `/api/packages` -> `authMiddleware` only
-- owner management routes -> `authMiddleware` + `requireOwner`
+- `/api/member/*` -> `authMiddleware` + `requireMember`
+- `/api/packages` -> `authMiddleware` + `requireOwner`
+- `/api/owner/*` and owner management routes -> `authMiddleware` + `requireOwner`
 
 ### 6.3 Cookie and Session Strategy
 
@@ -101,11 +101,11 @@ If only the database expiry is refreshed, the browser cookie may expire early. I
 |---|---|
 | `routes/auth.ts` | `auth-service.ts` |
 | `routes/packages.ts` | `packages-repo.ts` or small service |
-| `routes/me.ts` | `member-service.ts`, `subscription-service.ts`, `attendance-service.ts` |
+| `routes/member.ts` | `member-service.ts`, `subscription-service.ts`, `attendance-service.ts` |
 | `routes/members.ts` | `member-service.ts`, `subscription-service.ts`, `attendance-service.ts` |
 | `routes/subscriptions.ts` | `subscription-service.ts` |
 | `routes/sessions.ts` | `attendance-service.ts` |
-| `routes/owner-dashboard.ts` | `dashboard-service.ts` |
+| `routes/owner-home.ts` | `dashboard-service.ts` |
 
 ### 6.6 Dashboard Assembly
 

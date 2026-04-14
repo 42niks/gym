@@ -299,12 +299,12 @@ describe('Member Management', () => {
 
   // ─── Member self routes ───
 
-  describe('GET /api/me/profile', () => {
+  describe('GET /api/member/profile', () => {
     it('should return own profile', async () => {
       await seedMember({ email: 'member@test.com', phone: '1234567890', full_name: 'Test Member' });
       const memberCookie = await loginAs('member@test.com', '1234567890');
 
-      const body = await (await api('/api/me/profile', { headers: { Cookie: memberCookie } })).json();
+      const body = await (await api('/api/member/profile', { headers: { Cookie: memberCookie } })).json();
       expect(body.full_name).toBe('Test Member');
       expect(body.email).toBe('member@test.com');
       expect(body.phone).toBe('1234567890');
@@ -313,12 +313,12 @@ describe('Member Management', () => {
     });
   });
 
-  describe('GET /api/me/home', () => {
+  describe('GET /api/member/home', () => {
     it('should return all home screen fields', async () => {
       await seedMember({ email: 'member@test.com', phone: '1234567890' });
       const memberCookie = await loginAs('member@test.com', '1234567890');
 
-      const body = await (await api('/api/me/home', { headers: { Cookie: memberCookie } })).json();
+      const body = await (await api('/api/member/home', { headers: { Cookie: memberCookie } })).json();
       expect(body).toHaveProperty('member');
       expect(body).toHaveProperty('active_subscription');
       expect(body).toHaveProperty('consistency');
@@ -331,26 +331,27 @@ describe('Member Management', () => {
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, attended_sessions: 3, amount: 19900 });
       const memberCookie = await loginAs('member@test.com', '1234567890');
 
-      const body = await (await api('/api/me/home', { headers: { Cookie: memberCookie } })).json();
+      const body = await (await api('/api/member/home', { headers: { Cookie: memberCookie } })).json();
       expect(body.active_subscription).not.toBeNull();
       expect(body.active_subscription.lifecycle_state).toBe('active');
       expect(body.active_subscription.remaining_sessions).toBe(5);
     });
   });
 
-  describe('GET /api/me/subscriptions', () => {
-    it('should return grouped subscriptions', async () => {
+  describe('GET /api/member/subscription', () => {
+    it('should return a flat subscription list', async () => {
       const memberId = await seedMember({ email: 'member@test.com', phone: '1234567890' });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2027-01-01', end_date: '2027-01-31', total_sessions: 8, amount: 19900 });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2025-01-01', end_date: '2025-01-31', total_sessions: 8, amount: 19900 });
 
       const memberCookie = await loginAs('member@test.com', '1234567890');
-      const body = await (await api('/api/me/subscriptions', { headers: { Cookie: memberCookie } })).json();
-      expect(body).toHaveProperty('completed_and_active');
-      expect(body).toHaveProperty('upcoming');
-      expect(body.completed_and_active.length).toBe(2);
-      expect(body.upcoming.length).toBe(1);
+      const body = await (await api('/api/member/subscription', { headers: { Cookie: memberCookie } })).json();
+      expect(Array.isArray(body)).toBe(true);
+      expect(body.length).toBe(3);
+      expect(body.filter((sub: any) => sub.lifecycle_state === 'completed').length).toBe(1);
+      expect(body.filter((sub: any) => sub.lifecycle_state === 'active').length).toBe(1);
+      expect(body.filter((sub: any) => sub.lifecycle_state === 'upcoming').length).toBe(1);
     });
   });
 });

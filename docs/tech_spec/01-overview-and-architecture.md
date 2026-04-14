@@ -92,11 +92,11 @@ All `/api/*` responses must include:
 │   ├── routes/
 │   │   ├── auth.ts
 │   │   ├── packages.ts
-│   │   ├── me.ts
+│   │   ├── member.ts
 │   │   ├── members.ts
 │   │   ├── subscriptions.ts
 │   │   ├── sessions.ts
-│   │   └── owner-dashboard.ts
+│   │   └── owner-home.ts
 │   ├── services/
 │   │   ├── auth-service.ts
 │   │   ├── member-service.ts
