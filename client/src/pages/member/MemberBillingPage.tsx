@@ -8,23 +8,42 @@ import Icon from '../../components/Icon.js';
 import Spinner from '../../components/Spinner.js';
 import { memberLinks } from './memberLinks.js';
 
+function parseDateParts(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return { year, month, day };
+}
+
+function toUtcDate(value: string) {
+  const { year, month, day } = parseDateParts(value);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function getIstTodayDateString() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 function formatDateRange(startDate: string, endDate: string) {
   return `${formatLongDate(startDate)} – ${formatLongDate(endDate)}`;
 }
 
 function formatLongDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', {
+  return toUtcDate(date).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: 'UTC',
   });
 }
 
 function getDaysLeft(endDate: string) {
-  const today = new Date();
-  const end = new Date(`${endDate}T00:00:00`);
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.max(0, Math.ceil((end.getTime() - startOfToday.getTime()) / 86400000));
+  const today = toUtcDate(getIstTodayDateString());
+  const end = toUtcDate(endDate);
+  return Math.max(0, Math.ceil((end.getTime() - today.getTime()) / 86400000));
 }
 
 function formatAmount(amount: number) {

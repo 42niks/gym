@@ -73,4 +73,26 @@ describe('MemberBillingPage', () => {
       expect(screen.getByText('Group Personal Training')).toBeInTheDocument();
     });
   });
+
+  it('computes days left from IST date boundaries', async () => {
+    const NativeDateTimeFormat = Intl.DateTimeFormat;
+    const dateTimeFormatSpy = vi.spyOn(Intl, 'DateTimeFormat');
+    dateTimeFormatSpy.mockImplementation((locale, options) => {
+      if (options && typeof options === 'object' && options.timeZone === 'Asia/Kolkata') {
+        return {
+          format: () => '2026-04-15',
+        } as Intl.DateTimeFormat;
+      }
+      return new NativeDateTimeFormat(locale, options);
+    });
+
+    mockApiGet.mockResolvedValue(mockSubscriptions);
+    renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
+
+    await waitFor(() => {
+      expect(screen.getByText('15 days left')).toBeInTheDocument();
+    });
+
+    dateTimeFormatSpy.mockRestore();
+  });
 });

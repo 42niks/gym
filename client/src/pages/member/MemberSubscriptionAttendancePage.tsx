@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { api, type MemberSubscriptionAttendance } from '../../lib/api.js';
@@ -12,6 +12,21 @@ const weekdayLabels = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 function parseDateParts(value: string) {
   const [year, month, day] = value.split('-').map(Number);
   return { year, month, day };
+}
+
+function isValidDateString(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  return (
+    candidate.getUTCFullYear() === year &&
+    candidate.getUTCMonth() === month - 1 &&
+    candidate.getUTCDate() === day
+  );
 }
 
 function toUtcDate(value: string) {
@@ -53,10 +68,29 @@ function formatMonthKey(value: string) {
   return `${year}-${String(month).padStart(2, '0')}`;
 }
 
+function clamp(value: number, min: number, max: number) {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+export function getIncomingFocusAlpha(boundaryY: number, viewportHeight: number) {
+  const readLine = viewportHeight * 0.3;
+  const zoneHeight = viewportHeight * 0.2;
+  const zoneTop = readLine - zoneHeight / 2;
+  const zoneBottom = readLine + zoneHeight / 2;
+
+  if (boundaryY > zoneBottom) return 0;
+  if (boundaryY < zoneTop) return 1;
+  return clamp((zoneBottom - boundaryY) / (zoneBottom - zoneTop), 0, 1);
+}
+
 function buildCalendarWeeks(startDate: string, endDate: string, attendedDates: string[]) {
+  if (!isValidDateString(startDate) || !isValidDateString(endDate)) return null;
   const attended = new Set(attendedDates);
   const start = toUtcDate(startDate);
   const end = toUtcDate(endDate);
+  if (start.getTime() > end.getTime()) return null;
   const cells: Array<{
     date: string;
     attended: boolean;
@@ -91,7 +125,7 @@ function buildCalendarWeeks(startDate: string, endDate: string, attendedDates: s
     weeks.push(cells.slice(index, index + 7));
   }
 
-  return weeks;
+  return weeks.length === 0 ? null : weeks;
 }
 
 function ContinuousCalendar({
@@ -106,26 +140,54 @@ function ContinuousCalendar({
 }) {
   const titleId = 'attendance-calendar';
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const primaryHeadingRef = useRef<HTMLHeadingElement | null>(null);
-  const secondaryHeadingRef = useRef<HTMLParagraphElement | null>(null);
+  const monthGroupRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const monthAnchorRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const repeatTimeoutRef = useRef<number | null>(null);
   const repeatIntervalRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
-  const allCells = weeks.flat().filter(cell => cell !== null);
-  const monthEntries = allCells.reduce<Array<{ key: string; heading: string }>>((entries, cell) => {
+  const allCells = useMemo(() => weeks.flat().filter(cell => cell !== null), [weeks]);
+  const monthEntries = useMemo(() => allCells.reduce<Array<{ key: string; heading: string }>>((entries, cell) => {
     if (!entries.some(entry => entry.key === cell.monthKey)) {
       entries.push({ key: cell.monthKey, heading: cell.monthHeading });
     }
     return entries;
-  }, []);
+  }, []), [allCells]);
+  const monthCells = useMemo(() => {
+    const grouped: Record<string, typeof allCells> = {};
+    for (const cell of allCells) {
+      if (!grouped[cell.monthKey]) grouped[cell.monthKey] = [];
+      grouped[cell.monthKey].push(cell);
+    }
+    return grouped;
+  }, [allCells]);
+  const flatCells = useMemo(() => weeks.flat(), [weeks]);
+  const leadingBlankCount = useMemo(() => flatCells.findIndex(cell => cell !== null), [flatCells]);
+  const trailingBlankCount = useMemo(() => {
+    let lastRealIndex = -1;
+    for (let index = flatCells.length - 1; index >= 0; index -= 1) {
+      if (flatCells[index] !== null) {
+        lastRealIndex = index;
+        break;
+      }
+    }
+    if (lastRealIndex === -1) return 0;
+    return flatCells.length - 1 - lastRealIndex;
+  }, [flatCells]);
   const initialMonthKey = allCells[0]?.monthKey ?? '';
   const monthEntriesRef = useRef(monthEntries);
   const activeMonthKeyRef = useRef(initialMonthKey);
-  // activeMonthKey is the only piece that needs to live in React state: it flips
-  // at month boundaries and drives cell styling + nav button enablement. The
-  // heading text and fade opacity are driven imperatively via refs below so we
-  // don't re-render ~90 cells on every scroll frame.
+  const [rowSizePx, setRowSizePx] = useState(0);
+  const [calendarGapPx, setCalendarGapPx] = useState(8);
   const [activeMonthKey, setActiveMonthKey] = useState(initialMonthKey);
+  const [headerTransition, setHeaderTransition] = useState<{
+    primary: string;
+    secondary: string;
+    secondaryAlpha: number;
+  }>({
+    primary: monthEntries[0]?.heading ?? '',
+    secondary: '',
+    secondaryAlpha: 0,
+  });
 
   monthEntriesRef.current = monthEntries;
   activeMonthKeyRef.current = activeMonthKey;
@@ -133,6 +195,13 @@ function ContinuousCalendar({
   useEffect(() => {
     setActiveMonthKey(initialMonthKey);
   }, [initialMonthKey]);
+  useEffect(() => {
+    setHeaderTransition({
+      primary: monthEntries[0]?.heading ?? '',
+      secondary: '',
+      secondaryAlpha: 0,
+    });
+  }, [monthEntries]);
 
   const stopRepeat = () => {
     if (repeatTimeoutRef.current !== null) {
@@ -151,134 +220,133 @@ function ContinuousCalendar({
     const viewport = viewportRef.current;
     if (!viewport) return;
 
-    // Pre-compute each month's [topOffset, bottomOffset] range inside the
-    // scroll content once, so scroll-time work is pure math — no DOM queries
-    // and no getBoundingClientRect calls per frame. Offsets are measured
-    // relative to the scrollable content (viewport.scrollTop === 0 origin),
-    // not offsetParent, since our viewport isn't a positioned ancestor.
-    const viewportTop = viewport.getBoundingClientRect().top - viewport.scrollTop;
-    const rows = Array.from(viewport.querySelectorAll<HTMLElement>('[data-week-index]'));
-    type MonthRange = { key: string; heading: string; top: number; bottom: number };
-    const monthRanges: MonthRange[] = [];
-    for (const row of rows) {
-      const rowRect = row.getBoundingClientRect();
-      const rowTop = rowRect.top - viewportTop;
-      const rowBottom = rowTop + rowRect.height;
-      const cells = row.querySelectorAll<HTMLElement>('[data-month-key]');
-      for (const cell of cells) {
-        const key = cell.dataset.monthKey;
-        const heading = cell.dataset.monthHeading;
-        if (!key || !heading) continue;
-        const existing = monthRanges[monthRanges.length - 1];
-        if (existing && existing.key === key) {
-          existing.bottom = Math.max(existing.bottom, rowBottom);
-        } else {
-          monthRanges.push({ key, heading, top: rowTop, bottom: rowBottom });
-        }
+    const recalculateRowSize = () => {
+      const styles = window.getComputedStyle(viewport);
+      const gapPx = Number.parseFloat(styles.getPropertyValue('--calendar-gap')) || 0;
+      setCalendarGapPx(gapPx || 8);
+      const width = viewport.clientWidth;
+      if (width <= 0) return;
+      const nextRowSize = (width - gapPx * 6) / 7;
+      if (nextRowSize > 0) {
+        setRowSizePx(prev => (Math.abs(prev - nextRowSize) < 0.5 ? prev : nextRowSize));
       }
-    }
+    };
 
-    const primary = primaryHeadingRef.current;
-    const secondary = secondaryHeadingRef.current;
-    let lastActiveKey = activeMonthKeyRef.current;
-    let lastPrimaryText = '';
-    let lastSecondaryText = '';
-    let lastPrimaryOpacity = -1;
-    let lastSecondaryOpacity = -1;
+    recalculateRowSize();
+    const resizeObserver = new ResizeObserver(recalculateRowSize);
+    resizeObserver.observe(viewport);
+    window.addEventListener('resize', recalculateRowSize);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', recalculateRowSize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || monthEntries.length === 0) return;
+
     let frameId = 0;
 
-    const updateVisibleMonth = () => {
-      const scrollTop = viewport.scrollTop;
-      const scrollBottom = scrollTop + viewport.clientHeight;
+    const applyFocusState = () => {
+      const viewportHeight = viewport.clientHeight;
+      const viewportTop = viewport.getBoundingClientRect().top;
+      const readLine = viewportHeight * 0.3;
+      let bestBoundaryIndex = -1;
+      let bestDistance = Number.POSITIVE_INFINITY;
 
-      // Find the first month whose range intersects the viewport (topmost),
-      // and the last (bottommost).
-      let firstIdx = -1;
-      let lastIdx = -1;
-      for (let i = 0; i < monthRanges.length; i += 1) {
-        const r = monthRanges[i];
-        if (r.bottom <= scrollTop || r.top >= scrollBottom) continue;
-        if (firstIdx === -1) firstIdx = i;
-        lastIdx = i;
-      }
-      if (firstIdx === -1) return;
-
-      const firstRange = monthRanges[firstIdx];
-      const lastRange = monthRanges[lastIdx];
-      const hasTransitionMonth = firstIdx !== lastIdx;
-
-      let transition = 0;
-      if (hasTransitionMonth) {
-        const firstOverlap = Math.max(0, Math.min(firstRange.bottom, scrollBottom) - Math.max(firstRange.top, scrollTop));
-        const lastOverlap = Math.max(0, Math.min(lastRange.bottom, scrollBottom) - Math.max(lastRange.top, scrollTop));
-        const total = firstOverlap + lastOverlap;
-        transition = total > 0 ? lastOverlap / total : 0;
-      }
-
-      const activeKey = hasTransitionMonth && transition >= 0.5 ? lastRange.key : firstRange.key;
-      if (activeKey !== lastActiveKey) {
-        lastActiveKey = activeKey;
-        setActiveMonthKey(activeKey);
-      }
-
-      // Drive heading text/opacity directly on the DOM to avoid React re-renders
-      // during scroll. textContent writes are skipped unless the label changes.
-      if (primary) {
-        const nextText = firstRange.heading;
-        if (nextText !== lastPrimaryText) {
-          primary.textContent = nextText;
-          lastPrimaryText = nextText;
-        }
-        const nextOpacity = hasTransitionMonth ? 1 - transition : 1;
-        if (nextOpacity !== lastPrimaryOpacity) {
-          primary.style.opacity = String(nextOpacity);
-          lastPrimaryOpacity = nextOpacity;
+      for (let index = 0; index < monthEntries.length - 1; index += 1) {
+        const incomingAnchor = monthAnchorRefs.current[monthEntries[index + 1].key];
+        if (!incomingAnchor) continue;
+        const boundaryY = incomingAnchor.getBoundingClientRect().top - viewportTop;
+        const distance = Math.abs(boundaryY - readLine);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestBoundaryIndex = index;
         }
       }
-      if (secondary) {
-        if (hasTransitionMonth) {
-          const nextText = lastRange.heading;
-          if (nextText !== lastSecondaryText) {
-            secondary.textContent = nextText;
-            lastSecondaryText = nextText;
-          }
-          if (lastSecondaryOpacity !== transition) {
-            secondary.style.opacity = String(transition);
-            lastSecondaryOpacity = transition;
-          }
-          if (secondary.style.display === 'none') {
-            secondary.style.display = '';
-          }
-        } else if (secondary.style.display !== 'none') {
-          secondary.style.display = 'none';
-          lastSecondaryText = '';
-          lastSecondaryOpacity = -1;
-        }
+
+      const alphaByMonth: Record<string, number> = {};
+      for (const entry of monthEntries) {
+        alphaByMonth[entry.key] = 0;
       }
+
+      let nextActiveMonthKey = monthEntries[0].key;
+      let nextPrimaryHeading = monthEntries[0].heading;
+      let nextSecondaryHeading = '';
+      let nextSecondaryAlpha = 0;
+      if (bestBoundaryIndex === -1) {
+        alphaByMonth[nextActiveMonthKey] = 1;
+      } else {
+        const outgoing = monthEntries[bestBoundaryIndex];
+        const incoming = monthEntries[bestBoundaryIndex + 1];
+        const incomingAnchor = monthAnchorRefs.current[incoming.key];
+        if (!incomingAnchor) return;
+
+        const boundaryY = incomingAnchor.getBoundingClientRect().top - viewportTop;
+        const alphaIncoming = getIncomingFocusAlpha(boundaryY, viewportHeight);
+        const alphaOutgoing = 1 - alphaIncoming;
+
+        alphaByMonth[outgoing.key] = alphaOutgoing;
+        alphaByMonth[incoming.key] = alphaIncoming;
+        nextActiveMonthKey = alphaIncoming > 0.5 ? incoming.key : outgoing.key;
+        nextPrimaryHeading = outgoing.heading;
+        nextSecondaryHeading = incoming.heading;
+        nextSecondaryAlpha = alphaIncoming;
+      }
+
+      for (const entry of monthEntries) {
+        const group = monthGroupRefs.current[entry.key];
+        if (!group) continue;
+        group.style.setProperty('--focus-alpha', String(alphaByMonth[entry.key]));
+      }
+
+      if (nextActiveMonthKey !== activeMonthKeyRef.current) {
+        setActiveMonthKey(nextActiveMonthKey);
+      }
+      setHeaderTransition(previous => {
+        if (
+          previous.primary === nextPrimaryHeading &&
+          previous.secondary === nextSecondaryHeading &&
+          Math.abs(previous.secondaryAlpha - nextSecondaryAlpha) < 0.001
+        ) {
+          return previous;
+        }
+        return {
+          primary: nextPrimaryHeading,
+          secondary: nextSecondaryHeading,
+          secondaryAlpha: nextSecondaryAlpha,
+        };
+      });
     };
 
     const scheduleUpdate = () => {
       if (frameId !== 0) return;
       frameId = window.requestAnimationFrame(() => {
         frameId = 0;
-        updateVisibleMonth();
+        applyFocusState();
       });
     };
 
-    updateVisibleMonth();
+    scheduleUpdate();
     viewport.addEventListener('scroll', scheduleUpdate, { passive: true });
     window.addEventListener('resize', scheduleUpdate);
+    const resizeObserver = new ResizeObserver(() => scheduleUpdate());
+    resizeObserver.observe(viewport);
 
     return () => {
       if (frameId !== 0) cancelAnimationFrame(frameId);
       viewport.removeEventListener('scroll', scheduleUpdate);
       window.removeEventListener('resize', scheduleUpdate);
+      resizeObserver.disconnect();
     };
-  }, [weeks]);
+  }, [monthEntries]);
 
   const activeMonthIndex = monthEntries.findIndex(entry => entry.key === activeMonthKey);
   const canGoPrev = activeMonthIndex > 0;
   const canGoNext = activeMonthIndex !== -1 && activeMonthIndex < monthEntries.length - 1;
+  const activeMonthHeading = monthEntries[activeMonthIndex]?.heading ?? monthEntries[0]?.heading ?? '';
 
   const moveMonth = (direction: -1 | 1, behavior: ScrollBehavior) => {
     const viewport = viewportRef.current;
@@ -290,14 +358,12 @@ function ContinuousCalendar({
     if (targetIndex < 0 || targetIndex >= entries.length) return false;
 
     const targetMonth = entries[targetIndex];
-    const targetCell = viewport.querySelector<HTMLElement>(`[data-month-key="${targetMonth.key}"]`);
-    const targetRow = targetCell?.closest('[data-week-index]') as HTMLElement | null;
-
-    if (!targetRow) return false;
+    const targetAnchor = monthAnchorRefs.current[targetMonth.key];
+    if (!targetAnchor) return false;
 
     const viewportRect = viewport.getBoundingClientRect();
-    const rowRect = targetRow.getBoundingClientRect();
-    const targetScrollTop = viewport.scrollTop + (rowRect.top - viewportRect.top);
+    const anchorRect = targetAnchor.getBoundingClientRect();
+    const targetScrollTop = viewport.scrollTop + (anchorRect.top - viewportRect.top);
 
     viewport.scrollTo({
       top: targetScrollTop,
@@ -344,7 +410,7 @@ function ContinuousCalendar({
 
   return (
     <Card className="overflow-hidden">
-      <div className="[--calendar-gap:0.5rem] [--calendar-row:3.5rem] px-4 py-5 sm:[--calendar-row:4rem] sm:px-6 sm:py-6">
+      <div className="[--calendar-gap:0.5rem] px-4 py-5 sm:px-6 sm:py-6">
         <div className="relative flex h-8 items-center justify-center sm:h-9">
           <button
             type="button"
@@ -362,18 +428,20 @@ function ContinuousCalendar({
           </button>
           <h3
             id={titleId}
-            ref={primaryHeadingRef}
             className="pointer-events-none absolute inset-0 flex items-center justify-center text-center font-headline text-[1.45rem] font-black uppercase leading-none tracking-tight text-black dark:text-white sm:text-[1.6rem]"
-            style={{ opacity: 1 }}
+            style={{ opacity: 1 - headerTransition.secondaryAlpha }}
           >
-            {monthEntries[0]?.heading ?? ''}
+            {headerTransition.primary}
           </h3>
-          <p
-            ref={secondaryHeadingRef}
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 flex items-center justify-center text-center font-headline text-[1.45rem] font-black uppercase leading-none tracking-tight text-black dark:text-white sm:text-[1.6rem]"
-            style={{ opacity: 0, display: 'none' }}
-          />
+          {headerTransition.secondary ? (
+            <p
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 flex items-center justify-center text-center font-headline text-[1.45rem] font-black uppercase leading-none tracking-tight text-black dark:text-white sm:text-[1.6rem]"
+              style={{ opacity: headerTransition.secondaryAlpha }}
+            >
+              {headerTransition.secondary}
+            </p>
+          ) : null}
 
           <button
             type="button"
@@ -406,50 +474,93 @@ function ContinuousCalendar({
         <div
           ref={viewportRef}
           className="mt-3 overflow-y-auto pr-1"
-          style={{ maxHeight: 'calc(var(--calendar-row) * 4.5 + var(--calendar-gap) * 4)' }}
+          style={{
+            maxHeight:
+              rowSizePx > 0
+                ? `${rowSizePx * 5.5 + calendarGapPx * 5}px`
+                : 'calc(3.15rem * 5.5 + var(--calendar-gap) * 5)',
+          }}
         >
-          <div role="grid" aria-labelledby={titleId} className="space-y-[var(--calendar-gap)]">
-            {weeks.map((week, index) => (
+          <div
+            role="grid"
+            aria-labelledby={titleId}
+            className="grid grid-cols-7 gap-[var(--calendar-gap)]"
+          >
+            {Array.from({ length: Math.max(0, leadingBlankCount) }).map((_, index) => (
               <div
-                key={`attendance-week-${index}`}
-                role="row"
-                data-week-index={index}
-                className="grid grid-cols-7 gap-[var(--calendar-gap)]"
+                key={`calendar-leading-empty-${index}`}
+                aria-hidden="true"
+                className="aspect-square w-full"
+              />
+            ))}
+
+            {monthEntries.map(entry => (
+              <div
+                key={entry.key}
+                data-month-group={entry.key}
+                ref={node => {
+                  monthGroupRefs.current[entry.key] = node;
+                }}
+                className="contents"
+                style={{ ['--focus-alpha' as string]: 0 }}
               >
-                {week.map((cell, cellIndex) => {
-                  if (!cell) {
-                    return (
-                      <div
-                        key={`attendance-week-${index}-${cellIndex}`}
-                        aria-hidden="true"
-                        className="h-[var(--calendar-row)]"
-                      />
-                    );
-                  }
-
-                  const isActiveMonth = cell.monthKey === activeMonthKey;
-                  const stateClass = isActiveMonth
-                    ? cell.attended
-                      ? 'brand-duotone-button border border-black text-black shadow-panel dark:border-white dark:text-white'
-                      : 'border border-transparent text-black dark:text-white'
-                    : cell.attended
-                      ? 'border border-black/10 bg-black/[0.04] text-black/22 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/24'
-                      : 'border border-transparent text-black/22 dark:text-white/24';
-
-                  return (
+                {(monthCells[entry.key] ?? []).map((cell, index) => (
+                  cell.attended ? (
                     <div
                       key={cell.date}
+                      ref={node => {
+                        if (index === 0) monthAnchorRefs.current[entry.key] = node;
+                      }}
                       role="gridcell"
                       data-month-key={cell.monthKey}
                       data-month-heading={cell.monthHeading}
-                      aria-label={cell.attended ? `Attended on ${formatFullDate(cell.date)}` : formatFullDate(cell.date)}
-                      className={`${stateClass} flex h-[var(--calendar-row)] items-center justify-center rounded-[1.15rem] text-sm font-semibold transition-colors duration-150`}
+                      aria-label={`Attended on ${formatFullDate(cell.date)}`}
+                      className="aspect-square w-full"
+                    >
+                      <div
+                        className="mx-auto flex h-[95%] w-[95%] items-center justify-center rounded-full border bg-surface-card shadow-panel [contain:paint] [isolation:isolate] [transform:translateZ(0)] [backface-visibility:hidden] dark:bg-surface-dark"
+                        style={{
+                          color:
+                            'color-mix(in srgb, currentColor calc(20% + var(--focus-alpha) * 80%), rgb(148 163 184))',
+                          borderColor: 'color-mix(in srgb, currentColor calc(14% + var(--focus-alpha) * 26%), transparent)',
+                        }}
+                      >
+                        <span
+                          className="attendance-pill-surface flex h-full w-full items-center justify-center rounded-full overflow-hidden [transform:translateZ(0)] [backface-visibility:hidden]"
+                        >
+                          {formatDayNumber(cell.date)}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      key={cell.date}
+                      ref={node => {
+                        if (index === 0) monthAnchorRefs.current[entry.key] = node;
+                      }}
+                      role="gridcell"
+                      data-month-key={cell.monthKey}
+                      data-month-heading={cell.monthHeading}
+                      aria-label={formatFullDate(cell.date)}
+                      className="aspect-square w-full rounded-[0.95rem] border border-transparent flex items-center justify-center text-sm font-semibold"
+                      style={{
+                        color:
+                          'color-mix(in srgb, currentColor calc(20% + var(--focus-alpha) * 80%), rgb(148 163 184))',
+                      }}
                     >
                       {formatDayNumber(cell.date)}
                     </div>
-                  );
-                })}
+                  )
+                ))}
               </div>
+            ))}
+
+            {Array.from({ length: trailingBlankCount }).map((_, index) => (
+              <div
+                key={`calendar-trailing-empty-${index}`}
+                aria-hidden="true"
+                className="aspect-square w-full"
+              />
             ))}
           </div>
         </div>
@@ -539,6 +650,7 @@ export default function MemberSubscriptionAttendancePage() {
     data.subscription.end_date,
     data.attended_dates,
   );
+  const hasValidCalendarRange = weeks !== null;
 
   return (
     <AppShell links={memberLinks}>
@@ -577,7 +689,11 @@ export default function MemberSubscriptionAttendancePage() {
           </div>
         ) : null}
 
-        <ContinuousCalendar weeks={weeks} />
+        {hasValidCalendarRange ? (
+          <ContinuousCalendar weeks={weeks} />
+        ) : (
+          <div className="empty-state">Attendance calendar dates are invalid for this subscription.</div>
+        )}
       </div>
     </AppShell>
   );

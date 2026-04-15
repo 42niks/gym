@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import MemberSubscriptionAttendancePage from '../pages/member/MemberSubscriptionAttendancePage.js';
+import MemberSubscriptionAttendancePage, {
+  getIncomingFocusAlpha,
+} from '../pages/member/MemberSubscriptionAttendancePage.js';
 import { renderWithProviders } from './test-utils.js';
 import { mockMemberSubscriptionAttendance } from './mocks.js';
 
@@ -66,5 +68,35 @@ describe('MemberSubscriptionAttendancePage', () => {
       expect(screen.getByLabelText('Attended on 7 Apr 2026')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /arrow_back Subscription/i })).toHaveAttribute('href', '/subscription');
     });
+  });
+
+  it('shows an explicit fallback state for invalid subscription date ranges', async () => {
+    mockApiGet.mockResolvedValue({
+      ...mockMemberSubscriptionAttendance,
+      subscription: {
+        ...mockMemberSubscriptionAttendance.subscription,
+        start_date: '2026-04-30',
+        end_date: '2026-04-01',
+      },
+    });
+    renderWithProviders(<MemberSubscriptionAttendancePage />, { route: '/subscription/1/attendance' });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Attendance calendar dates are invalid for this subscription.'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('uses read-line transition math for incoming month alpha', () => {
+    const viewportHeight = 500;
+    const readLine = viewportHeight * 0.3;
+    const zoneHeight = viewportHeight * 0.2;
+    const zoneTop = readLine - zoneHeight / 2;
+    const zoneBottom = readLine + zoneHeight / 2;
+
+    expect(getIncomingFocusAlpha(zoneBottom + 1, viewportHeight)).toBe(0);
+    expect(getIncomingFocusAlpha(zoneTop - 1, viewportHeight)).toBe(1);
+    expect(getIncomingFocusAlpha(readLine, viewportHeight)).toBeCloseTo(0.5, 6);
   });
 });
