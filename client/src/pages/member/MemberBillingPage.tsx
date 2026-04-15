@@ -76,14 +76,20 @@ function SectionHeader({ label, count }: { label: string; count?: number }) {
   );
 }
 
-function AttendanceDatesLink({ subscriptionId }: { subscriptionId: number }) {
+function AttendanceDatesLink({
+  subscriptionId,
+  className,
+}: {
+  subscriptionId: number;
+  className?: string;
+}) {
   return (
     <Link
       to={`/subscription/${subscriptionId}/attendance`}
-      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-4 py-3 font-label text-[0.68rem] font-bold uppercase tracking-[0.16em] text-black transition-all hover:-translate-y-0.5 hover:bg-black/[0.08] hover:text-black dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white"
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-3 py-2 font-label text-[0.64rem] font-bold uppercase tracking-[0.14em] text-black transition-all hover:-translate-y-0.5 hover:bg-black/[0.08] hover:text-black dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white ${className ?? ''}`}
     >
       <Icon name="calendar_month" className="text-[1.05rem]" />
-      View exact dates
+      See attendance
     </Link>
   );
 }
@@ -106,9 +112,12 @@ function CurrentCard({ sub }: { sub: Subscription }) {
                 {formatDateRange(sub.start_date, sub.end_date)}
               </p>
             </div>
-            <Badge variant="orange" icon="bolt">
-              active
-            </Badge>
+            <div className="flex flex-col items-end gap-2">
+              <Badge variant="orange" icon="bolt">
+                active
+              </Badge>
+              <AttendanceDatesLink subscriptionId={sub.id} />
+            </div>
           </div>
 
           <div className="flex items-end gap-4">
@@ -157,7 +166,6 @@ function CurrentCard({ sub }: { sub: Subscription }) {
                 {formatAmount(sub.amount)}
               </span>
             </div>
-            <AttendanceDatesLink subscriptionId={sub.id} />
           </div>
         </div>
       </div>
@@ -224,6 +232,9 @@ function PastCard({ sub }: { sub: Subscription }) {
           {sub.lifecycle_state}
         </Badge>
       </div>
+      <div className="mt-3">
+        <AttendanceDatesLink subscriptionId={sub.id} />
+      </div>
 
       <div className="mt-4">
         <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/[0.06]">
@@ -239,9 +250,6 @@ function PastCard({ sub }: { sub: Subscription }) {
         </div>
       </div>
 
-      <div className="mt-4 border-t border-black pt-3 dark:border-white">
-        <AttendanceDatesLink subscriptionId={sub.id} />
-      </div>
     </Card>
   );
 }

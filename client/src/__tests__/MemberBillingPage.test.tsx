@@ -45,11 +45,11 @@ describe('MemberBillingPage', () => {
     });
   });
 
-  it('shows exact dates links for active and past subscriptions only', async () => {
+  it('shows attendance links for active and past subscriptions only', async () => {
     mockApiGet.mockResolvedValue(mockSubscriptions);
     renderWithProviders(<MemberBillingPage />, { route: '/subscription' });
     await waitFor(() => {
-      const links = screen.getAllByRole('link', { name: /view exact dates/i });
+      const links = screen.getAllByRole('link', { name: /see attendance/i });
       expect(links).toHaveLength(2);
       expect(links[0]).toHaveAttribute('href', '/subscription/1/attendance');
       expect(links[1]).toHaveAttribute('href', '/subscription/2/attendance');
