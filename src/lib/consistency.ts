@@ -18,22 +18,19 @@ export type ConsistencyResult = {
   message: string;
 } | null;
 
-export function computeConsistency(input: ConsistencyInput): ConsistencyResult {
-  const { hasActiveSubscription, windowDays, minDays, earliestSubscriptionStart, attendanceDates, today } = input;
+export interface ConsistencyWindowResult {
+  start_date: string;
+  end_date: string;
+  streak_days: number;
+}
 
-  if (!hasActiveSubscription) return null;
+function getConsistencyStreakDays(input: ConsistencyInput, anchorDay: string = input.today): number {
+  const { windowDays, minDays, earliestSubscriptionStart, attendanceDates } = input;
 
-  const daysSinceStart = diffDays(today, earliestSubscriptionStart);
-  if (daysSinceStart < windowDays) {
-    return { status: 'building', message: 'You are building your consistency, keep it up!' };
-  }
-
-  // Build a Set for O(1) lookups
   const attendanceSet = new Set(attendanceDates);
-
   const firstEligibleDay = addDays(earliestSubscriptionStart, windowDays);
   let streak = 0;
-  let d = today;
+  let d = anchorDay;
 
   while (d >= firstEligibleDay) {
     const windowStart = addDays(d, -(windowDays - 1));
@@ -54,6 +51,21 @@ export function computeConsistency(input: ConsistencyInput): ConsistencyResult {
     }
   }
 
+  return streak;
+}
+
+export function computeConsistency(input: ConsistencyInput): ConsistencyResult {
+  const { hasActiveSubscription, windowDays, minDays, earliestSubscriptionStart, attendanceDates, today } = input;
+
+  if (!hasActiveSubscription) return null;
+
+  const daysSinceStart = diffDays(today, earliestSubscriptionStart);
+  if (daysSinceStart < windowDays) {
+    return { status: 'building', message: 'You are building your consistency, keep it up!' };
+  }
+
+  const streak = getConsistencyStreakDays(input);
+
   if (streak >= windowDays) {
     return {
       status: 'consistent',
@@ -63,4 +75,46 @@ export function computeConsistency(input: ConsistencyInput): ConsistencyResult {
   }
 
   return { status: 'building', message: 'You are building your consistency, keep it up!' };
+}
+
+export function computeConsistencyWindow(input: ConsistencyInput): ConsistencyWindowResult | null {
+  const { hasActiveSubscription, windowDays, earliestSubscriptionStart, attendanceDates, today } = input;
+
+  if (!hasActiveSubscription) return null;
+
+  const daysSinceStart = diffDays(today, earliestSubscriptionStart);
+  if (daysSinceStart < windowDays) return null;
+
+  const firstEligibleDay = addDays(earliestSubscriptionStart, windowDays);
+  let anchorDay = today;
+  let streak = 0;
+
+  while (anchorDay >= firstEligibleDay) {
+    streak = getConsistencyStreakDays(input, anchorDay);
+    if (streak >= windowDays) {
+      break;
+    }
+
+    anchorDay = addDays(anchorDay, -1);
+  }
+
+  if (streak < windowDays) return null;
+
+  const startDate = addDays(anchorDay, -(streak - 1));
+  let endDate: string | null = null;
+
+  for (const attendanceDate of attendanceDates) {
+    if (attendanceDate < startDate || attendanceDate > anchorDay) continue;
+    if (!endDate || attendanceDate > endDate) {
+      endDate = attendanceDate;
+    }
+  }
+
+  if (!endDate) return null;
+
+  return {
+    start_date: startDate,
+    end_date: endDate,
+    streak_days: streak,
+  };
 }

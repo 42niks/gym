@@ -9,7 +9,7 @@ import {
 import { deleteAllSessionsForMember } from '../repositories/user-sessions-repo.js';
 import { deriveLifecycleState } from '../lib/subscription.js';
 import { computeRenewal } from '../lib/renewal.js';
-import { computeConsistency } from '../lib/consistency.js';
+import { computeConsistency, computeConsistencyWindow } from '../lib/consistency.js';
 import { addDays, getIstDate } from '../lib/date.js';
 import { findPackageById } from '../repositories/packages-repo.js';
 
@@ -78,18 +78,21 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
   const attendanceDates = await listAttendanceDatesForMember(db, memberId);
 
   let consistency = null;
+  let consistencyWindow = null;
   if (activeSub) {
     const pkg = await findPackageById(db, activeSub.package_id);
     if (pkg) {
       const earliest = await getEarliestSubscriptionStart(db, memberId);
-      consistency = computeConsistency({
+      const consistencyInput = {
         hasActiveSubscription: true,
         windowDays: pkg.consistency_window_days,
         minDays: pkg.consistency_min_days,
         earliestSubscriptionStart: earliest!,
         attendanceDates,
         today,
-      });
+      };
+      consistency = computeConsistency(consistencyInput);
+      consistencyWindow = computeConsistencyWindow(consistencyInput);
     }
   }
 
@@ -106,6 +109,7 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
   return {
     active_subscription: activeSub ? formatSubscription(activeSub, today) : null,
     consistency,
+    consistency_window: consistencyWindow,
     renewal,
     marked_attendance_today: markedToday,
     recent_attendance: activeSub ? buildRecentAttendance(attendanceDates, today, 7) : [],
@@ -197,9 +201,16 @@ export async function getFormattedSubscriptionAttendance(
   const subscription = subs.find(sub => sub.id === subscriptionId);
 
   if (!subscription) return null;
+  const pkg = await findPackageById(db, subscription.package_id);
+
+  if (!pkg) return null;
 
   return {
     subscription: formatSubscription(subscription, today),
+    consistency_rule: {
+      min_days: pkg.consistency_min_days,
+      window_days: pkg.consistency_window_days,
+    },
     attended_dates: await listAttendanceDatesForSubscription(db, memberId, subscriptionId),
   };
 }

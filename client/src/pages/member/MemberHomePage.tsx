@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type MemberHome } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
@@ -27,13 +27,91 @@ function getConsistencyLabel(consistency: NonNullable<MemberHome['consistency']>
   }
 
   return {
-    count: 'Keep Moving!',
+    count: 'Check in today!',
     suffix: '',
   };
 }
 
+function getConsistencyRiskCopy(consistencyWindow: MemberHome['consistency_window']) {
+  const streakDays = consistencyWindow?.streak_days;
+  if (!streakDays || streakDays <= 0) {
+    return null;
+  }
+
+  return `You risk breaking your ${streakDays} day streak.`;
+}
+
+function isTodayIncludedInConsistencyWindow(
+  consistencyWindow: MemberHome['consistency_window'],
+  recentAttendance: MemberHome['recent_attendance'],
+) {
+  const todayDate = recentAttendance[recentAttendance.length - 1]?.date;
+  if (!todayDate || !consistencyWindow) {
+    return false;
+  }
+
+  return consistencyWindow.end_date === todayDate;
+}
+
 function formatDayNumber(date: string) {
   return String(Number(date.slice(-2)));
+}
+
+function getConsistencyRibbonSpan(
+  consistencyWindow: MemberHome['consistency_window'],
+  recentAttendance: MemberHome['recent_attendance'],
+) {
+  if (!consistencyWindow || recentAttendance.length === 0) {
+    return null;
+  }
+
+  const firstVisibleDate = recentAttendance[0]?.date;
+  const lastVisibleDate = recentAttendance[recentAttendance.length - 1]?.date;
+
+  if (!firstVisibleDate || !lastVisibleDate) {
+    return null;
+  }
+
+  if (consistencyWindow.end_date < firstVisibleDate || consistencyWindow.start_date > lastVisibleDate) {
+    return null;
+  }
+
+  let startIndex = recentAttendance.findIndex((day) => day.date >= consistencyWindow.start_date);
+  if (startIndex === -1) {
+    startIndex = 0;
+  }
+
+  let endIndex = -1;
+  for (let index = recentAttendance.length - 1; index >= 0; index--) {
+    if (recentAttendance[index].date <= consistencyWindow.end_date) {
+      endIndex = index;
+      break;
+    }
+  }
+
+  if (endIndex < startIndex) {
+    return null;
+  }
+
+  return {
+    startIndex,
+    endIndex,
+    fadesLeft: consistencyWindow.start_date < firstVisibleDate,
+    endsAtLastVisible: endIndex === recentAttendance.length - 1,
+  };
+}
+
+function getConsistencyConnectorIndexes(consistencyRibbonSpan: ReturnType<typeof getConsistencyRibbonSpan>) {
+  if (!consistencyRibbonSpan) {
+    return [];
+  }
+
+  const connectorCount = consistencyRibbonSpan.endIndex - consistencyRibbonSpan.startIndex;
+  if (connectorCount <= 0) {
+    return [];
+  }
+
+  return Array.from({ length: connectorCount }, (_, offset) => consistencyRibbonSpan.startIndex + offset);
 }
 
 export default function MemberHomePage() {
@@ -66,7 +144,19 @@ export default function MemberHomePage() {
     );
   }
 
-  const { active_subscription: sub, consistency, recent_attendance, marked_attendance_today } = data!;
+  const { active_subscription: sub, consistency, consistency_window, recent_attendance, marked_attendance_today } = data!;
+  const consistencyRiskCopy = getConsistencyRiskCopy(consistency_window);
+  const todayIncludedInConsistencyWindow = isTodayIncludedInConsistencyWindow(consistency_window, recent_attendance);
+  const consistencyRibbonSpan = getConsistencyRibbonSpan(consistency_window, recent_attendance);
+  const consistencyConnectorIndexes = getConsistencyConnectorIndexes(consistencyRibbonSpan);
+  const consistencyRibbonStyle = consistencyRibbonSpan ? ({
+    '--consistency-ribbon-start': String(consistencyRibbonSpan.startIndex),
+    '--consistency-ribbon-span': String(consistencyRibbonSpan.endIndex - consistencyRibbonSpan.startIndex + 1),
+    '--consistency-ribbon-right-overhang': consistencyRibbonSpan.endsAtLastVisible ? '0.56rem' : '0.44rem',
+  } as CSSProperties) : undefined;
+  const consistencyGridStyle = ({
+    '--consistency-ribbon-total': String(recent_attendance.length || 7),
+  } as CSSProperties);
 
   return (
     <AppShell links={memberLinks}>
@@ -79,67 +169,99 @@ export default function MemberHomePage() {
             <div className="consistency-panel-frame xl:col-span-7">
               <div className="consistency-panel-inner relative overflow-hidden p-5 lg:p-6">
                 <div className="relative z-10">
-                  <p className="section-eyebrow text-right">Consistency</p>
+                  <p className="section-eyebrow not-italic text-left">Consistency</p>
                   <div className="mt-3">
                     {consistency.status === 'consistent' ? (
                       <div className="flex items-end">
-                        <span className="font-headline text-[3.6rem] font-black italic leading-[0.82] tracking-[-0.07em] text-brand-600 dark:text-accent-500 sm:text-[4.5rem]">
+                        <span className="font-headline text-[3.6rem] font-black italic leading-[0.82] tracking-[-0.07em] text-black dark:text-white sm:text-[4.5rem]">
                           {getConsistencyLabel(consistency).count}
                         </span>
-                        <span className="ml-6 pb-1 font-label text-[0.9rem] font-bold italic uppercase tracking-[0.18em] text-brand-600/80 dark:text-accent-500/80 sm:ml-8 sm:text-[1rem]">
+                        <span className="ml-6 pb-1 font-label text-[0.9rem] font-bold italic uppercase tracking-[0.18em] text-black dark:text-white sm:ml-8 sm:text-[1rem]">
                           {getConsistencyLabel(consistency).suffix}
                         </span>
                       </div>
                     ) : (
-                      <span className="font-headline text-[2.3rem] font-black italic leading-[0.9] tracking-[-0.05em] text-brand-600 dark:text-accent-500 sm:text-[2.9rem]">
-                        {getConsistencyLabel(consistency).count}
-                      </span>
+                      <div>
+                        <span className="font-headline text-[2.3rem] font-black italic leading-[0.9] tracking-[-0.05em] text-black dark:text-white sm:text-[2.9rem]">
+                          {getConsistencyLabel(consistency).count}
+                        </span>
+                      </div>
                     )}
                   </div>
-                  <div className="mt-6 grid grid-cols-7 gap-2">
-                    {recent_attendance.map((day, index) => {
-                      const isToday = index === recent_attendance.length - 1;
-                      return (
-                        <div
-                          key={day.date}
-                          aria-label={`${day.date} ${day.attended ? 'attended' : 'not attended'}`}
-                          className={`consistency-day-box h-[4.5rem] text-center shadow-sm transition-colors ${
-                            day.attended
-                              ? 'border border-brand-500 shadow-[0_12px_24px_rgba(34,99,80,0.18)] dark:border-accent-500'
-                              : 'border border-black dark:border-white'
-                          }`}
-                        >
+                  <div className="consistency-day-grid mt-6" style={consistencyGridStyle}>
+                    {consistencyRibbonSpan ? (
+                      <div
+                        aria-hidden="true"
+                        data-testid="consistency-ribbon"
+                        className={`consistency-window-ribbon ${consistencyRibbonSpan.fadesLeft ? 'consistency-window-ribbon-fade-left' : ''}`}
+                        style={consistencyRibbonStyle}
+                      />
+                    ) : null}
+                    {consistencyConnectorIndexes.length > 0 ? (
+                      <div aria-hidden="true" className="consistency-window-connectors">
+                        {consistencyRibbonSpan?.fadesLeft ? (
+                          <div className="consistency-window-connector consistency-window-connector-lead" />
+                        ) : null}
+                        {consistencyConnectorIndexes.map((connectorIndex) => (
                           <div
-                            className={`consistency-day-box-inner flex h-full flex-col items-center justify-between px-2 py-2 ${
+                            key={connectorIndex}
+                            className="consistency-window-connector"
+                            style={{ '--consistency-connector-index': String(connectorIndex) } as CSSProperties}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="grid grid-cols-7 gap-2">
+                      {recent_attendance.map((day, index) => {
+                        const isToday = index === recent_attendance.length - 1;
+                        const showTodayPulse = isToday && !marked_attendance_today;
+                        return (
+                          <div
+                            key={day.date}
+                            aria-label={`${day.date} ${day.attended ? 'attended' : 'not attended'}`}
+                            className={`consistency-day-box z-10 h-[4.5rem] text-center shadow-sm transition-colors ${
                               day.attended
-                                ? 'consistency-day-box-attended text-white'
-                                : 'bg-white/55 text-black dark:bg-white/[0.04] dark:text-white'
-                            } ${isToday ? 'consistency-day-box-today' : ''}`}
+                                ? 'border border-brand-500 shadow-[0_12px_24px_rgba(34,99,80,0.18)] dark:border-accent-500'
+                                : 'border border-black dark:border-white'
+                            }`}
                           >
-                            <span className={`text-[0.68rem] font-bold uppercase ${day.attended ? 'text-white/85' : 'text-inherit'}`}>
-                              {getWeekdayLetter(day.date)}
-                            </span>
-                            <span className={`font-headline text-[1.1rem] font-black italic leading-none ${day.attended ? 'text-white' : 'text-black dark:text-white'}`}>
-                              {formatDayNumber(day.date)}
-                            </span>
+                            <div
+                              className={`consistency-day-box-inner flex h-full flex-col items-center justify-between px-2 py-2 ${
+                                day.attended
+                                  ? 'consistency-day-box-attended text-white'
+                                  : 'bg-white/55 text-black dark:bg-white/[0.04] dark:text-white'
+                              } ${showTodayPulse ? 'consistency-day-box-today' : ''}`}
+                            >
+                              <span className={`text-[0.68rem] font-bold uppercase ${day.attended ? 'text-white/85' : 'text-inherit'}`}>
+                                {getWeekdayLetter(day.date)}
+                              </span>
+                              <span className={`font-headline text-[1.1rem] font-black italic leading-none ${day.attended ? 'text-white' : 'text-black dark:text-white'}`}>
+                                {formatDayNumber(day.date)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
+                  {consistency.status !== 'consistent' && consistencyRiskCopy && !todayIncludedInConsistencyWindow ? (
+                    <p className="mt-4 max-w-[20rem] text-left font-body text-[0.9rem] font-medium leading-snug text-black dark:text-white sm:text-[0.95rem]">
+                      {consistencyRiskCopy}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>
 
             <Card className="p-5 lg:p-6 xl:col-span-5">
-              <p className="section-eyebrow text-right">Check In</p>
+              <p className="section-eyebrow not-italic text-left">Check In</p>
               {marked_attendance_today ? (
                 <div className="mt-5">
-                  <p className="font-headline text-[2.2rem] font-black italic leading-[0.92] tracking-[-0.05em] text-brand-600 dark:text-accent-500 sm:text-[2.8rem]">
+                  <p className="font-headline text-[2.2rem] font-black italic leading-[0.92] tracking-[-0.05em] text-black dark:text-white sm:text-[2.8rem]">
                     Good Job!
                   </p>
                   <p className="ml-1 mt-3 text-sm text-black dark:text-white">
-                    Get some rest.
+                    You're done for the day. Get some rest.
                   </p>
                 </div>
               ) : (
@@ -147,10 +269,10 @@ export default function MemberHomePage() {
                   <Button
                     onClick={() => markAttendance.mutate()}
                     disabled={markAttendance.isPending}
-                    className="w-full rounded-[1.5rem] py-5 font-headline text-[1.05rem] font-semibold italic uppercase tracking-[0.16em] dark:border-accent-500/20 dark:hover:border-accent-500/35"
-                    icon={markAttendance.isPending ? 'progress_activity' : undefined}
+                    className="w-full whitespace-nowrap rounded-[1.5rem] py-5 font-headline !text-[1.7rem] !leading-none font-semibold italic uppercase tracking-[0.08em] dark:border-accent-500/20 dark:hover:border-accent-500/35"
+                    icon={markAttendance.isPending ? 'progress_activity' : 'how_to_reg'}
                   >
-                    {markAttendance.isPending ? 'MARKING TODAY' : 'MARK TODAY >>>'}
+                    {markAttendance.isPending ? 'MARKING TODAY' : 'MARK TODAY'}
                   </Button>
                   {attendanceError ? (
                     <p className="mt-3 text-center text-xs text-red-600 dark:text-red-300">{attendanceError}</p>

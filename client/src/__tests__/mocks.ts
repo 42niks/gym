@@ -2,7 +2,7 @@ import type {
   User, MemberHome, MemberProfile,
   Subscription, Dashboard, DashboardItem, MemberListItem,
   MemberDetail, Package, Consistency, Renewal, ManagedPackage,
-  MemberSubscriptionAttendance,
+  MemberSubscriptionAttendance, ConsistencyWindow,
 } from '../lib/api.js';
 
 export const mockOwner: User = {
@@ -38,6 +38,12 @@ export const mockConsistency: Consistency = {
   status: 'consistent', days: 14, message: 'Consistent for 14 days',
 };
 
+export const mockConsistencyWindow: ConsistencyWindow = {
+  start_date: '2026-03-26',
+  end_date: '2026-04-06',
+  streak_days: 14,
+};
+
 export const mockRenewalEndsSoon: Renewal = {
   kind: 'ends_soon', message: 'Your subscription ends in 3 days',
 };
@@ -55,6 +61,7 @@ export const mockMemberHome: MemberHome = {
   member: mockMemberProfile,
   active_subscription: mockSubscription,
   consistency: mockConsistency,
+  consistency_window: mockConsistencyWindow,
   renewal: null,
   marked_attendance_today: false,
   recent_attendance: [
@@ -76,6 +83,10 @@ export const mockSubscriptions: Subscription[] = [
 
 export const mockMemberSubscriptionAttendance: MemberSubscriptionAttendance = {
   subscription: mockSubscription,
+  consistency_rule: {
+    min_days: 3,
+    window_days: 7,
+  },
   attended_dates: ['2026-04-03', '2026-04-07', '2026-04-14'],
 };
 

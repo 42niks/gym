@@ -69,8 +69,14 @@ export interface Subscription {
   lifecycle_state: 'active' | 'upcoming' | 'completed';
 }
 
+export interface ConsistencyRule {
+  min_days: number;
+  window_days: number;
+}
+
 export interface MemberSubscriptionAttendance {
   subscription: Subscription;
+  consistency_rule: ConsistencyRule;
   attended_dates: string[];
 }
 
@@ -78,6 +84,12 @@ export interface Consistency {
   status: 'consistent' | 'building';
   days?: number;
   message: string;
+}
+
+export interface ConsistencyWindow {
+  start_date: string;
+  end_date: string;
+  streak_days: number;
 }
 
 export interface RecentAttendanceDay {
@@ -95,6 +107,7 @@ export interface MemberHome {
   member: MemberProfile;
   active_subscription: Subscription | null;
   consistency: Consistency | null;
+  consistency_window: ConsistencyWindow | null;
   renewal: Renewal | null;
   marked_attendance_today: boolean;
   recent_attendance: RecentAttendanceDay[];

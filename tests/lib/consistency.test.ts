@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { computeConsistency } from '../../src/lib/consistency.js';
+import { computeConsistency, computeConsistencyWindow } from '../../src/lib/consistency.js';
+import { addDays } from '../../src/lib/date.js';
 
 describe('consistency logic', () => {
   it('should return null when no active subscription', () => {
@@ -162,5 +163,83 @@ describe('consistency logic', () => {
     // [03-31..04-06] has 04-05 -> ok
     // ... continues until a window doesn't have one
     expect(result!.status).toBe('consistent');
+  });
+
+  it('should end the ribbon at the latest attended day until today is marked', () => {
+    const input = {
+      hasActiveSubscription: true,
+      windowDays: 7,
+      minDays: 3,
+      earliestSubscriptionStart: '2026-03-20',
+      attendanceDates: [
+        '2026-03-25', '2026-03-26', '2026-03-27', '2026-03-28', '2026-03-29', '2026-03-30', '2026-03-31',
+        '2026-04-01', '2026-04-02', '2026-04-03', '2026-04-04', '2026-04-05', '2026-04-06',
+      ],
+      today: '2026-04-08',
+    } as const;
+
+    const consistency = computeConsistency(input);
+    const ribbon = computeConsistencyWindow(input);
+
+    expect(consistency?.status).toBe('consistent');
+    if (consistency?.status !== 'consistent' || !ribbon) {
+      throw new Error('Expected a consistent result with ribbon metadata');
+    }
+
+    expect(ribbon.start_date).toBe(addDays(input.today, -(consistency.days - 1)));
+    expect(ribbon.end_date).toBe('2026-04-06');
+    expect(ribbon.streak_days).toBe(consistency.days);
+  });
+
+  it('should include today and the bridged rest day once today is marked', () => {
+    const input = {
+      hasActiveSubscription: true,
+      windowDays: 7,
+      minDays: 3,
+      earliestSubscriptionStart: '2026-03-20',
+      attendanceDates: [
+        '2026-03-25', '2026-03-26', '2026-03-27', '2026-03-28', '2026-03-29', '2026-03-30', '2026-03-31',
+        '2026-04-01', '2026-04-02', '2026-04-03', '2026-04-04', '2026-04-05', '2026-04-06', '2026-04-08',
+      ],
+      today: '2026-04-08',
+    } as const;
+
+    const consistency = computeConsistency(input);
+    const ribbon = computeConsistencyWindow(input);
+
+    expect(consistency?.status).toBe('consistent');
+    if (consistency?.status !== 'consistent' || !ribbon) {
+      throw new Error('Expected a consistent result with ribbon metadata');
+    }
+
+    expect(ribbon.start_date).toBe(addDays(input.today, -(consistency.days - 1)));
+    expect(ribbon.end_date).toBe('2026-04-08');
+    expect(ribbon.streak_days).toBe(consistency.days);
+  });
+
+  it('should return the latest completed consistency window even after today breaks the streak', () => {
+    const input = {
+      hasActiveSubscription: true,
+      windowDays: 7,
+      minDays: 3,
+      earliestSubscriptionStart: '2026-02-01',
+      attendanceDates: [
+        '2026-03-02', '2026-03-04', '2026-03-11', '2026-03-13', '2026-03-16', '2026-03-18',
+        '2026-03-20', '2026-03-23', '2026-03-25', '2026-03-27', '2026-03-30', '2026-04-01',
+        '2026-04-03', '2026-04-06', '2026-04-08', '2026-04-10', '2026-04-13',
+      ],
+      today: '2026-04-15',
+    } as const;
+
+    expect(computeConsistency(input)).toEqual({
+      status: 'building',
+      message: 'You are building your consistency, keep it up!',
+    });
+
+    expect(computeConsistencyWindow(input)).toEqual({
+      start_date: '2026-03-16',
+      end_date: '2026-04-13',
+      streak_days: 30,
+    });
   });
 });

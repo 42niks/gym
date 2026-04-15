@@ -37,8 +37,13 @@ describe('MemberSubscriptionAttendancePage', () => {
     await waitFor(() => {
       expect(screen.getByText('Attendance dates')).toBeInTheDocument();
       expect(screen.getByText('1:1 Personal Training')).toBeInTheDocument();
-      expect(screen.getByText('Check-ins')).toBeInTheDocument();
-      expect(screen.getByText('active')).toBeInTheDocument();
+      expect(screen.getByText('Period')).toBeInTheDocument();
+      expect(screen.getByText('Status')).toBeInTheDocument();
+      expect(screen.getByText('Consistency rule')).toBeInTheDocument();
+      expect(screen.getByText('3 out of 7 days')).toBeInTheDocument();
+      expect(screen.getByText('Active')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Previous month' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled();
     });
   });
 
@@ -48,7 +53,7 @@ describe('MemberSubscriptionAttendancePage', () => {
 
     await waitFor(() => {
       const headers = screen.getAllByRole('columnheader').map(node => node.textContent);
-      expect(headers.slice(0, 7)).toEqual(['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']);
+      expect(headers).toEqual(['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']);
     });
   });
 

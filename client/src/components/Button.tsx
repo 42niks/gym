@@ -18,7 +18,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export default function Button({ variant = 'primary', children, className = '', icon, iconEnd = false, ...props }: ButtonProps) {
-  const iconEl = icon ? <Icon name={icon} className="text-[1.1rem]" /> : null;
+  const iconEl = icon ? <Icon name={icon} className="text-[1em]" /> : null;
   const isPrimary = variant === 'primary';
 
   return (

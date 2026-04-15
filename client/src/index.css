@@ -495,6 +495,114 @@
     backface-visibility: hidden;
   }
 
+  .consistency-day-grid {
+    --consistency-ribbon-total: 7;
+    --consistency-ribbon-gap: 0.5rem;
+    --consistency-ribbon-left-overhang: 0.44rem;
+    --consistency-ribbon-right-overhang: 0.44rem;
+    --consistency-ribbon-fill-light: rgb(var(--color-brand-700) / 0.12);
+    --consistency-ribbon-fill-dark: rgb(var(--color-energy-300) / 0.14);
+    --consistency-connector-fill-light: rgb(var(--color-brand-700) / 0.22);
+    --consistency-connector-fill-dark: rgb(var(--color-energy-300) / 0.24);
+    --consistency-connector-edge-inset: 0.08rem;
+    --consistency-connector-height: 0.18rem;
+    --consistency-connector-lead-length: 1.32rem;
+    position: relative;
+    overflow: visible;
+    padding-block: 0.42rem;
+  }
+
+  .consistency-window-ribbon {
+    --consistency-ribbon-cell:
+      calc(
+        (100% - (var(--consistency-ribbon-total) - 1) * var(--consistency-ribbon-gap)) /
+        var(--consistency-ribbon-total)
+      );
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left:
+      calc(
+        var(--consistency-ribbon-start) *
+        (var(--consistency-ribbon-cell) + var(--consistency-ribbon-gap)) -
+        var(--consistency-ribbon-left-overhang)
+      );
+    width:
+      calc(
+        var(--consistency-ribbon-span) * var(--consistency-ribbon-cell) +
+        (var(--consistency-ribbon-span) - 1) * var(--consistency-ribbon-gap) +
+        var(--consistency-ribbon-left-overhang) +
+        var(--consistency-ribbon-right-overhang)
+      );
+    border-radius: 1.42rem;
+    background: var(--consistency-ribbon-fill-light);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .consistency-window-ribbon-fade-left {
+    --consistency-ribbon-left-overhang: 1.7rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    -webkit-mask-image:
+      linear-gradient(
+        90deg,
+        rgb(0 0 0 / 0) 0,
+        rgb(0 0 0 / 0) calc(var(--consistency-ribbon-left-overhang) * 0.18),
+        rgb(0 0 0 / 1) var(--consistency-ribbon-left-overhang),
+        rgb(0 0 0 / 1) 100%
+      );
+    mask-image:
+      linear-gradient(
+        90deg,
+        rgb(0 0 0 / 0) 0,
+        rgb(0 0 0 / 0) calc(var(--consistency-ribbon-left-overhang) * 0.18),
+        rgb(0 0 0 / 1) var(--consistency-ribbon-left-overhang),
+        rgb(0 0 0 / 1) 100%
+      );
+  }
+
+  .consistency-window-connectors {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .consistency-window-connector {
+    --consistency-connector-cell:
+      calc(
+        (100% - (var(--consistency-ribbon-total) - 1) * var(--consistency-ribbon-gap)) /
+        var(--consistency-ribbon-total)
+      );
+    position: absolute;
+    top: 50%;
+    left:
+      calc(
+        var(--consistency-connector-index) *
+        (var(--consistency-connector-cell) + var(--consistency-ribbon-gap)) +
+        var(--consistency-connector-cell) + var(--consistency-connector-edge-inset)
+      );
+    width: calc(var(--consistency-ribbon-gap) - (var(--consistency-connector-edge-inset) * 2));
+    height: var(--consistency-connector-height);
+    border-radius: 0.18rem;
+    transform: translateY(-50%);
+    background: var(--consistency-connector-fill-light);
+  }
+
+  .consistency-window-connector-lead {
+    left: calc((var(--consistency-connector-lead-length) * -1) - 0.08rem);
+    width: var(--consistency-connector-lead-length);
+    background:
+      linear-gradient(
+        90deg,
+        rgb(var(--color-brand-700) / 0) 0%,
+        rgb(var(--color-brand-700) / 0) 16%,
+        var(--consistency-connector-fill-light) 100%
+      );
+  }
+
   .consistency-day-box-inner {
     height: 100%;
     width: 100%;
@@ -524,6 +632,43 @@
       rgb(var(--color-accent-500)) 0%,
       rgb(var(--color-accent-400)) 100%
     );
+  }
+
+  .dark .consistency-window-ribbon {
+    background: var(--consistency-ribbon-fill-dark);
+  }
+
+  .dark .consistency-window-ribbon-fade-left {
+    -webkit-mask-image:
+      linear-gradient(
+        90deg,
+        rgb(0 0 0 / 0) 0,
+        rgb(0 0 0 / 0) calc(var(--consistency-ribbon-left-overhang) * 0.18),
+        rgb(0 0 0 / 1) var(--consistency-ribbon-left-overhang),
+        rgb(0 0 0 / 1) 100%
+      );
+    mask-image:
+      linear-gradient(
+        90deg,
+        rgb(0 0 0 / 0) 0,
+        rgb(0 0 0 / 0) calc(var(--consistency-ribbon-left-overhang) * 0.18),
+        rgb(0 0 0 / 1) var(--consistency-ribbon-left-overhang),
+        rgb(0 0 0 / 1) 100%
+      );
+  }
+
+  .dark .consistency-window-connector {
+    background: var(--consistency-connector-fill-dark);
+  }
+
+  .dark .consistency-window-connector-lead {
+    background:
+      linear-gradient(
+        90deg,
+        rgb(var(--color-energy-300) / 0) 0%,
+        rgb(var(--color-energy-300) / 0) 16%,
+        var(--consistency-connector-fill-dark) 100%
+      );
   }
 
   .dark .consistency-day-box-today {
