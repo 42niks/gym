@@ -381,6 +381,7 @@ describe('Member Management', () => {
         id: subscriptionId,
         service_type: '1:1 Personal Training',
       });
+      expect(body).toHaveProperty('consistency_window');
       expect(body.attended_dates).toEqual(['2026-04-03', '2026-04-07']);
     });
 

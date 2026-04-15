@@ -100,17 +100,27 @@ export function computeConsistencyWindow(input: ConsistencyInput): ConsistencyWi
 
   if (streak < windowDays) return null;
 
-  const startDate = addDays(anchorDay, -(streak - 1));
+  // The streak's earliest "valid" day is anchorDay - (streak - 1), but attended days
+  // within the preceding (windowDays - 1) still contribute to that day's rolling
+  // window. Extend the ribbon back to include them so it visibly connects every
+  // attended day that participates in the streak.
+  const algebraicStart = addDays(anchorDay, -(streak - 1));
+  const contributionStart = addDays(algebraicStart, -(windowDays - 1));
+
+  let startDate: string | null = null;
   let endDate: string | null = null;
 
   for (const attendanceDate of attendanceDates) {
-    if (attendanceDate < startDate || attendanceDate > anchorDay) continue;
+    if (attendanceDate < contributionStart || attendanceDate > anchorDay) continue;
+    if (!startDate || attendanceDate < startDate) {
+      startDate = attendanceDate;
+    }
     if (!endDate || attendanceDate > endDate) {
       endDate = attendanceDate;
     }
   }
 
-  if (!endDate) return null;
+  if (!startDate || !endDate) return null;
 
   return {
     start_date: startDate,

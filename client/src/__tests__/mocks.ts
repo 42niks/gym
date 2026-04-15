@@ -87,6 +87,7 @@ export const mockMemberSubscriptionAttendance: MemberSubscriptionAttendance = {
     min_days: 3,
     window_days: 7,
   },
+  consistency_window: null,
   attended_dates: ['2026-04-03', '2026-04-07', '2026-04-14'],
 };
 

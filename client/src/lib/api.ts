@@ -77,6 +77,7 @@ export interface ConsistencyRule {
 export interface MemberSubscriptionAttendance {
   subscription: Subscription;
   consistency_rule: ConsistencyRule;
+  consistency_window: ConsistencyWindow | null;
   attended_dates: string[];
 }
 

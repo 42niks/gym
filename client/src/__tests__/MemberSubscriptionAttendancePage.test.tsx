@@ -99,4 +99,21 @@ describe('MemberSubscriptionAttendancePage', () => {
     expect(getIncomingFocusAlpha(zoneTop - 1, viewportHeight)).toBe(1);
     expect(getIncomingFocusAlpha(readLine, viewportHeight)).toBeCloseTo(0.5, 6);
   });
+
+  it('renders consistency ribbon when consistency window is present', async () => {
+    mockApiGet.mockResolvedValue({
+      ...mockMemberSubscriptionAttendance,
+      consistency_window: {
+        start_date: '2026-04-03',
+        end_date: '2026-04-14',
+        streak_days: 12,
+      },
+    });
+    const { container } = renderWithProviders(<MemberSubscriptionAttendancePage />, { route: '/subscription/1/attendance' });
+
+    await waitFor(() => {
+      const rowSegments = container.querySelectorAll('[class*="bg-brand-700/[0.12]"]');
+      expect(rowSegments.length).toBeGreaterThan(0);
+    });
+  });
 });

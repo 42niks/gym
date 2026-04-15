@@ -205,12 +205,24 @@ export async function getFormattedSubscriptionAttendance(
 
   if (!pkg) return null;
 
+  const attendedDates = await listAttendanceDatesForSubscription(db, memberId, subscriptionId);
+  const consistencyAnchorDay = today > subscription.end_date ? subscription.end_date : today;
+  const consistencyWindow = computeConsistencyWindow({
+    hasActiveSubscription: true,
+    windowDays: pkg.consistency_window_days,
+    minDays: pkg.consistency_min_days,
+    earliestSubscriptionStart: subscription.start_date,
+    attendanceDates: attendedDates,
+    today: consistencyAnchorDay,
+  });
+
   return {
     subscription: formatSubscription(subscription, today),
     consistency_rule: {
       min_days: pkg.consistency_min_days,
       window_days: pkg.consistency_window_days,
     },
-    attended_dates: await listAttendanceDatesForSubscription(db, memberId, subscriptionId),
+    consistency_window: consistencyWindow,
+    attended_dates: attendedDates,
   };
 }

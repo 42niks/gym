@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { computeConsistency, computeConsistencyWindow } from '../../src/lib/consistency.js';
-import { addDays } from '../../src/lib/date.js';
 
 describe('consistency logic', () => {
   it('should return null when no active subscription', () => {
@@ -186,7 +185,7 @@ describe('consistency logic', () => {
       throw new Error('Expected a consistent result with ribbon metadata');
     }
 
-    expect(ribbon.start_date).toBe(addDays(input.today, -(consistency.days - 1)));
+    expect(ribbon.start_date).toBe('2026-03-25');
     expect(ribbon.end_date).toBe('2026-04-06');
     expect(ribbon.streak_days).toBe(consistency.days);
   });
@@ -212,7 +211,7 @@ describe('consistency logic', () => {
       throw new Error('Expected a consistent result with ribbon metadata');
     }
 
-    expect(ribbon.start_date).toBe(addDays(input.today, -(consistency.days - 1)));
+    expect(ribbon.start_date).toBe('2026-03-25');
     expect(ribbon.end_date).toBe('2026-04-08');
     expect(ribbon.streak_days).toBe(consistency.days);
   });
@@ -237,7 +236,7 @@ describe('consistency logic', () => {
     });
 
     expect(computeConsistencyWindow(input)).toEqual({
-      start_date: '2026-03-16',
+      start_date: '2026-03-11',
       end_date: '2026-04-13',
       streak_days: 30,
     });

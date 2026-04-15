@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { api, type MemberSubscriptionAttendance } from '../../lib/api.js';
+import { api, type ConsistencyWindow, type MemberSubscriptionAttendance } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
@@ -130,6 +130,7 @@ function buildCalendarWeeks(startDate: string, endDate: string, attendedDates: s
 
 function ContinuousCalendar({
   weeks,
+  consistencyWindow,
 }: {
   weeks: Array<Array<{
     date: string;
@@ -137,9 +138,11 @@ function ContinuousCalendar({
     monthKey: string;
     monthHeading: string;
   } | null>>;
+  consistencyWindow: ConsistencyWindow | null;
 }) {
   const titleId = 'attendance-calendar';
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const monthGroupRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const monthAnchorRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const repeatTimeoutRef = useRef<number | null>(null);
@@ -161,6 +164,13 @@ function ContinuousCalendar({
     return grouped;
   }, [allCells]);
   const flatCells = useMemo(() => weeks.flat(), [weeks]);
+  const cellDateIndexes = useMemo(() => {
+    const map = new Map<string, number>();
+    flatCells.forEach((cell, index) => {
+      if (cell) map.set(cell.date, index);
+    });
+    return map;
+  }, [flatCells]);
   const leadingBlankCount = useMemo(() => flatCells.findIndex(cell => cell !== null), [flatCells]);
   const trailingBlankCount = useMemo(() => {
     let lastRealIndex = -1;
@@ -173,6 +183,19 @@ function ContinuousCalendar({
     if (lastRealIndex === -1) return 0;
     return flatCells.length - 1 - lastRealIndex;
   }, [flatCells]);
+  const lastRealCellIndex = flatCells.length - trailingBlankCount - 1;
+  const consistencyRibbonSpan = useMemo(() => {
+    if (!consistencyWindow) return null;
+    const startIndex = cellDateIndexes.get(consistencyWindow.start_date);
+    const endIndex = cellDateIndexes.get(consistencyWindow.end_date);
+    if (startIndex === undefined || endIndex === undefined || endIndex < startIndex) return null;
+    return {
+      startIndex,
+      endIndex,
+      fadesLeft: false,
+      endsAtLastVisible: endIndex === lastRealCellIndex,
+    };
+  }, [cellDateIndexes, consistencyWindow, lastRealCellIndex]);
   const initialMonthKey = allCells[0]?.monthKey ?? '';
   const monthEntriesRef = useRef(monthEntries);
   const activeMonthKeyRef = useRef(initialMonthKey);
@@ -218,13 +241,14 @@ function ContinuousCalendar({
 
   useEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport) return;
+    const grid = gridRef.current;
+    if (!viewport || !grid) return;
 
     const recalculateRowSize = () => {
-      const styles = window.getComputedStyle(viewport);
-      const gapPx = Number.parseFloat(styles.getPropertyValue('--calendar-gap')) || 0;
+      const styles = window.getComputedStyle(grid);
+      const gapPx = Number.parseFloat(styles.columnGap || styles.getPropertyValue('column-gap')) || 0;
       setCalendarGapPx(gapPx || 8);
-      const width = viewport.clientWidth;
+      const width = grid.getBoundingClientRect().width;
       if (width <= 0) return;
       const nextRowSize = (width - gapPx * 6) / 7;
       if (nextRowSize > 0) {
@@ -235,6 +259,7 @@ function ContinuousCalendar({
     recalculateRowSize();
     const resizeObserver = new ResizeObserver(recalculateRowSize);
     resizeObserver.observe(viewport);
+    resizeObserver.observe(grid);
     window.addEventListener('resize', recalculateRowSize);
 
     return () => {
@@ -346,7 +371,32 @@ function ContinuousCalendar({
   const activeMonthIndex = monthEntries.findIndex(entry => entry.key === activeMonthKey);
   const canGoPrev = activeMonthIndex > 0;
   const canGoNext = activeMonthIndex !== -1 && activeMonthIndex < monthEntries.length - 1;
-  const activeMonthHeading = monthEntries[activeMonthIndex]?.heading ?? monthEntries[0]?.heading ?? '';
+  const rowHighlightSegments = useMemo(() => {
+    if (!consistencyRibbonSpan) return [];
+    const startRow = Math.floor(consistencyRibbonSpan.startIndex / 7);
+    const endRow = Math.floor(consistencyRibbonSpan.endIndex / 7);
+    const segments: Array<{
+      row: number;
+      startCol: number;
+      endCol: number;
+      roundLeft: boolean;
+      roundRight: boolean;
+    }> = [];
+
+    for (let row = startRow; row <= endRow; row += 1) {
+      const startCol = row === startRow ? consistencyRibbonSpan.startIndex % 7 : 0;
+      const endCol = row === endRow ? consistencyRibbonSpan.endIndex % 7 : 6;
+      segments.push({
+        row,
+        startCol,
+        endCol,
+        roundLeft: row === startRow,
+        roundRight: row === endRow,
+      });
+    }
+
+    return segments;
+  }, [consistencyRibbonSpan]);
 
   const moveMonth = (direction: -1 | 1, behavior: ScrollBehavior) => {
     const viewport = viewportRef.current;
@@ -424,7 +474,7 @@ function ContinuousCalendar({
             onBlur={stopRepeat}
             className="absolute left-0 inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/12 text-sm text-black transition disabled:cursor-not-allowed disabled:text-black/25 dark:border-white/12 dark:text-white dark:disabled:text-white/25"
           >
-            ◀
+            <span className="material-symbols-outlined text-[1.1rem] leading-none">chevron_left</span>
           </button>
           <h3
             id={titleId}
@@ -455,7 +505,7 @@ function ContinuousCalendar({
             onBlur={stopRepeat}
             className="absolute right-0 inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/12 text-sm text-black transition disabled:cursor-not-allowed disabled:text-black/25 dark:border-white/12 dark:text-white dark:disabled:text-white/25"
           >
-            ▶
+            <span className="material-symbols-outlined text-[1.1rem] leading-none">chevron_right</span>
           </button>
         </div>
 
@@ -482,15 +532,35 @@ function ContinuousCalendar({
           }}
         >
           <div
+            ref={gridRef}
             role="grid"
             aria-labelledby={titleId}
-            className="grid grid-cols-7 gap-[var(--calendar-gap)]"
+            className="relative grid grid-cols-7 gap-[var(--calendar-gap)]"
           >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0"
+            >
+              {rowHighlightSegments.map((segment) => (
+                <span
+                  key={`consistency-ribbon-row-${segment.row}`}
+                  className={`absolute block bg-brand-500/[0.24] dark:bg-brand-500/[0.3] ${
+                    segment.roundLeft ? 'rounded-l-full' : ''
+                  } ${segment.roundRight ? 'rounded-r-full' : ''}`}
+                  style={{
+                    left: `${segment.startCol * (rowSizePx + calendarGapPx)}px`,
+                    top: `${segment.row * (rowSizePx + calendarGapPx)}px`,
+                    width: `${(segment.endCol - segment.startCol + 1) * rowSizePx + (segment.endCol - segment.startCol) * calendarGapPx}px`,
+                    height: `${rowSizePx}px`,
+                  }}
+                />
+              ))}
+            </div>
             {Array.from({ length: Math.max(0, leadingBlankCount) }).map((_, index) => (
               <div
                 key={`calendar-leading-empty-${index}`}
                 aria-hidden="true"
-                className="aspect-square w-full"
+                className="z-10 aspect-square w-full"
               />
             ))}
 
@@ -515,14 +585,13 @@ function ContinuousCalendar({
                       data-month-key={cell.monthKey}
                       data-month-heading={cell.monthHeading}
                       aria-label={`Attended on ${formatFullDate(cell.date)}`}
-                      className="aspect-square w-full"
+                      className="relative z-10 flex aspect-square w-full items-center justify-center"
                     >
                       <div
-                        className="mx-auto flex h-[95%] w-[95%] items-center justify-center rounded-full border bg-surface-card shadow-panel [contain:paint] [isolation:isolate] [transform:translateZ(0)] [backface-visibility:hidden] dark:bg-surface-dark"
+                        className="relative z-10 flex h-[95%] w-[95%] items-center justify-center rounded-full border border-black bg-surface-card shadow-panel [contain:paint] [isolation:isolate] [transform:translateZ(0)] [backface-visibility:hidden] dark:border-white dark:bg-surface-dark"
                         style={{
                           color:
                             'color-mix(in srgb, currentColor calc(20% + var(--focus-alpha) * 80%), rgb(148 163 184))',
-                          borderColor: 'color-mix(in srgb, currentColor calc(14% + var(--focus-alpha) * 26%), transparent)',
                         }}
                       >
                         <span
@@ -542,7 +611,7 @@ function ContinuousCalendar({
                       data-month-key={cell.monthKey}
                       data-month-heading={cell.monthHeading}
                       aria-label={formatFullDate(cell.date)}
-                      className="aspect-square w-full rounded-[0.95rem] border border-transparent flex items-center justify-center text-sm font-semibold"
+                      className="z-10 aspect-square w-full rounded-[0.95rem] border border-transparent flex items-center justify-center text-sm font-semibold"
                       style={{
                         color:
                           'color-mix(in srgb, currentColor calc(20% + var(--focus-alpha) * 80%), rgb(148 163 184))',
@@ -559,7 +628,7 @@ function ContinuousCalendar({
               <div
                 key={`calendar-trailing-empty-${index}`}
                 aria-hidden="true"
-                className="aspect-square w-full"
+                className="z-10 aspect-square w-full"
               />
             ))}
           </div>
@@ -690,7 +759,7 @@ export default function MemberSubscriptionAttendancePage() {
         ) : null}
 
         {hasValidCalendarRange ? (
-          <ContinuousCalendar weeks={weeks} />
+          <ContinuousCalendar weeks={weeks} consistencyWindow={data.consistency_window} />
         ) : (
           <div className="empty-state">Attendance calendar dates are invalid for this subscription.</div>
         )}
