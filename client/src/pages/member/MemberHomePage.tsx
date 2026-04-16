@@ -274,7 +274,7 @@ export default function MemberHomePage() {
                     className="w-full whitespace-nowrap rounded-[1.5rem] py-5 font-headline !text-[1.7rem] !leading-none font-semibold italic uppercase tracking-[0.08em] dark:border-accent-500/20 dark:hover:border-accent-500/35"
                     icon={markAttendance.isPending ? 'progress_activity' : 'how_to_reg'}
                   >
-                    {markAttendance.isPending ? 'MARKING TODAY' : 'MARK TODAY'}
+                    MARK TODAY
                   </Button>
                   {attendanceError ? (
                     <p className="mt-3 text-center text-xs text-red-600 dark:text-red-300">{attendanceError}</p>

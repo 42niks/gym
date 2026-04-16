@@ -90,7 +90,7 @@ function AttendanceButton({ memberId, markedToday }: { memberId: string; markedT
   return (
     <div>
       <Button onClick={() => mark.mutate()} disabled={mark.isPending} className="py-2.5" icon={mark.isPending ? 'progress_activity' : 'how_to_reg'}>
-        {mark.isPending ? 'Marking…' : 'Mark attendance'}
+        Mark attendance
       </Button>
       {err && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{err}</p>}
     </div>

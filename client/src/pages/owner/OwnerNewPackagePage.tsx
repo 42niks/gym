@@ -479,7 +479,7 @@ export default function OwnerNewPackagePage() {
           {error ? <Alert variant="error">{error}</Alert> : null}
 
           <Button type="submit" disabled={loading} className="mt-2 w-full" icon={loading ? 'progress_activity' : 'library_add'}>
-            {loading ? 'Creating…' : 'Create package'}
+            Create package
           </Button>
         </form>
       </div>
