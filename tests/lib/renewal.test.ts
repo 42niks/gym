@@ -9,7 +9,7 @@ describe('renewal logic', () => {
       active: {
         end_date: '2026-04-30',
         total_sessions: 12,
-        attended_sessions: 10, // remaining = 2 < 3
+        attended_sessions: 10, // remaining = 2 <= 3
       },
       upcomingStartDate: null,
       today,
@@ -23,7 +23,7 @@ describe('renewal logic', () => {
   it('should return ends_soon when active is nearing end (few days) and no upcoming', () => {
     const result = computeRenewal({
       active: {
-        end_date: '2026-04-11', // 4 days away <= 4
+        end_date: '2026-04-11', // 4 days away <= 5
         total_sessions: 12,
         attended_sessions: 5,
       },
@@ -79,7 +79,7 @@ describe('renewal logic', () => {
       active: {
         end_date: '2026-04-30',
         total_sessions: 12,
-        attended_sessions: 5, // remaining = 7 >= 3 and days > 4
+        attended_sessions: 5, // remaining = 7 > 3 and days until end > 5
       },
       upcomingStartDate: null,
       today,
@@ -92,7 +92,7 @@ describe('renewal logic', () => {
       active: {
         end_date: '2026-04-30',
         total_sessions: 12,
-        attended_sessions: 10, // remaining = 2 < 3
+        attended_sessions: 10, // remaining = 2 <= 3
       },
       upcomingStartDate: null,
       today,
@@ -100,23 +100,23 @@ describe('renewal logic', () => {
     expect(result!.kind).toBe('ends_soon');
   });
 
-  it('should NOT return ends_soon at exactly remaining_sessions = 3', () => {
+  it('should return ends_soon at exactly remaining_sessions = 3', () => {
     const result = computeRenewal({
       active: {
         end_date: '2026-04-30',
         total_sessions: 12,
-        attended_sessions: 9, // remaining = 3, not < 3
+        attended_sessions: 9, // remaining = 3 <= 3
       },
       upcomingStartDate: null,
       today,
     });
-    expect(result).toBeNull();
+    expect(result!.kind).toBe('ends_soon');
   });
 
   it('should return ends_soon at exactly days_until_end = 4', () => {
     const result = computeRenewal({
       active: {
-        end_date: '2026-04-11', // diff = 4 <= 4
+        end_date: '2026-04-11', // diff = 4 <= 5
         total_sessions: 12,
         attended_sessions: 5,
       },
@@ -126,10 +126,23 @@ describe('renewal logic', () => {
     expect(result!.kind).toBe('ends_soon');
   });
 
-  it('should NOT return ends_soon at exactly days_until_end = 5', () => {
+  it('should return ends_soon at exactly days_until_end = 5', () => {
     const result = computeRenewal({
       active: {
-        end_date: '2026-04-12', // diff = 5, not <= 4
+        end_date: '2026-04-12', // diff = 5 <= 5
+        total_sessions: 12,
+        attended_sessions: 5,
+      },
+      upcomingStartDate: null,
+      today,
+    });
+    expect(result!.kind).toBe('ends_soon');
+  });
+
+  it('should NOT return ends_soon at exactly days_until_end = 6', () => {
+    const result = computeRenewal({
+      active: {
+        end_date: '2026-04-13', // diff = 6, not <= 5
         total_sessions: 12,
         attended_sessions: 5,
       },

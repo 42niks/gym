@@ -6,6 +6,7 @@ import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Icon from '../../components/Icon.js';
 import Spinner from '../../components/Spinner.js';
+import MemberRenewalAlert from '../../components/member/MemberRenewalAlert.js';
 import { memberLinks } from './memberLinks.js';
 
 function parseDateParts(value: string) {
@@ -270,6 +271,8 @@ export default function MemberBillingPage() {
         <div>
           <h2 className="page-title">SUBSCRIPTION</h2>
         </div>
+
+        <MemberRenewalAlert />
 
         {isLoading ? (
           <div className="flex justify-center py-16">

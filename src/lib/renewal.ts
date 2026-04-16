@@ -28,7 +28,7 @@ export function computeRenewal(input: RenewalInput): RenewalResult {
   if (active) {
     const remaining = active.total_sessions - active.attended_sessions;
     const daysUntilEnd = diffDays(active.end_date, today);
-    const nearingEnd = remaining < 3 || daysUntilEnd <= 4;
+    const nearingEnd = remaining <= 3 || daysUntilEnd <= 5;
 
     if (nearingEnd && !upcomingStartDate) {
       return {

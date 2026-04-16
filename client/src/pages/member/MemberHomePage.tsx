@@ -5,6 +5,7 @@ import AppShell from '../../components/AppShell.js';
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
+import MemberRenewalAlert from '../../components/member/MemberRenewalAlert.js';
 import { memberLinks } from './memberLinks.js';
 
 function extractDayCount(message: string | undefined) {
@@ -164,6 +165,7 @@ export default function MemberHomePage() {
         <div>
           <h2 className="page-title">Home</h2>
         </div>
+        <MemberRenewalAlert />
         {consistency && sub ? (
           <div className="grid gap-5 xl:grid-cols-12">
             <div className="consistency-panel-frame xl:col-span-7">
