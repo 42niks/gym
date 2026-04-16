@@ -9,6 +9,7 @@ import { requireMember } from './middleware/require-member.js';
 import {
   getMemberDetail, listMembers, createNewMember, updateExistingMember,
   archiveMemberById, listFormattedSubscriptions, getFormattedSubscriptionAttendance, toProfile, computeMemberEnrichment,
+  normalizeMemberListView, MEMBER_LIST_VIEWS,
 } from './services/member-service.js';
 import { createNewSubscription, completeSubscription } from './services/subscription-service.js';
 import { markAttendance } from './services/attendance-service.js';
@@ -198,11 +199,22 @@ export function createApp(
   // ─── Owner: Members ───
 
   app.get('/api/members', authMiddleware, requireOwner, async (c) => {
-    const status = c.req.query('status') ?? 'active';
-    if (status !== 'active' && status !== 'archived') {
+    const view = c.req.query('view');
+    const legacyStatus = c.req.query('status');
+
+    if (view) {
+      const normalizedView = normalizeMemberListView(view);
+      if (!normalizedView) {
+        return c.json({ error: `Invalid view parameter. Expected one of: ${MEMBER_LIST_VIEWS.join(', ')}` }, 400);
+      }
+      return c.json(await listMembers(db, normalizedView));
+    }
+
+    if (legacyStatus && legacyStatus !== 'active' && legacyStatus !== 'archived') {
       return c.json({ error: 'Invalid status parameter' }, 400);
     }
-    return c.json(await listMembers(db, status));
+
+    return c.json(await listMembers(db, legacyStatus === 'archived' ? 'archived' : 'all'));
   });
 
   app.post('/api/members', authMiddleware, requireOwner, async (c) => {

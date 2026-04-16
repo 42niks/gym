@@ -129,7 +129,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              <Button type="submit" disabled={loading} className="w-full" icon={loading ? 'progress_activity' : 'login'}>
+              <Button type="submit" disabled={loading} size="lg" className="w-full" icon={loading ? 'progress_activity' : 'login'}>
                 Sign in
               </Button>
             </form>

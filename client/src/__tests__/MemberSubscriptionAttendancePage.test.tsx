@@ -109,11 +109,10 @@ describe('MemberSubscriptionAttendancePage', () => {
         streak_days: 12,
       },
     });
-    const { container } = renderWithProviders(<MemberSubscriptionAttendancePage />, { route: '/subscription/1/attendance' });
+    renderWithProviders(<MemberSubscriptionAttendancePage />, { route: '/subscription/1/attendance' });
 
     await waitFor(() => {
-      const rowSegments = container.querySelectorAll('[class*="bg-brand-700/[0.12]"]');
-      expect(rowSegments.length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('consistency-row-highlight').length).toBeGreaterThan(0);
     });
   });
 });

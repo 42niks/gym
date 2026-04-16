@@ -1,6 +1,134 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { api, reset, seedOwner, seedMember, seedUserSession, getUserSessionCount, utcDatetime } from './setup.js';
 import { loginAs, seedSession, seedSubscription } from './helpers.js';
+import { addDays, getIstDate } from '../src/lib/date.js';
+import { computeEndDate } from '../src/lib/subscription.js';
+
+async function seedMemberWithSubscriptionAndAttendance(input: {
+  full_name: string;
+  email: string;
+  phone: string;
+  package_id: number;
+  start_date: string;
+  end_date: string;
+  total_sessions: number;
+  amount: number;
+  attendance_dates: string[];
+}) {
+  const memberId = await seedMember({
+    full_name: input.full_name,
+    email: input.email,
+    phone: input.phone,
+  });
+
+  const subscriptionId = await seedSubscription({
+    member_id: memberId,
+    package_id: input.package_id,
+    start_date: input.start_date,
+    end_date: input.end_date,
+    total_sessions: input.total_sessions,
+    attended_sessions: input.attendance_dates.length,
+    amount: input.amount,
+  });
+
+  for (const date of input.attendance_dates) {
+    await seedSession({ member_id: memberId, subscription_id: subscriptionId, date });
+  }
+
+  return { memberId, subscriptionId };
+}
+
+async function seedMembersViewFixtures() {
+  const today = getIstDate();
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'Consistent Cora',
+    email: 'cora@test.com',
+    phone: '1111111111',
+    package_id: 4,
+    start_date: addDays(today, -46),
+    end_date: computeEndDate(addDays(today, -46), 3),
+    total_sessions: 36,
+    amount: 85800,
+    attendance_dates: [-20, -18, -16, -14, -12, -10, -8, -6, -4, -2].map((offset) => addDays(today, offset)),
+  });
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'Risky Riya',
+    email: 'riya-risk@test.com',
+    phone: '2222222222',
+    package_id: 4,
+    start_date: addDays(today, -46),
+    end_date: computeEndDate(addDays(today, -46), 3),
+    total_sessions: 36,
+    amount: 85800,
+    attendance_dates: [-13, -10, -8, -7, -4, -2].map((offset) => addDays(today, offset)),
+  });
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'Builder Ben',
+    email: 'ben@test.com',
+    phone: '3333333333',
+    package_id: 2,
+    start_date: addDays(today, -20),
+    end_date: computeEndDate(addDays(today, -20), 1),
+    total_sessions: 12,
+    amount: 29500,
+    attendance_dates: [-5, -1].map((offset) => addDays(today, offset)),
+  });
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'Renewal Ruby',
+    email: 'ruby@test.com',
+    phone: '4444444444',
+    package_id: 8,
+    start_date: addDays(today, -24),
+    end_date: addDays(today, 3),
+    total_sessions: 12,
+    amount: 14500,
+    attendance_dates: [-18, -14, -10, -6, -2].map((offset) => addDays(today, offset)),
+  });
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'Today Theo',
+    email: 'theo@test.com',
+    phone: '5555555555',
+    package_id: 2,
+    start_date: addDays(today, -20),
+    end_date: computeEndDate(addDays(today, -20), 1),
+    total_sessions: 12,
+    amount: 29500,
+    attendance_dates: [-5, -2, 0].map((offset) => addDays(today, offset)),
+  });
+
+  await seedMember({
+    full_name: 'No Plan Nina',
+    email: 'nina@test.com',
+    phone: '6666666666',
+  });
+
+  const upcomingUmaId = await seedMember({
+    full_name: 'Upcoming Uma',
+    email: 'uma@test.com',
+    phone: '7777777777',
+  });
+
+  await seedSubscription({
+    member_id: upcomingUmaId,
+    package_id: 8,
+    start_date: addDays(today, 4),
+    end_date: computeEndDate(addDays(today, 4), 1),
+    total_sessions: 12,
+    amount: 14500,
+  });
+
+  await seedMember({
+    full_name: 'Archived Aria',
+    email: 'aria@test.com',
+    phone: '8888888888',
+    status: 'archived',
+  });
+}
 
 describe('Member Management', () => {
   let ownerCookie: string;
@@ -107,46 +235,147 @@ describe('Member Management', () => {
   // ─── GET /api/members ───
 
   describe('GET /api/members', () => {
-    it('should list active members sorted by name', async () => {
-      await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
-      await seedMember({ email: 'b@test.com', full_name: 'Beta', phone: '222' });
-      await seedMember({ email: 'c@test.com', full_name: 'Charlie', phone: '333', status: 'archived' });
+    it('lists all non-archived members by default, sorted by name', async () => {
+      await seedMembersViewFixtures();
 
       const res = await api('/api/members', { headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.length).toBe(2);
-      expect(body[0].full_name).toBe('Alpha');
-      expect(body[1].full_name).toBe('Beta');
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual([
+        'Builder Ben',
+        'Consistent Cora',
+        'No Plan Nina',
+        'Renewal Ruby',
+        'Risky Riya',
+        'Today Theo',
+        'Upcoming Uma',
+      ]);
     });
 
-    it('should list archived members when status=archived', async () => {
-      await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
-      await seedMember({ email: 'b@test.com', full_name: 'Beta', phone: '222', status: 'archived' });
+    it('supports the all view explicitly and excludes archived members', async () => {
+      await seedMembersViewFixtures();
 
-      const res = await api('/api/members?status=archived', { headers: { Cookie: ownerCookie } });
+      const res = await api('/api/members?view=all', { headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.length).toBe(1);
-      expect(body[0].full_name).toBe('Beta');
+
+      const body = await res.json() as any[];
+      expect(body).toHaveLength(7);
+      expect(body.find((member) => member.full_name === 'Archived Aria')).toBeUndefined();
     });
 
-    it('should return 400 for invalid status', async () => {
+    it('lists the no plan view, including members with only an upcoming subscription', async () => {
+      await seedMembersViewFixtures();
+
+      const res = await api('/api/members?view=no-plan', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual(['No Plan Nina', 'Upcoming Uma']);
+    });
+
+    it('lists the renewal view', async () => {
+      await seedMembersViewFixtures();
+
+      const res = await api('/api/members?view=renewal', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual(['Renewal Ruby']);
+    });
+
+    it('lists the at risk view', async () => {
+      await seedMembersViewFixtures();
+
+      const res = await api('/api/members?view=at-risk', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual(['Risky Riya']);
+      expect(body[0].consistency_risk_today).toMatchObject({
+        streak_days: expect.any(Number),
+        message: expect.stringContaining('Attend today'),
+      });
+    });
+
+    it('lists the building view', async () => {
+      await seedMembersViewFixtures();
+
+      const res = await api('/api/members?view=building', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual([
+        'Builder Ben',
+        'Renewal Ruby',
+        'Risky Riya',
+        'Today Theo',
+      ]);
+    });
+
+    it('lists the consistent view', async () => {
+      await seedMembersViewFixtures();
+
+      const res = await api('/api/members?view=consistent', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual(['Consistent Cora']);
+      expect(body[0].consistency.status).toBe('consistent');
+    });
+
+    it('lists the today view', async () => {
+      await seedMembersViewFixtures();
+
+      const res = await api('/api/members?view=today', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual(['Today Theo']);
+      expect(body[0].marked_attendance_today).toBe(true);
+    });
+
+    it('lists archived members from both the new and legacy archived routes', async () => {
+      await seedMembersViewFixtures();
+
+      const viewRes = await api('/api/members?view=archived', { headers: { Cookie: ownerCookie } });
+      const statusRes = await api('/api/members?status=archived', { headers: { Cookie: ownerCookie } });
+
+      expect(viewRes.status).toBe(200);
+      expect(statusRes.status).toBe(200);
+      expect((await viewRes.json() as any[]).map((member) => member.full_name)).toEqual(['Archived Aria']);
+      expect((await statusRes.json() as any[]).map((member) => member.full_name)).toEqual(['Archived Aria']);
+    });
+
+    it('supports legacy view aliases for backwards compatibility', async () => {
+      await seedMembersViewFixtures();
+
+      const res = await api('/api/members?view=no-subscription', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual(['No Plan Nina', 'Upcoming Uma']);
+    });
+
+    it('returns 400 for invalid view or invalid status', async () => {
+      expect((await api('/api/members?view=invalid', { headers: { Cookie: ownerCookie } })).status).toBe(400);
       expect((await api('/api/members?status=invalid', { headers: { Cookie: ownerCookie } })).status).toBe(400);
     });
 
-    it('should not include owner in member list', async () => {
-      const body = await (await api('/api/members', { headers: { Cookie: ownerCookie } })).json();
+    it('does not include the owner in the member list', async () => {
+      const body = await (await api('/api/members', { headers: { Cookie: ownerCookie } })).json() as any[];
       expect(body.find((m: any) => m.role === 'owner')).toBeUndefined();
     });
 
-    it('should include active_subscription, consistency, and marked_attendance_today', async () => {
+    it('includes enrichment fields on non-archived list rows', async () => {
       const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
-      const body = await (await api('/api/members', { headers: { Cookie: ownerCookie } })).json();
+      const body = await (await api('/api/members', { headers: { Cookie: ownerCookie } })).json() as any[];
       expect(body[0]).toHaveProperty('active_subscription');
       expect(body[0]).toHaveProperty('consistency');
+      expect(body[0]).toHaveProperty('renewal');
+      expect(body[0]).toHaveProperty('consistency_risk_today');
       expect(body[0]).toHaveProperty('marked_attendance_today');
     });
   });

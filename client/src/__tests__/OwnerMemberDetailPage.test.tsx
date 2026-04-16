@@ -37,6 +37,7 @@ beforeEach(() => {
 describe('OwnerMemberDetailPage', () => {
   it('renders member name and details', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
     await waitFor(() => {
       expect(screen.getByText('Alex Kumar')).toBeInTheDocument();
       expect(screen.getByText(/member@thebase.fit/)).toBeInTheDocument();
@@ -45,17 +46,26 @@ describe('OwnerMemberDetailPage', () => {
 
   it('shows active badge for active member', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-    await waitFor(() => { expect(screen.getAllByText('active').length).toBeGreaterThanOrEqual(1); });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('active').length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   it('renders subscription cards', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-    await waitFor(() => { expect(screen.getAllByText('1:1 Personal Training').length).toBeGreaterThanOrEqual(1); });
+
+    await waitFor(() => {
+      expect(screen.getAllByText('1:1 Personal Training').length).toBeGreaterThanOrEqual(1);
+    });
   });
 
-  it('shows mark attendance button when member has active subscription', async () => {
+  it('shows mark attendance button when member has an active subscription', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-    await waitFor(() => { expect(screen.getByRole('button', { name: /mark attendance/i })).toBeInTheDocument(); });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /mark attendance/i })).toBeInTheDocument();
+    });
   });
 
   it('shows attendance marked when already done today', async () => {
@@ -63,30 +73,54 @@ describe('OwnerMemberDetailPage', () => {
       if (url.includes('/subscriptions')) return Promise.resolve(mockSubscriptions);
       return Promise.resolve({ ...mockMemberDetail, marked_attendance_today: true });
     });
-    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-    await waitFor(() => { expect(screen.getByText(/attendance marked for today/i)).toBeInTheDocument(); });
-  });
 
-  it('has subscription and archive buttons', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Subscription$/ })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Archive$/ })).toBeInTheDocument();
+      expect(screen.getByText(/attendance marked for today/i)).toBeInTheDocument();
     });
   });
 
   it('calls attendance API on click', async () => {
     const user = userEvent.setup();
     mockApiPost.mockResolvedValue({});
+
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-    await waitFor(() => { expect(screen.getByRole('button', { name: /mark attendance/i })).toBeInTheDocument(); });
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /mark attendance/i })).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /mark attendance/i }));
+
     expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/sessions');
   });
 
-  it('shows back link to members', async () => {
+  it('defaults the back link to the all members view', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-    await waitFor(() => { expect(screen.getByRole('link', { name: /arrow_back Members$/ })).toBeInTheDocument(); });
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /all$/i })).toHaveAttribute('href', '/members');
+    });
+  });
+
+  it('preserves the selected view in the back link and new subscription link', async () => {
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2?view=today' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /today$/i })).toHaveAttribute('href', '/members?view=today');
+      expect(screen.getByRole('link', { name: /subscription$/i })).toHaveAttribute('href', '/members/2/subscriptions/new?view=today');
+    });
+  });
+
+  it('returns archived members to the archived list when no explicit view is set', async () => {
+    mockApiGet.mockImplementation((url: string) => {
+      if (url.includes('/subscriptions')) return Promise.resolve([]);
+      return Promise.resolve({ ...mockMemberDetail, status: 'archived', active_subscription: null, consistency: null, renewal: null });
+    });
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /archived members$/i })).toHaveAttribute('href', '/members?view=archived');
+    });
   });
 
   it('shows no subscriptions message when empty', async () => {
@@ -94,7 +128,11 @@ describe('OwnerMemberDetailPage', () => {
       if (url.includes('/subscriptions')) return Promise.resolve([]);
       return Promise.resolve(mockMemberDetail);
     });
+
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-    await waitFor(() => { expect(screen.getByText('No subscriptions yet')).toBeInTheDocument(); });
+
+    await waitFor(() => {
+      expect(screen.getByText('No subscriptions yet')).toBeInTheDocument();
+    });
   });
 });

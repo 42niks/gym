@@ -269,6 +269,7 @@ export default function MemberHomePage() {
               ) : (
                 <div className="mt-5">
                   <Button
+                    size="lg"
                     onClick={() => markAttendance.mutate()}
                     disabled={markAttendance.isPending}
                     className="w-full whitespace-nowrap rounded-[1.5rem] py-5 font-headline !text-[1.7rem] !leading-none font-semibold italic uppercase tracking-[0.08em] dark:border-accent-500/20 dark:hover:border-accent-500/35"

@@ -1,13 +1,47 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type MemberDetail, type Subscription, ApiError } from '../../lib/api.js';
+import { api, type MemberDetail, type Subscription, type OwnerMemberListView, ApiError } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
 import { ownerLinks } from './ownerLinks.js';
+
+const KNOWN_MEMBER_VIEWS: OwnerMemberListView[] = [
+  'all',
+  'no-plan',
+  'renewal',
+  'at-risk',
+  'building',
+  'consistent',
+  'today',
+  'archived',
+];
+
+const MEMBER_VIEW_BACK_LABELS: Record<Exclude<OwnerMemberListView, 'all'>, string> = {
+  archived: 'Archived members',
+  'no-plan': 'No Plan',
+  renewal: 'Renewal',
+  'at-risk': 'At Risk',
+  building: 'Building',
+  consistent: 'Consistent members',
+  today: 'Today',
+};
+
+function isOwnerMemberListView(value: string | null): value is OwnerMemberListView {
+  return value !== null && KNOWN_MEMBER_VIEWS.includes(value as OwnerMemberListView);
+}
+
+function normalizeOwnerMemberListView(value: string | null): OwnerMemberListView | null {
+  if (value === 'active') return 'all';
+  if (value === 'no-subscription') return 'no-plan';
+  if (value === 'renewal-alert') return 'renewal';
+  if (value === 'consistency-risk') return 'at-risk';
+  if (value === 'not-consistent') return 'building';
+  return isOwnerMemberListView(value) ? value : null;
+}
 
 function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
   const queryClient = useQueryClient();
@@ -89,7 +123,7 @@ function AttendanceButton({ memberId, markedToday }: { memberId: string; markedT
 
   return (
     <div>
-      <Button onClick={() => mark.mutate()} disabled={mark.isPending} className="py-2.5" icon={mark.isPending ? 'progress_activity' : 'how_to_reg'}>
+      <Button size="sm" onClick={() => mark.mutate()} disabled={mark.isPending} className="py-2.5" icon={mark.isPending ? 'progress_activity' : 'how_to_reg'}>
         Mark attendance
       </Button>
       {err && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{err}</p>}
@@ -116,6 +150,7 @@ function sortSubscriptions(subs: Subscription[]) {
 
 export default function OwnerMemberDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [archiving, setArchiving] = useState(false);
   const [archiveErr, setArchiveErr] = useState('');
@@ -163,13 +198,22 @@ export default function OwnerMemberDetailPage() {
   if (!detail) return null;
 
   const allSubs = sortSubscriptions(subs);
+  const requestedView = searchParams.get('view');
+  const preservedView = normalizeOwnerMemberListView(requestedView)
+    ? normalizeOwnerMemberListView(requestedView)!
+    : detail.status === 'archived'
+      ? 'archived'
+      : 'all';
+  const viewQuery = preservedView === 'all' ? '' : `?view=${encodeURIComponent(preservedView)}`;
+  const backLink = `/members${viewQuery}`;
+  const backLabel = preservedView === 'all' ? 'All' : MEMBER_VIEW_BACK_LABELS[preservedView];
 
   return (
     <AppShell links={ownerLinks}>
       <div className="page-stack">
-        <Link to="/members" className="back-link">
+        <Link to={backLink} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
-          Members
+          {backLabel}
         </Link>
 
         <div>
@@ -202,7 +246,7 @@ export default function OwnerMemberDetailPage() {
             {detail.active_subscription && (
               <AttendanceButton memberId={id!} markedToday={detail.marked_attendance_today} />
             )}
-            <Link to={`/members/${id}/subscriptions/new`}>
+            <Link to={`/members/${id}/subscriptions/new${viewQuery}`}>
               <Button variant="secondary" className="py-2.5 text-sm" icon="add_card">
                 Subscription
               </Button>

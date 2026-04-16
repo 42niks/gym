@@ -52,6 +52,10 @@ export const mockRenewalNoActive: Renewal = {
   kind: 'no_active', message: 'You have no active subscription, please activate.',
 };
 
+export const mockRenewalStartsOn: Renewal = {
+  kind: 'starts_on', message: 'Your subscription starts on 20 Apr 2026.', upcoming_start_date: '2026-04-20',
+};
+
 export const mockMemberProfile: MemberProfile = {
   id: 2, full_name: 'Alex Kumar', email: 'member@thebase.fit',
   phone: '9876543210', join_date: '2026-04-07', status: 'active',
@@ -123,6 +127,8 @@ export const mockMemberListItem: MemberListItem = {
   ...mockMemberProfile,
   active_subscription: mockSubscription,
   consistency: mockConsistency,
+  renewal: null,
+  consistency_risk_today: null,
   marked_attendance_today: false,
 };
 

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createSqliteAppDatabase, type AppDatabase } from './client.js';
+export { applyDevSampleSeed } from './dev-sample-seed.js';
 
 function getMigrationsDir(): string {
   return path.resolve(import.meta.dirname, '../../migrations');

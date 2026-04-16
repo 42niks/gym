@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api, type ManagedPackage, type Subscription, ApiError } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
@@ -13,11 +13,14 @@ import { ownerLinks } from './ownerLinks.js';
 export default function OwnerNewSubscriptionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selectedPackage, setSelectedPackage] = useState<ManagedPackage | null>(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const view = searchParams.get('view');
+  const viewQuery = view ? `?view=${encodeURIComponent(view)}` : '';
 
   const { data: packages = [], isLoading } = useQuery<ManagedPackage[]>({
     queryKey: ['packages'],
@@ -40,7 +43,7 @@ export default function OwnerNewSubscriptionPage() {
         start_date: startDate,
         amount: parseFloat(amount),
       });
-      navigate(`/members/${id}`);
+      navigate(`/members/${id}${viewQuery}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
@@ -59,7 +62,7 @@ export default function OwnerNewSubscriptionPage() {
   return (
     <AppShell links={ownerLinks}>
       <div className="page-stack max-w-4xl">
-        <Link to={`/members/${id}`} className="back-link">
+        <Link to={`/members/${id}${viewQuery}`} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Member
         </Link>
@@ -84,7 +87,7 @@ export default function OwnerNewSubscriptionPage() {
                         className={`rounded-[1.5rem] border p-4 text-left shadow-sm shadow-black/5 transition-all ${
                           selectedPackage?.id === pkg.id
                             ? 'border-black bg-white bg-brand-gradient shadow-panel dark:border-white dark:bg-surface-dark dark:bg-brand-gradient-dark'
-                            : 'border-black bg-white/80 hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white dark:bg-surface-dark/80 dark:hover:bg-surface-raised/85'
+                            : 'border-black bg-white/80 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white dark:bg-surface-dark/80 dark:hover:bg-surface-raised/85'
                         }`}
                       >
                         <p className="font-headline text-xl font-black italic uppercase tracking-tight text-black dark:text-white">{pkg.sessions} sessions</p>
@@ -108,7 +111,7 @@ export default function OwnerNewSubscriptionPage() {
                   <Alert variant="error">{error}</Alert>
                 )}
 
-                <Button type="submit" disabled={loading} className="w-full" icon={loading ? 'progress_activity' : 'add_card'}>
+                <Button type="submit" disabled={loading} size="lg" className="w-full" icon={loading ? 'progress_activity' : 'add_card'}>
                   {loading ? 'Creating…' : 'Create subscription'}
                 </Button>
               </Card>

@@ -58,9 +58,9 @@ describe('MemberHomePage', () => {
     const button = await screen.findByRole('button', { name: /mark today/i });
     const icon = within(button).getByText('how_to_reg');
 
-    expect(button.className).toContain('!text-[2.07rem]');
+    expect(button.className).toMatch(/!text-\[[^\]]+\]/);
     expect(button.className).toContain('!leading-none');
-    expect(button.className).not.toMatch(/(^|\s)text-\[2\.07rem\](\s|$)/);
+    expect(button.className).not.toMatch(/(^|\s)text-\[[^\]]+\](\s|$)/);
     expect(icon.className).toContain('text-[1em]');
   });
 

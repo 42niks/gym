@@ -58,7 +58,7 @@ export default function OwnerNewMemberPage() {
             <Alert variant="error">{error}</Alert>
           )}
 
-          <Button type="submit" disabled={loading} className="mt-2 w-full" icon={loading ? 'progress_activity' : 'person_add'}>
+          <Button type="submit" disabled={loading} size="lg" className="mt-2 w-full" icon={loading ? 'progress_activity' : 'person_add'}>
             {loading ? 'Creating…' : 'Create member'}
           </Button>
         </form>

@@ -115,11 +115,12 @@ export default function OwnerPackagesPage() {
           <h2 className="page-title">PACKAGES</h2>
           <Link
             to="/packages/new"
-            className="owner-packages-cta-frame inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-black p-px font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] text-black shadow-panel transition-all hover:-translate-y-0.5 hover:shadow-glow-brand dark:border-white dark:text-white"
+            className="owner-packages-cta-frame inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-black font-label text-[0.72rem] font-bold italic uppercase tracking-[0.18em] text-black shadow-panel transition-all hover:shadow-glow-brand dark:border-white dark:text-white"
           >
-            <span aria-hidden="true" className="owner-packages-cta-surface brand-duotone-button" style={{ backgroundSize: '62% 185%, 86% 235%, 100% 100%' }} />
-            <span className="relative z-10 inline-flex h-full w-full items-center justify-center rounded-[calc(9999px-1px)] px-3.5">
-              + NEW
+            <span aria-hidden="true" className="owner-packages-cta-surface brand-duotone-button-sm" />
+            <span className="relative z-10 inline-flex h-full w-full items-center justify-center gap-1.5 rounded-[calc(9999px-1px)] px-3.5">
+              <Icon name="add" className="text-[0.95rem]" />
+              NEW
             </span>
           </Link>
         </div>
@@ -146,7 +147,7 @@ export default function OwnerPackagesPage() {
                     className={`owner-packages-tab-frame group aspect-square w-[4.9rem] shrink-0 border border-black transition-all duration-200 sm:w-[5.4rem] dark:border-white ${
                       active
                         ? '-translate-y-0.5 shadow-[0_18px_40px_rgba(0,0,0,0.14)]'
-                        : 'shadow-sm shadow-black/5 hover:-translate-y-0.5 hover:shadow-panel'
+                        : 'shadow-sm shadow-black/5 hover:shadow-panel'
                     }`}
                   >
                     <span

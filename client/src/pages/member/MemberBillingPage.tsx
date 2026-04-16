@@ -87,7 +87,7 @@ function AttendanceDatesLink({
   return (
     <Link
       to={`/subscription/${subscriptionId}/attendance`}
-      className={`inline-flex items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-3 py-2 font-label text-[0.64rem] font-bold uppercase tracking-[0.14em] text-black transition-all hover:-translate-y-0.5 hover:bg-black/[0.08] hover:text-black dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white ${className ?? ''}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-3 py-2 font-label text-[0.64rem] font-bold uppercase tracking-[0.14em] text-black transition-all hover:bg-black/[0.08] hover:text-black dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white ${className ?? ''}`}
     >
       <Icon name="calendar_month" className="text-[1.05rem]" />
       See attendance

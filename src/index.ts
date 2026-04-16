@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { startNodeServer } from './server/node-server.js';
 import { createServerRuntime } from './server/runtime.js';
-import { applyCredentialsSeed } from './db/index.js';
+import { applyCredentialsSeed, applyDevSampleSeed } from './db/index.js';
 
 const DB_PATH = process.env.DB_PATH ?? './data/dev.db';
 const PORT = parseInt(process.env.PORT ?? '8099', 10);
@@ -22,11 +22,16 @@ async function seedInitialCredentials(db: import('./db/client.js').AppDatabase):
   console.log('First run: applied seed.credentials.sql');
 }
 
+async function seedDevSamples(db: import('./db/client.js').AppDatabase): Promise<void> {
+  await applyDevSampleSeed(db);
+}
+
 async function main() {
   const { db, app } = createServerRuntime(DB_PATH, {
     allowPasswordlessLogin: process.env.DEV_PASSWORDLESS_LOGIN !== '0',
   });
   await seedInitialCredentials(db);
+  await seedDevSamples(db);
   await startNodeServer({ app, port: PORT, name: 'dev', dbPath: DB_PATH });
 }
 

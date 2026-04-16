@@ -104,6 +104,21 @@ export interface Renewal {
   upcoming_start_date?: string;
 }
 
+export interface ConsistencyRiskToday {
+  streak_days: number;
+  message: string;
+}
+
+export type OwnerMemberListView =
+  | 'all'
+  | 'no-plan'
+  | 'renewal'
+  | 'at-risk'
+  | 'building'
+  | 'consistent'
+  | 'today'
+  | 'archived';
+
 export interface MemberHome {
   member: MemberProfile;
   active_subscription: Subscription | null;
@@ -134,6 +149,8 @@ export interface ManagedPackage extends Package {
 export interface MemberListItem extends MemberProfile {
   active_subscription: Subscription | null;
   consistency: Consistency | null;
+  renewal: Renewal | null;
+  consistency_risk_today: ConsistencyRiskToday | null;
   marked_attendance_today: boolean;
 }
 

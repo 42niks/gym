@@ -13,6 +13,27 @@ import { computeConsistency, computeConsistencyWindow } from '../lib/consistency
 import { addDays, getIstDate } from '../lib/date.js';
 import { findPackageById } from '../repositories/packages-repo.js';
 
+export const MEMBER_LIST_VIEWS = [
+  'all',
+  'no-plan',
+  'renewal',
+  'at-risk',
+  'building',
+  'consistent',
+  'today',
+  'archived',
+] as const;
+
+export type MemberListView = typeof MEMBER_LIST_VIEWS[number];
+
+const LEGACY_MEMBER_LIST_VIEW_ALIASES = {
+  active: 'all',
+  'no-subscription': 'no-plan',
+  'renewal-alert': 'renewal',
+  'not-consistent': 'building',
+  'consistency-risk': 'at-risk',
+} as const satisfies Record<string, MemberListView>;
+
 export interface MemberProfile {
   id: number;
   full_name: string;
@@ -22,8 +43,23 @@ export interface MemberProfile {
   status: string;
 }
 
+export interface ConsistencyRiskToday {
+  streak_days: number;
+  message: string;
+}
+
 export function toProfile(m: MemberRow): MemberProfile {
   return { id: m.id, full_name: m.full_name, email: m.email, phone: m.phone, join_date: m.join_date, status: m.status };
+}
+
+export function isMemberListView(value: string): value is MemberListView {
+  return MEMBER_LIST_VIEWS.includes(value as MemberListView);
+}
+
+export function normalizeMemberListView(value: string | null | undefined): MemberListView | null {
+  if (!value) return null;
+  if (isMemberListView(value)) return value;
+  return LEGACY_MEMBER_LIST_VIEW_ALIASES[value as keyof typeof LEGACY_MEMBER_LIST_VIEW_ALIASES] ?? null;
 }
 
 export function formatSubscription(sub: SubscriptionWithType, today: string) {
@@ -70,6 +106,25 @@ function buildRecentAttendance(attendanceDates: string[], today: string, days: n
   return result;
 }
 
+function getConsistencyRiskToday(input: {
+  consistency: ReturnType<typeof computeConsistency>;
+  consistencyWindow: ReturnType<typeof computeConsistencyWindow>;
+  markedToday: boolean;
+  today: string;
+}): ConsistencyRiskToday | null {
+  const { consistency, consistencyWindow, markedToday, today } = input;
+
+  if (markedToday) return null;
+  if (!consistencyWindow?.streak_days) return null;
+  if (consistency?.status === 'consistent') return null;
+  if (consistencyWindow.end_date === today) return null;
+
+  return {
+    streak_days: consistencyWindow.streak_days,
+    message: `Attend today to protect the ${consistencyWindow.streak_days}-day streak.`,
+  };
+}
+
 export async function computeMemberEnrichment(db: AppDatabase, memberId: number, today: string) {
   const subs = await listSubscriptionsForMember(db, memberId);
   const activeSub = getActiveSub(subs, today);
@@ -106,14 +161,43 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
     today,
   });
 
+  const consistencyRiskToday = getConsistencyRiskToday({
+    consistency,
+    consistencyWindow,
+    markedToday,
+    today,
+  });
+
   return {
     active_subscription: activeSub ? formatSubscription(activeSub, today) : null,
     consistency,
     consistency_window: consistencyWindow,
+    consistency_risk_today: consistencyRiskToday,
     renewal,
     marked_attendance_today: markedToday,
     recent_attendance: activeSub ? buildRecentAttendance(attendanceDates, today, 7) : [],
   };
+}
+
+type ActiveMemberListItem = MemberProfile & Awaited<ReturnType<typeof computeMemberEnrichment>>;
+
+function matchesMemberView(member: ActiveMemberListItem, view: Exclude<MemberListView, 'archived'>) {
+  switch (view) {
+    case 'all':
+      return true;
+    case 'no-plan':
+      return member.active_subscription === null;
+    case 'renewal':
+      return member.renewal?.kind === 'ends_soon';
+    case 'at-risk':
+      return member.consistency_risk_today !== null;
+    case 'building':
+      return member.active_subscription !== null && member.consistency?.status !== 'consistent';
+    case 'consistent':
+      return member.consistency?.status === 'consistent';
+    case 'today':
+      return member.marked_attendance_today;
+  }
 }
 
 export async function getMemberDetail(db: AppDatabase, id: number) {
@@ -136,18 +220,21 @@ export async function getMemberDetail(db: AppDatabase, id: number) {
   return { ...toProfile(member), ...enrichment };
 }
 
-export async function listMembers(db: AppDatabase, status: string) {
+export async function listMembers(db: AppDatabase, view: MemberListView) {
+  const status = view === 'archived' ? 'archived' : 'active';
   const members = await listMembersByStatus(db, status);
   const today = getIstDate();
 
-  if (status === 'archived') {
+  if (view === 'archived') {
     return members.map(m => toProfile(m));
   }
 
-  return Promise.all(members.map(async (m) => {
+  const enrichedMembers = await Promise.all(members.map(async (m) => {
     const enrichment = await computeMemberEnrichment(db, m.id, today);
     return { ...toProfile(m), ...enrichment };
   }));
+
+  return enrichedMembers.filter(member => matchesMemberView(member, view));
 }
 
 export async function createNewMember(db: AppDatabase, data: { full_name: string; email: string; phone: string }) {

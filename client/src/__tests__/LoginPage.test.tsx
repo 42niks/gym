@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginPage from '../pages/LoginPage.js';
 import { renderWithProviders } from './test-utils.js';
@@ -116,7 +116,9 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/^password$/i), '1234');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-    expect(screen.getByText('Signing in…')).toBeInTheDocument();
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
+    expect(submitButton).toBeDisabled();
+    expect(within(submitButton).getByText('progress_activity')).toBeInTheDocument();
     await act(async () => {
       resolveLogin({ id: 1, role: 'member', full_name: 'Test', email: 'test@test.com' });
     });

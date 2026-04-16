@@ -544,6 +544,7 @@ function ContinuousCalendar({
               {rowHighlightSegments.map((segment) => (
                 <span
                   key={`consistency-ribbon-row-${segment.row}`}
+                  data-testid="consistency-row-highlight"
                   className={`absolute block bg-brand-500/[0.24] dark:bg-brand-500/[0.3] ${
                     segment.roundLeft ? 'rounded-l-full' : ''
                   } ${segment.roundRight ? 'rounded-r-full' : ''}`}

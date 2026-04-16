@@ -118,7 +118,7 @@ function StepperInput({
   }
 
   const buttonClass =
-    'inline-flex h-[3.35rem] w-[3.35rem] shrink-0 items-center justify-center rounded-2xl border border-black bg-white/80 text-black/80 shadow-sm shadow-black/5 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-black disabled:hover:bg-white/80 dark:border-white dark:bg-surface-dark/75 dark:text-white/80 dark:hover:bg-surface-raised/85 dark:disabled:hover:border-white dark:disabled:hover:bg-surface-dark/75';
+    'inline-flex h-[3.35rem] w-[3.35rem] shrink-0 items-center justify-center rounded-2xl border border-black bg-white/80 text-black/80 shadow-sm shadow-black/5 transition-all hover:border-brand-300 hover:bg-brand-50/60 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:border-black disabled:hover:bg-white/80 dark:border-white dark:bg-surface-dark/75 dark:text-white/80 dark:hover:bg-surface-raised/85 dark:disabled:hover:border-white dark:disabled:hover:bg-surface-dark/75';
 
   const inputClass =
     'field-control min-w-0 flex-1 text-center';
@@ -478,7 +478,7 @@ export default function OwnerNewPackagePage() {
 
           {error ? <Alert variant="error">{error}</Alert> : null}
 
-          <Button type="submit" disabled={loading} className="mt-2 w-full" icon={loading ? 'progress_activity' : 'library_add'}>
+          <Button type="submit" disabled={loading} size="lg" className="mt-2 w-full" icon={loading ? 'progress_activity' : 'library_add'}>
             Create package
           </Button>
         </form>

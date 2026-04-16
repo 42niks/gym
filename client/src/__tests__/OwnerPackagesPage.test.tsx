@@ -83,8 +83,8 @@ describe('OwnerPackagesPage', () => {
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages' });
 
     await waitFor(() => {
-      expect(screen.getByText('PACKAGES')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /\+ new/i })).toHaveAttribute('href', '/packages/new');
+      expect(screen.getByRole('heading', { name: 'PACKAGES' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /new/i })).toHaveAttribute('href', '/packages/new');
       expect(screen.getByRole('button', { name: '1:1 Personal Training' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Group Personal Training' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'MMA/Kickboxing Personal Training' })).toBeInTheDocument();

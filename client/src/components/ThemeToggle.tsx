@@ -17,7 +17,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={() => setPreference(next[preference])}
-      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-black bg-white/82 text-black shadow-glass backdrop-blur-md transition-all hover:-translate-y-0.5 hover:text-black dark:border-white dark:bg-surface-dark/82 dark:text-white dark:hover:bg-surface-raised/88 dark:hover:text-white"
+      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-black bg-white/82 text-black shadow-glass backdrop-blur-md transition-all hover:text-black dark:border-white dark:bg-surface-dark/82 dark:text-white dark:hover:bg-surface-raised/88 dark:hover:text-white"
       aria-label={`Theme: ${preference}. Click to switch.`}
       title={`Theme: ${preference}`}
     >
