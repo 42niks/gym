@@ -145,7 +145,7 @@ export default function MemberHomePage() {
     );
   }
 
-  const { active_subscription: sub, consistency, consistency_window, recent_attendance, marked_attendance_today } = data!;
+  const { active_subscription: sub, consistency, consistency_window, recent_attendance, marked_attendance_today, renewal } = data!;
   const consistencyRiskCopy = getConsistencyRiskCopy(consistency_window);
   const todayIncludedInConsistencyWindow = isTodayIncludedInConsistencyWindow(consistency_window, recent_attendance);
   const consistencyRibbonSpan = getConsistencyRibbonSpan(consistency_window, recent_attendance);
@@ -165,7 +165,7 @@ export default function MemberHomePage() {
         <div>
           <h2 className="page-title">Home</h2>
         </div>
-        <MemberRenewalAlert />
+        {renewal?.kind === 'ends_soon' ? <MemberRenewalAlert message={renewal.message} /> : null}
         {consistency && sub ? (
           <div className="grid gap-5 xl:grid-cols-12">
             <div className="consistency-panel-frame xl:col-span-7">

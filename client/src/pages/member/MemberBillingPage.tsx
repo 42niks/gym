@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { api, type Subscription } from '../../lib/api.js';
+import { api, type MemberHome, type Subscription } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
@@ -256,6 +256,11 @@ function PastCard({ sub }: { sub: Subscription }) {
 }
 
 export default function MemberBillingPage() {
+  const { data: homeData } = useQuery<MemberHome>({
+    queryKey: ['member-home'],
+    queryFn: () => api.get('/api/member/home'),
+  });
+
   const { data = [], isLoading } = useQuery<Subscription[]>({
     queryKey: ['member-subscription'],
     queryFn: () => api.get('/api/member/subscription'),
@@ -272,7 +277,9 @@ export default function MemberBillingPage() {
           <h2 className="page-title">SUBSCRIPTION</h2>
         </div>
 
-        <MemberRenewalAlert />
+        {homeData?.renewal?.kind === 'ends_soon' ? (
+          <MemberRenewalAlert message={homeData.renewal.message} />
+        ) : null}
 
         {isLoading ? (
           <div className="flex justify-center py-16">
