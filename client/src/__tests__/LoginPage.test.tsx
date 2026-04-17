@@ -103,7 +103,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/^password$/i), 'wrong');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
 
-    await waitFor(() => { expect(screen.getByText('Authentication Failed')).toBeInTheDocument(); });
+    await waitFor(() => { expect(screen.getByText('Invalid email or password.')).toBeInTheDocument(); });
   });
 
   it('shows loading state while submitting', async () => {

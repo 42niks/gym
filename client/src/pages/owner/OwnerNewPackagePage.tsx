@@ -7,6 +7,7 @@ import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
 import { ownerLinks } from './ownerLinks.js';
+import { getFirstFormErrorMessage } from '../../lib/formValidation.js';
 
 interface PackageFormData {
   service_type: string;
@@ -181,7 +182,13 @@ export default function OwnerNewPackagePage() {
   const [serviceTypeChoice, setServiceTypeChoice] = useState('');
   const [customServiceType, setCustomServiceType] = useState('');
   const [error, setError] = useState('');
+  const [errorPulse, setErrorPulse] = useState(0);
   const [loading, setLoading] = useState(false);
+
+  function showError(message: string) {
+    setError(message);
+    setErrorPulse(v => v + 1);
+  }
 
   function normalizeSessions(value: string) {
     const digits = value.replace(/\D+/g, '');
@@ -330,9 +337,14 @@ export default function OwnerNewPackagePage() {
     setForm(current => ({ ...current, service_type: value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
+    const validationError = getFirstFormErrorMessage(e.currentTarget);
+    if (validationError) {
+      showError(validationError);
+      return;
+    }
     setLoading(true);
 
     try {
@@ -340,7 +352,7 @@ export default function OwnerNewPackagePage() {
       await queryClient.invalidateQueries({ queryKey: ['owner-packages'] });
       navigate(`/packages?type=${encodeURIComponent(created.service_type)}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong');
+      showError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -363,7 +375,7 @@ export default function OwnerNewPackagePage() {
         </Link>
         <h2 className="page-title mb-6 mt-2">NEW PACKAGE</h2>
 
-        <form onSubmit={handleSubmit} className="glass-panel space-y-4 p-5 sm:p-6">
+        <form onSubmit={handleSubmit} noValidate className="glass-panel space-y-4 p-5 sm:p-6">
           <div>
             <label
               htmlFor="service-type"
@@ -476,7 +488,11 @@ export default function OwnerNewPackagePage() {
             incrementLabel="Increase min days in window"
           />
 
-          {error ? <Alert variant="error">{error}</Alert> : null}
+          {error ? (
+            <div key={errorPulse} className="form-error-flash">
+              <Alert variant="error">{error}</Alert>
+            </div>
+          ) : null}
 
           <Button type="submit" disabled={loading} size="lg" className="mt-2 w-full" icon={loading ? 'progress_activity' : 'library_add'}>
             Create package

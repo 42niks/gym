@@ -6,6 +6,7 @@ import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
 import { ownerLinks } from './ownerLinks.js';
+import { getFirstFormErrorMessage } from '../../lib/formValidation.js';
 
 export default function OwnerNewMemberPage() {
   const navigate = useNavigate();
@@ -14,11 +15,27 @@ export default function OwnerNewMemberPage() {
   const [phone, setPhone] = useState('');
   const [joinDate, setJoinDate] = useState(new Date().toISOString().slice(0, 10));
   const [error, setError] = useState('');
+  const [errorPulse, setErrorPulse] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function showError(message: string) {
+    setError(message);
+    setErrorPulse(v => v + 1);
+  }
+
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D+/g, '').slice(0, 10);
+    setPhone(digits);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
+    const validationError = getFirstFormErrorMessage(e.currentTarget);
+    if (validationError) {
+      showError(validationError);
+      return;
+    }
     setLoading(true);
     try {
       const member = await api.post<MemberProfile>('/api/members', {
@@ -29,7 +46,7 @@ export default function OwnerNewMemberPage() {
       });
       navigate(`/members/${member.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong');
+      showError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -44,14 +61,16 @@ export default function OwnerNewMemberPage() {
         </Link>
         <h2 className="page-title mb-6 mt-2">NEW MEMBER</h2>
 
-        <form onSubmit={handleSubmit} className="glass-panel space-y-4 p-5 sm:p-6">
+        <form onSubmit={handleSubmit} noValidate className="glass-panel space-y-4 p-5 sm:p-6">
           <Input label="Full name" labelClassName="ml-3 not-italic" type="text" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Doe" />
           <Input label="Email" labelClassName="ml-3 not-italic" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
-          <Input label="Phone" labelClassName="ml-3 not-italic" type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="9876543210" />
+          <Input label="Phone" labelClassName="ml-3 not-italic" type="text" inputMode="numeric" pattern="[0-9]{10}" minLength={10} maxLength={10} required value={phone} onChange={handlePhoneChange} placeholder="9876543210" />
           <Input label="Join date" labelClassName="ml-3 not-italic" type="date" required value={joinDate} onChange={e => setJoinDate(e.target.value)} />
 
           {error && (
-            <Alert variant="error">{error}</Alert>
+            <div key={errorPulse} className="form-error-flash">
+              <Alert variant="error">{error}</Alert>
+            </div>
           )}
 
           <Button type="submit" disabled={loading} size="lg" className="mt-2 w-full" icon={loading ? 'progress_activity' : 'person_add'}>

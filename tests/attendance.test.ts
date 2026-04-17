@@ -77,7 +77,7 @@ describe('Attendance', () => {
     });
 
     it('should reject for archived member', async () => {
-      const archivedId = await seedMember({ email: 'archived@test.com', phone: '111', status: 'archived' });
+      const archivedId = await seedMember({ email: 'archived@test.com', phone: '1111111111', status: 'archived' });
       const res = await api(`/api/members/${archivedId}/sessions`, { method: 'POST', headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(400);
       expect((await res.json()).error).toBe('Cannot mark attendance for an archived member');

@@ -277,7 +277,7 @@ describe('Auth', () => {
     });
 
     it('should return 401 for archived member session and delete it', async () => {
-      const memberId = await seedMember({ email: 'archived@test.com', phone: '111', status: 'archived' });
+      const memberId = await seedMember({ email: 'archived@test.com', phone: '1111111111', status: 'archived' });
       await seedUserSession({ id: 'arch-tok', member_id: memberId, expires_at: utcDatetime(864000) });
 
       const res = await api('/api/auth/me', { headers: { Cookie: 'session_id=arch-tok' } });

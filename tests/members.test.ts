@@ -198,22 +198,22 @@ describe('Member Management', () => {
     });
 
     it('should reject duplicate email', async () => {
-      await seedMember({ email: 'taken@test.com', phone: '111' });
+      await seedMember({ email: 'taken@test.com', phone: '1111111111' });
       const res = await api('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ full_name: 'New Person', email: 'taken@test.com', phone: '222' }),
+        body: JSON.stringify({ full_name: 'New Person', email: 'taken@test.com', phone: '2222222222' }),
       });
       expect(res.status).toBe(409);
       expect((await res.json()).error).toBe('A member with this email already exists');
     });
 
     it('should reject duplicate email case-insensitively', async () => {
-      await seedMember({ email: 'taken@test.com', phone: '111' });
+      await seedMember({ email: 'taken@test.com', phone: '1111111111' });
       const res = await api('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ full_name: 'New Person', email: 'TAKEN@test.com', phone: '222' }),
+        body: JSON.stringify({ full_name: 'New Person', email: 'TAKEN@test.com', phone: '2222222222' }),
       });
       expect(res.status).toBe(409);
     });
@@ -222,7 +222,7 @@ describe('Member Management', () => {
       expect((await api('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ email: 'a@b.com', phone: '111' }),
+        body: JSON.stringify({ email: 'a@b.com', phone: '1111111111' }),
       })).status).toBe(400);
     });
 
@@ -230,7 +230,7 @@ describe('Member Management', () => {
       expect((await api('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ full_name: 'Name', phone: '111' }),
+        body: JSON.stringify({ full_name: 'Name', phone: '1111111111' }),
       })).status).toBe(400);
     });
 
@@ -238,7 +238,7 @@ describe('Member Management', () => {
       expect((await api('/api/members', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ full_name: 'Name', email: 'notanemail', phone: '111' }),
+        body: JSON.stringify({ full_name: 'Name', email: 'notanemail', phone: '1111111111' }),
       })).status).toBe(400);
     });
 
@@ -257,6 +257,16 @@ describe('Member Management', () => {
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
         body: JSON.stringify({ full_name: 'Second', email: 'second@test.com', phone: '9876543210' }),
       })).status).toBe(201);
+    });
+
+    it('should reject phone that is not exactly 10 digits', async () => {
+      const res = await api('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ full_name: 'Bad Phone', email: 'badphone@test.com', phone: '12345' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('phone must be exactly 10 digits');
     });
   });
 
@@ -396,7 +406,7 @@ describe('Member Management', () => {
     });
 
     it('includes enrichment fields on non-archived list rows', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
       const body = await (await api('/api/members', { headers: { Cookie: ownerCookie } })).json() as any[];
@@ -412,7 +422,7 @@ describe('Member Management', () => {
 
   describe('GET /api/members/:id', () => {
     it('should return member detail with enrichment fields', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
       const res = await api(`/api/members/${memberId}`, { headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -428,7 +438,7 @@ describe('Member Management', () => {
     });
 
     it('should return nulls for archived member', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111', status: 'archived' });
+      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111', status: 'archived' });
       const body = await (await api(`/api/members/${memberId}`, { headers: { Cookie: ownerCookie } })).json();
       expect(body.active_subscription).toBeNull();
       expect(body.consistency).toBeNull();
@@ -440,7 +450,7 @@ describe('Member Management', () => {
 
   describe('PATCH /api/members/:id', () => {
     it('should update full_name', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Old Name', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Old Name', phone: '1111111111' });
       const body = await (await api(`/api/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
@@ -450,28 +460,28 @@ describe('Member Management', () => {
     });
 
     it('should update phone', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       const body = await (await api(`/api/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ phone: '999' }),
+        body: JSON.stringify({ phone: '9999999999' }),
       })).json();
-      expect(body.phone).toBe('999');
+      expect(body.phone).toBe('9999999999');
     });
 
     it('should update both full_name and phone', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       const body = await (await api(`/api/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
-        body: JSON.stringify({ full_name: 'Updated', phone: '999' }),
+        body: JSON.stringify({ full_name: 'Updated', phone: '9999999999' }),
       })).json();
       expect(body.full_name).toBe('Updated');
-      expect(body.phone).toBe('999');
+      expect(body.phone).toBe('9999999999');
     });
 
     it('should reject when no editable field provided', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       expect((await api(`/api/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
@@ -480,12 +490,23 @@ describe('Member Management', () => {
     });
 
     it('should reject empty full_name after trim', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       expect((await api(`/api/members/${memberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
         body: JSON.stringify({ full_name: '   ' }),
       })).status).toBe(400);
+    });
+
+    it('should reject phone update when it is not exactly 10 digits', async () => {
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ phone: '12345' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('phone must be exactly 10 digits');
     });
 
     it('should return 404 for non-existent member', async () => {
@@ -501,7 +522,7 @@ describe('Member Management', () => {
 
   describe('POST /api/members/:id/archive', () => {
     it('should archive a member with no subscriptions', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       const res = await api(`/api/members/${memberId}/archive`, {
         method: 'POST',
         headers: { Cookie: ownerCookie },
@@ -515,7 +536,7 @@ describe('Member Management', () => {
     });
 
     it('should delete user sessions on archive', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       await seedUserSession({ id: 'tok1', member_id: memberId, expires_at: utcDatetime(864000) });
 
       await api(`/api/members/${memberId}/archive`, { method: 'POST', headers: { Cookie: ownerCookie } });
@@ -524,7 +545,7 @@ describe('Member Management', () => {
     });
 
     it('should reject archive when member has active subscription', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
       const res = await api(`/api/members/${memberId}/archive`, { method: 'POST', headers: { Cookie: ownerCookie } });
@@ -533,21 +554,21 @@ describe('Member Management', () => {
     });
 
     it('should reject archive when member has upcoming subscription', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2027-01-01', end_date: '2027-01-31', total_sessions: 8, amount: 19900 });
 
       expect((await api(`/api/members/${memberId}/archive`, { method: 'POST', headers: { Cookie: ownerCookie } })).status).toBe(409);
     });
 
     it('should reject already archived member', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111', status: 'archived' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111', status: 'archived' });
       const res = await api(`/api/members/${memberId}/archive`, { method: 'POST', headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(409);
       expect((await res.json()).error).toBe('Member is already archived');
     });
 
     it('should allow archive when member has only completed subscriptions', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2025-01-01', end_date: '2025-01-31', total_sessions: 8, amount: 19900, owner_completed: 1 });
 
       expect((await api(`/api/members/${memberId}/archive`, { method: 'POST', headers: { Cookie: ownerCookie } })).status).toBe(200);

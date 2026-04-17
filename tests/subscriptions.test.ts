@@ -146,7 +146,7 @@ describe('Subscriptions', () => {
     });
 
     it('should reject subscription creation for archived member', async () => {
-      const archivedId = await seedMember({ email: 'archived@test.com', phone: '111', status: 'archived' });
+      const archivedId = await seedMember({ email: 'archived@test.com', phone: '1111111111', status: 'archived' });
 
       const res = await api(`/api/members/${archivedId}/subscriptions`, {
         method: 'POST',

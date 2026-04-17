@@ -9,6 +9,7 @@ import Button from '../../components/Button.js';
 import Spinner from '../../components/Spinner.js';
 import Alert from '../../components/Alert.js';
 import { ownerLinks } from './ownerLinks.js';
+import { getFirstFormErrorMessage } from '../../lib/formValidation.js';
 
 export default function OwnerNewSubscriptionPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,7 @@ export default function OwnerNewSubscriptionPage() {
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
+  const [errorPulse, setErrorPulse] = useState(0);
   const [loading, setLoading] = useState(false);
   const view = searchParams.get('view');
   const viewQuery = view ? `?view=${encodeURIComponent(view)}` : '';
@@ -32,20 +34,35 @@ export default function OwnerNewSubscriptionPage() {
     setAmount(String(pkg.price));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function showError(message: string) {
+    setError(message);
+    setErrorPulse(v => v + 1);
+  }
+
+  function handleAmountChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D+/g, '');
+    setAmount(digits);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!selectedPackage) return;
     setError('');
+    const validationError = getFirstFormErrorMessage(e.currentTarget);
+    if (validationError) {
+      showError(validationError);
+      return;
+    }
     setLoading(true);
     try {
       await api.post<Subscription>(`/api/members/${id}/subscriptions`, {
         package_id: selectedPackage.id,
         start_date: startDate,
-        amount: parseFloat(amount),
+        amount: Number(amount),
       });
       navigate(`/members/${id}${viewQuery}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong');
+      showError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -73,7 +90,7 @@ export default function OwnerNewSubscriptionPage() {
         </p>
 
         {isLoading ? <div className="flex justify-center py-16"><Spinner /></div> : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
             <div className="space-y-5">
               {Object.entries(byType).map(([type, pkgs]) => (
                 <div key={type}>
@@ -105,10 +122,12 @@ export default function OwnerNewSubscriptionPage() {
             {selectedPackage && (
               <Card className="p-5 space-y-4">
                 <Input label="Start date" type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} />
-                <Input label="Amount (₹)" type="number" required min="0" step="1" value={amount} onChange={e => setAmount(e.target.value)} />
+                <Input label="Amount (₹)" type="text" inputMode="numeric" pattern="[0-9]*" required value={amount} onChange={handleAmountChange} />
 
                 {error && (
-                  <Alert variant="error">{error}</Alert>
+                  <div key={errorPulse} className="form-error-flash">
+                    <Alert variant="error">{error}</Alert>
+                  </div>
                 )}
 
                 <Button type="submit" disabled={loading} size="lg" className="w-full" icon={loading ? 'progress_activity' : 'add_card'}>

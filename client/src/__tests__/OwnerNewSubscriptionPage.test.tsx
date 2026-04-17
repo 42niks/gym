@@ -75,7 +75,21 @@ describe('OwnerNewSubscriptionPage', () => {
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
     await waitFor(() => { expect(screen.getAllByText('12 sessions')[0]).toBeInTheDocument(); });
     await user.click(screen.getAllByText('12 sessions')[0]);
-    await waitFor(() => { expect(screen.getByLabelText(/amount/i)).toHaveValue(29500); });
+    await waitFor(() => { expect(screen.getByLabelText(/amount/i)).toHaveValue('29500'); });
+  });
+
+  it('sanitizes amount input to digits only', async () => {
+    const user = userEvent.setup();
+    mockApiGet.mockResolvedValue(mockPackages);
+    renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
+    await waitFor(() => { expect(screen.getAllByText('12 sessions')[0]).toBeInTheDocument(); });
+    await user.click(screen.getAllByText('12 sessions')[0]);
+
+    const amountInput = screen.getByLabelText(/amount/i);
+    await user.clear(amountInput);
+    await user.type(amountInput, '29,500abc');
+
+    expect(amountInput).toHaveValue('29500');
   });
 
   it('submits and navigates back to member detail', async () => {

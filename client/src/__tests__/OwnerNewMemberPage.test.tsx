@@ -75,4 +75,14 @@ describe('OwnerNewMemberPage', () => {
 
     await waitFor(() => { expect(screen.getByText('Email already exists')).toBeInTheDocument(); });
   });
+
+  it('accepts only digits in phone input', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
+
+    const phoneInput = screen.getByLabelText(/phone/i);
+    await user.type(phoneInput, '98a7-65x43210999');
+
+    expect(phoneInput).toHaveValue('9876543210');
+  });
 });

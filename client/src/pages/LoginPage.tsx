@@ -8,6 +8,7 @@ import Button from '../components/Button.js';
 import Alert from '../components/Alert.js';
 import ThemeToggle from '../components/ThemeToggle.js';
 import Icon from '../components/Icon.js';
+import { getFirstFormErrorMessage } from '../lib/formValidation.js';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -18,18 +19,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [errorPulse, setErrorPulse] = useState(0);
   const [loading, setLoading] = useState(false);
   const passwordInputId = 'login-password';
 
-  async function handleSubmit(e: React.FormEvent) {
+  function showError(message: string) {
+    setError(message);
+    setErrorPulse(v => v + 1);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
+    const validationError = getFirstFormErrorMessage(e.currentTarget);
+    if (validationError) {
+      showError(validationError);
+      return;
+    }
     setLoading(true);
     try {
       await login(email.trim(), password.trim());
       navigate('/home', { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 401 ? 'Authentication Failed' : err instanceof ApiError ? err.message : 'Something went wrong');
+      showError(err instanceof ApiError && err.status === 401 ? 'Invalid email or password.' : err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -84,6 +96,7 @@ export default function LoginPage() {
 
             <form
               onSubmit={handleSubmit}
+              noValidate
               className="space-y-4 rounded-[2rem] border border-black bg-white/82 p-4 shadow-panel backdrop-blur-md dark:border-white dark:bg-surface-dark/84 sm:p-5"
             >
               <Input
@@ -124,7 +137,7 @@ export default function LoginPage() {
               </div>
 
               {error && (
-                <div role="alert">
+                <div key={errorPulse} role="alert" className="form-error-flash">
                   <Alert variant="error">{error}</Alert>
                 </div>
               )}

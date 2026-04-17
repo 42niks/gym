@@ -24,7 +24,7 @@ describe('Owner Home', () => {
     });
 
     it('should show member with no subscription in renewal_no_active', async () => {
-      await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
+      await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
 
       const body = await (await api('/api/owner/home', { headers: { Cookie: ownerCookie } })).json();
       const found = body.renewal_no_active.find((m: any) => m.full_name === 'Alpha');
@@ -33,7 +33,7 @@ describe('Owner Home', () => {
     });
 
     it('should show member nearing end in renewal_nearing_end', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
       // 6 attended out of 8 => remaining = 2 < 3 => nearing end
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, attended_sessions: 6, amount: 19900 });
 
@@ -45,7 +45,7 @@ describe('Owner Home', () => {
 
     it('should show member who checked in today', async () => {
       const today = getIstDate();
-      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
       const subId = await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, attended_sessions: 1, amount: 19900 });
       await seedSession({ member_id: memberId, subscription_id: subId, date: today });
 
@@ -58,7 +58,7 @@ describe('Owner Home', () => {
     });
 
     it('should show active members with subscription and consistency', async () => {
-      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '111' });
+      const memberId = await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2026-01-01', end_date: '2026-12-31', total_sessions: 8, amount: 19900 });
 
       const body = await (await api('/api/owner/home', { headers: { Cookie: ownerCookie } })).json();
@@ -70,7 +70,7 @@ describe('Owner Home', () => {
     });
 
     it('should show archived members', async () => {
-      await seedMember({ email: 'a@test.com', full_name: 'Archived Guy', phone: '111', status: 'archived' });
+      await seedMember({ email: 'a@test.com', full_name: 'Archived Guy', phone: '1111111111', status: 'archived' });
 
       const body = await (await api('/api/owner/home', { headers: { Cookie: ownerCookie } })).json();
       const found = body.archived_members.find((m: any) => m.full_name === 'Archived Guy');
@@ -78,8 +78,8 @@ describe('Owner Home', () => {
     });
 
     it('should sort active_members alphabetically', async () => {
-      await seedMember({ email: 'z@test.com', full_name: 'Zara', phone: '111' });
-      await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '222' });
+      await seedMember({ email: 'z@test.com', full_name: 'Zara', phone: '1111111111' });
+      await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '2222222222' });
 
       const body = await (await api('/api/owner/home', { headers: { Cookie: ownerCookie } })).json();
       const names = body.active_members.map((m: any) => m.full_name);

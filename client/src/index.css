@@ -179,6 +179,21 @@
     }
   }
 
+  @keyframes form-error-flash {
+    0% {
+      transform: translateY(-2px);
+      opacity: 0.55;
+    }
+    45% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
   .page-title {
     @apply font-headline text-3xl font-black italic uppercase tracking-tight text-black dark:text-white;
   }
@@ -203,6 +218,11 @@
   .glass-panel {
     @apply rounded-[1.5rem] border bg-white/80 shadow-panel backdrop-blur-md dark:border-white dark:bg-surface-dark/80;
     border-color: rgb(var(--line-soft));
+  }
+
+  .form-error-flash {
+    animation: form-error-flash 520ms ease-out;
+    will-change: transform, opacity;
   }
 
   .owner-packages-cta-frame {

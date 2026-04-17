@@ -49,6 +49,10 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function isValidPhone(phone: string): boolean {
+  return /^\d{10}$/.test(phone);
+}
+
 export function createApp(
   db: AppDatabase,
   { secureCookies, allowPasswordlessLogin = false }: CreateAppOptions,
@@ -236,10 +240,10 @@ export function createApp(
     if (!email) return c.json({ error: 'email is required' }, 400);
     if (!isValidEmail(email)) return c.json({ error: 'Invalid email format' }, 400);
     if (!phone) return c.json({ error: 'phone is required' }, 400);
+    if (!isValidPhone(phone)) return c.json({ error: 'phone must be exactly 10 digits' }, 400);
     if (!isValidYmdDate(joinDate)) return c.json({ error: 'Invalid join_date format' }, 400);
     if (fullName.length > 120) return c.json({ error: 'full_name exceeds 120 characters' }, 400);
     if (email.length > 254) return c.json({ error: 'email exceeds 254 characters' }, 400);
-    if (phone.length > 32) return c.json({ error: 'phone exceeds 32 characters' }, 400);
 
     try {
       const member = await createNewMember(db, { full_name: fullName, email, phone, join_date: joinDate });
@@ -281,7 +285,7 @@ export function createApp(
     if (body.phone !== undefined) {
       const trimmed = typeof body.phone === 'string' ? body.phone.trim() : '';
       if (!trimmed) return c.json({ error: 'phone cannot be empty' }, 400);
-      if (trimmed.length > 32) return c.json({ error: 'phone exceeds 32 characters' }, 400);
+      if (!isValidPhone(trimmed)) return c.json({ error: 'phone must be exactly 10 digits' }, 400);
       updates.phone = trimmed;
     }
 
