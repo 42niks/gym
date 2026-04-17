@@ -42,17 +42,13 @@ export default function OwnerNewMemberPage() {
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Members
         </Link>
-        <p className="section-eyebrow">Owner actions</p>
-        <h2 className="page-title mb-6 mt-2">New member</h2>
-        <p className="-mt-3 max-w-2xl text-sm text-black/60 dark:text-white/70">
-          Create a member record with the contact details they’ll use to log in and manage their training.
-        </p>
+        <h2 className="page-title mb-6 mt-2">NEW MEMBER</h2>
 
         <form onSubmit={handleSubmit} className="glass-panel space-y-4 p-5 sm:p-6">
-          <Input label="Full name" type="text" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Doe" />
-          <Input label="Email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
-          <Input label="Phone" type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="9876543210" />
-          <Input label="Join date" type="date" required value={joinDate} onChange={e => setJoinDate(e.target.value)} />
+          <Input label="Full name" labelClassName="ml-3 not-italic" type="text" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Doe" />
+          <Input label="Email" labelClassName="ml-3 not-italic" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
+          <Input label="Phone" labelClassName="ml-3 not-italic" type="tel" required value={phone} onChange={e => setPhone(e.target.value)} placeholder="9876543210" />
+          <Input label="Join date" labelClassName="ml-3 not-italic" type="date" required value={joinDate} onChange={e => setJoinDate(e.target.value)} />
 
           {error && (
             <Alert variant="error">{error}</Alert>

@@ -237,9 +237,8 @@ export async function listMembers(db: AppDatabase, view: MemberListView) {
   return enrichedMembers.filter(member => matchesMemberView(member, view));
 }
 
-export async function createNewMember(db: AppDatabase, data: { full_name: string; email: string; phone: string }) {
-  const today = getIstDate();
-  const member = await repoCreateMember(db, { ...data, join_date: today });
+export async function createNewMember(db: AppDatabase, data: { full_name: string; email: string; phone: string; join_date: string }) {
+  const member = await repoCreateMember(db, data);
   return toProfile(member);
 }
 

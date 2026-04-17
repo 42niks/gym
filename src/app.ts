@@ -15,6 +15,7 @@ import { createNewSubscription, completeSubscription } from './services/subscrip
 import { markAttendance } from './services/attendance-service.js';
 import { getDashboard } from './services/dashboard-service.js';
 import { getIstDate } from './lib/date.js';
+import { isValidYmdDate } from './lib/date.js';
 import {
   createManagedPackage,
   listManagedPackages,
@@ -228,17 +229,20 @@ export function createApp(
     const fullName = typeof body.full_name === 'string' ? body.full_name.trim() : '';
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+    const joinDateRaw = typeof body.join_date === 'string' ? body.join_date.trim() : '';
+    const joinDate = joinDateRaw || getIstDate();
 
     if (!fullName) return c.json({ error: 'full_name is required' }, 400);
     if (!email) return c.json({ error: 'email is required' }, 400);
     if (!isValidEmail(email)) return c.json({ error: 'Invalid email format' }, 400);
     if (!phone) return c.json({ error: 'phone is required' }, 400);
+    if (!isValidYmdDate(joinDate)) return c.json({ error: 'Invalid join_date format' }, 400);
     if (fullName.length > 120) return c.json({ error: 'full_name exceeds 120 characters' }, 400);
     if (email.length > 254) return c.json({ error: 'email exceeds 254 characters' }, 400);
     if (phone.length > 32) return c.json({ error: 'phone exceeds 32 characters' }, 400);
 
     try {
-      const member = await createNewMember(db, { full_name: fullName, email, phone });
+      const member = await createNewMember(db, { full_name: fullName, email, phone, join_date: joinDate });
       return c.json(member, 201);
     } catch (e: any) {
       if (e.message?.includes('UNIQUE constraint failed')) {

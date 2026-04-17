@@ -63,12 +63,12 @@ describe('Subscriptions', () => {
       expect(body.end_date).toBe(computeEndDate(tomorrow, 3));
     });
 
-    it('should reject past start_date', async () => {
+    it('should allow past start_date when it is on or after join_date', async () => {
       expect((await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
         body: JSON.stringify({ package_id: 1, start_date: addDays(today, -1) }),
-      })).status).toBe(400);
+      })).status).toBe(201);
     });
 
     it('should reject invalid start_date format', async () => {
@@ -133,17 +133,31 @@ describe('Subscriptions', () => {
       })).status).toBe(201);
     });
 
-    it('should unarchive member when creating subscription', async () => {
+    it('should reject start_date before member join_date', async () => {
+      const earlyDate = addDays('2026-01-15', -1);
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ package_id: 1, start_date: earlyDate }),
+      });
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('start_date cannot be before member join_date');
+    });
+
+    it('should reject subscription creation for archived member', async () => {
       const archivedId = await seedMember({ email: 'archived@test.com', phone: '111', status: 'archived' });
 
-      expect((await api(`/api/members/${archivedId}/subscriptions`, {
+      const res = await api(`/api/members/${archivedId}/subscriptions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
         body: JSON.stringify({ package_id: 1, start_date: tomorrow }),
-      })).status).toBe(201);
+      });
 
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toBe('Cannot create subscription for an archived member');
       const detail = await (await api(`/api/members/${archivedId}`, { headers: { Cookie: ownerCookie } })).json();
-      expect(detail.status).toBe('active');
+      expect(detail.status).toBe('archived');
     });
   });
 

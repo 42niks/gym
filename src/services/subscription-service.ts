@@ -3,7 +3,7 @@ import { findMemberById } from '../repositories/members-repo.js';
 import { findPackageById } from '../repositories/packages-repo.js';
 import { listSubscriptionsForMember, createSubscription, markSubscriptionCompleted, findSubscriptionById } from '../repositories/subscriptions-repo.js';
 import { computeEndDate, deriveLifecycleState, checkOverlap } from '../lib/subscription.js';
-import { getIstDate } from '../lib/date.js';
+import { getIstDate, isValidYmdDate } from '../lib/date.js';
 import { formatSubscription } from './member-service.js';
 
 export interface CreateSubscriptionInput {
@@ -15,17 +15,18 @@ export interface CreateSubscriptionInput {
 export async function createNewSubscription(db: AppDatabase, input: CreateSubscriptionInput) {
   const today = getIstDate();
 
-  // Validate start_date format
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.start_date)) {
+  if (!isValidYmdDate(input.start_date)) {
     return { error: 'Invalid start_date format', status: 400 as const };
-  }
-
-  if (input.start_date < today) {
-    return { error: 'start_date cannot be in the past', status: 400 as const };
   }
 
   const member = await findMemberById(db, input.member_id);
   if (!member) return { error: 'Member not found', status: 404 as const };
+  if (member.status === 'archived') {
+    return { error: 'Cannot create subscription for an archived member', status: 409 as const };
+  }
+  if (input.start_date < member.join_date) {
+    return { error: 'start_date cannot be before member join_date', status: 400 as const };
+  }
 
   const pkg = await findPackageById(db, input.package_id, { activeOnly: true });
   if (!pkg) return { error: 'Package not found', status: 404 as const };
@@ -45,28 +46,14 @@ export async function createNewSubscription(db: AppDatabase, input: CreateSubscr
     }
   }
 
-  // Create subscription (and unarchive if needed) in a transaction
-  let subId: number;
-  if (member.status === 'archived') {
-    const results = await db.batch([
-      { sql: `UPDATE members SET status = 'active' WHERE id = ?`, params: [member.id] },
-      {
-        sql: `INSERT INTO subscriptions (member_id, package_id, start_date, end_date, total_sessions, amount)
-              VALUES (?, ?, ?, ?, ?, ?)`,
-        params: [input.member_id, input.package_id, input.start_date, endDate, pkg.sessions, pkg.price],
-      },
-    ]);
-    subId = results[1]?.lastRowId ?? 0;
-  } else {
-    subId = await createSubscription(db, {
-      member_id: input.member_id,
-      package_id: input.package_id,
-      start_date: input.start_date,
-      end_date: endDate,
-      total_sessions: pkg.sessions,
-      amount: pkg.price,
-    });
-  }
+  const subId = await createSubscription(db, {
+    member_id: input.member_id,
+    package_id: input.package_id,
+    start_date: input.start_date,
+    end_date: endDate,
+    total_sessions: pkg.sessions,
+    amount: pkg.price,
+  });
 
   const sub = await findSubscriptionById(db, subId);
   if (!sub) {

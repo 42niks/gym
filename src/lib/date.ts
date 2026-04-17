@@ -11,6 +11,18 @@ export function parseYmd(value: string): { year: number; month: number; day: num
   return { year: y, month: m, day: d };
 }
 
+export function isValidYmdDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [yearRaw, monthRaw, dayRaw] = value.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+  if (month < 1 || month > 12) return false;
+  const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day >= 1 && day <= maxDay;
+}
+
 export function addMonthsClamped(ymd: string, months: number): string {
   const { year, month, day } = parseYmd(ymd);
   let targetMonth = month + months;

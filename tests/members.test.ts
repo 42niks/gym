@@ -169,6 +169,34 @@ describe('Member Management', () => {
       expect((await res.json()).email).toBe('riya@test.com');
     });
 
+    it('should accept a join_date in the past or future', async () => {
+      const past = await api('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ full_name: 'Past Join', email: 'past@test.com', phone: '9876543211', join_date: '2020-01-01' }),
+      });
+      expect(past.status).toBe(201);
+      expect((await past.json()).join_date).toBe('2020-01-01');
+
+      const future = await api('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ full_name: 'Future Join', email: 'future@test.com', phone: '9876543212', join_date: '2030-12-31' }),
+      });
+      expect(future.status).toBe(201);
+      expect((await future.json()).join_date).toBe('2030-12-31');
+    });
+
+    it('should reject invalid join_date format', async () => {
+      const res = await api('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ full_name: 'Bad Join', email: 'badjoin@test.com', phone: '9876543213', join_date: '2026-13-40' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid join_date format');
+    });
+
     it('should reject duplicate email', async () => {
       await seedMember({ email: 'taken@test.com', phone: '111' });
       const res = await api('/api/members', {

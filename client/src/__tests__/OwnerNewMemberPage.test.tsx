@@ -29,7 +29,7 @@ beforeEach(() => { vi.clearAllMocks(); });
 describe('OwnerNewMemberPage', () => {
   it('renders the new member form', () => {
     renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
-    expect(screen.getByText('New member')).toBeInTheDocument();
+    expect(screen.getByText('NEW MEMBER')).toBeInTheDocument();
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
