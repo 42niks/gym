@@ -1,4 +1,5 @@
 import {
+  forwardRef,
   useLayoutEffect,
   useRef,
   useState,
@@ -14,6 +15,7 @@ import AppShell from '../../components/AppShell.js';
 import Badge from '../../components/Badge.js';
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
+import Icon from '../../components/Icon.js';
 import ProfileFieldRow from '../../components/ProfileFieldRow.js';
 import Spinner from '../../components/Spinner.js';
 import { formatFullDate, formatStatusLabel } from '../../components/attendance/AttendanceCalendar.js';
@@ -46,6 +48,244 @@ function isOwnerMemberListView(value: string | null): value is OwnerMemberListVi
 
 function normalizeOwnerMemberListView(value: string | null): OwnerMemberListView | null {
   return isOwnerMemberListView(value) ? value : null;
+}
+
+function parseDateParts(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return { year, month, day };
+}
+
+function toLocalDate(value: string) {
+  const { year, month, day } = parseDateParts(value);
+  return new Date(year, month - 1, day);
+}
+
+function formatJoinDate(value: string) {
+  return toLocalDate(value).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function formatMembershipAge(value: string) {
+  const { year, month, day } = parseDateParts(value);
+  const joinedDayUtc = Date.UTC(year, month - 1, day);
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+  const daysOld = Math.max(0, Math.floor((todayUtc - joinedDayUtc) / 86400000));
+
+  return `${daysOld} ${daysOld === 1 ? 'day' : 'days'} ago`;
+}
+
+const PILL_CARD_SINGLE_ROW_MIN_HEIGHT_PX = 52;
+const PILL_CARD_ROW_GAP_PX = 8;
+const PILL_CARD_PILL_FALLBACK_HEIGHT_PX = 24;
+
+type PillSpec = {
+  key: string;
+  label: string;
+  icon?: string;
+};
+
+function computePillRows(widths: number[], availableWidth: number) {
+  if (widths.length === 0 || availableWidth <= 0) return 1;
+
+  let rows = 0;
+  let currentRowWidth = 0;
+
+  for (const width of widths) {
+    if (currentRowWidth === 0) {
+      rows += 1;
+      currentRowWidth = width;
+      continue;
+    }
+
+    if (currentRowWidth + PILL_CARD_ROW_GAP_PX + width <= availableWidth) {
+      currentRowWidth += PILL_CARD_ROW_GAP_PX + width;
+      continue;
+    }
+
+    rows += 1;
+    currentRowWidth = width;
+  }
+
+  return Math.max(rows, 1);
+}
+
+const StatusPill = forwardRef<HTMLSpanElement, {
+  label: string;
+  icon?: string;
+}>(function StatusPill({
+  label,
+  icon,
+}, ref) {
+  return (
+    <span
+      ref={ref}
+      className="inline-flex items-center whitespace-nowrap rounded-full border border-black bg-black/[0.04] px-2.5 py-1 font-label text-[0.67rem] font-bold italic uppercase tracking-[0.16em] text-black dark:border-white dark:bg-white/[0.04] dark:text-white"
+    >
+      {icon ? <Icon name={icon} className="mr-[0.5ch] text-[0.85rem]" /> : null}
+      <span>{label}</span>
+    </span>
+  );
+});
+
+function CompactPillCard({
+  label,
+  pills,
+}: {
+  label: string;
+  pills: PillSpec[];
+}) {
+  const pillsWrapRef = useRef<HTMLDivElement | null>(null);
+  const pillRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  pillRefs.current.length = pills.length;
+  const [innerMinHeight, setInnerMinHeight] = useState(PILL_CARD_SINGLE_ROW_MIN_HEIGHT_PX);
+  const pillSignature = pills.map((pill) => `${pill.key}:${pill.icon ?? ''}:${pill.label}`).join('|');
+
+  useLayoutEffect(() => {
+    function updateLayout() {
+      const availableWidth = pillsWrapRef.current?.clientWidth ?? 0;
+      const widths = pillRefs.current
+        .map((pill) => pill ? Math.ceil(pill.getBoundingClientRect().width) : 0)
+        .filter((value) => value > 0);
+      const heights = pillRefs.current
+        .map((pill) => pill ? Math.ceil(pill.getBoundingClientRect().height) : 0)
+        .filter((value) => value > 0);
+
+      if (widths.length === 0 || availableWidth <= 0) {
+        setInnerMinHeight(PILL_CARD_SINGLE_ROW_MIN_HEIGHT_PX);
+        return;
+      }
+
+      const rowCount = computePillRows(widths, availableWidth);
+      const pillHeight = Math.max(...heights, PILL_CARD_PILL_FALLBACK_HEIGHT_PX);
+      const nextHeight = Math.max(
+        PILL_CARD_SINGLE_ROW_MIN_HEIGHT_PX,
+        PILL_CARD_SINGLE_ROW_MIN_HEIGHT_PX + (rowCount - 1) * (pillHeight + PILL_CARD_ROW_GAP_PX),
+      );
+
+      setInnerMinHeight((current) => (current === nextHeight ? current : nextHeight));
+    }
+
+    updateLayout();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateLayout);
+      return () => {
+        window.removeEventListener('resize', updateLayout);
+      };
+    }
+
+    const observer = new ResizeObserver(updateLayout);
+    if (pillsWrapRef.current) {
+      observer.observe(pillsWrapRef.current);
+    }
+    pillRefs.current.forEach((pill) => {
+      if (pill) observer.observe(pill);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [pillSignature]);
+
+  return (
+    <div className="surface-inset surface-inset--owner-compact">
+      <div className="flex items-center justify-between gap-3" style={{ minHeight: `${innerMinHeight}px` }}>
+        <span className="shrink-0 font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white">
+          {label}
+        </span>
+        <div ref={pillsWrapRef} className="ml-auto flex min-w-0 flex-1 flex-wrap justify-end gap-2">
+          {pills.map((pill, index) => (
+            <StatusPill
+              key={pill.key}
+              ref={(node) => {
+                pillRefs.current[index] = node;
+              }}
+              label={pill.label}
+              icon={pill.icon}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildSubscriptionPills(detail: MemberDetail): PillSpec[] {
+  const pills: PillSpec[] = [
+    {
+      key: 'subscription-state',
+      label: detail.active_subscription ? 'Active' : 'No plan',
+      icon: detail.active_subscription ? 'bolt' : 'credit_card_off',
+    },
+  ];
+
+  if (detail.renewal?.kind === 'ends_soon') {
+    pills.push({
+      key: 'renewal',
+      label: 'Renewal',
+      icon: 'notification_important',
+    });
+  }
+
+  return pills;
+}
+
+function buildConsistencyPills(detail: MemberDetail): PillSpec[] {
+  const pills: PillSpec[] = [];
+  const state = detail.owner_consistency_state;
+
+  if (state) {
+    switch (state.stage) {
+      case 'consistent':
+        pills.push({
+          key: 'consistent',
+          label: 'Consistent',
+          icon: 'moving',
+        });
+        if (state.days) {
+          pills.push({
+            key: 'consistent-days',
+            label: `${state.days} Days`,
+            icon: 'calendar_month',
+          });
+        }
+        break;
+      case 'building':
+        pills.push({
+          key: 'building',
+          label: 'Building',
+          icon: 'timeline',
+        });
+        break;
+      case 'not_consistent':
+        pills.push({
+          key: 'not-consistent',
+          label: 'Not Consistent',
+          icon: 'block',
+        });
+        break;
+    }
+
+    if (state.at_risk) {
+      pills.push({
+        key: 'at-risk',
+        label: 'At risk',
+        icon: 'warning',
+      });
+    }
+  }
+
+  pills.push({
+    key: 'today-status',
+    label: detail.marked_attendance_today ? 'In today' : 'Not in today',
+    icon: 'today',
+  });
+
+  return pills;
 }
 
 function toneClasses(tone: MemberDetail['status_highlights'][number]['tone']) {
@@ -414,6 +654,9 @@ export default function OwnerMemberDetailPage() {
     upcoming: orderedSubs.filter((sub) => sub.lifecycle_state === 'upcoming'),
     past: orderedSubs.filter((sub) => sub.lifecycle_state === 'completed'),
   };
+  const visibleStatusHighlights = detail.status_highlights.filter(
+    (highlight) => highlight.key !== 'consistency_at_risk' && highlight.key !== 'consistent',
+  );
 
   return (
     <AppShell links={ownerLinks}>
@@ -483,16 +726,20 @@ export default function OwnerMemberDetailPage() {
             />
           </div>
           <div className="surface-inset surface-inset--owner-compact">
-            <ProfileFieldRow
-              compact
-              label="Member since"
-              value={new Date(detail.join_date).toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            />
+            <div className="flex min-h-[3.25rem] items-center justify-between gap-3">
+              <span className="shrink-0 font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white">
+                Member since
+              </span>
+              <div className="min-w-0 flex-1 text-right">
+                <p className="text-base font-semibold text-black dark:text-white">{formatJoinDate(detail.join_date)}</p>
+                <p className="mt-0.5 text-xs font-medium text-black/55 dark:text-white/60">
+                  {formatMembershipAge(detail.join_date)}
+                </p>
+              </div>
+            </div>
           </div>
+          <CompactPillCard label="Subscription" pills={buildSubscriptionPills(detail)} />
+          <CompactPillCard label="Consistency" pills={buildConsistencyPills(detail)} />
         </div>
         {detail.can_edit_profile ? (
           <p className="min-h-[1.125rem] text-xs leading-[1.125rem] text-red-600 dark:text-red-400" aria-live="polite">
@@ -500,71 +747,21 @@ export default function OwnerMemberDetailPage() {
           </p>
         ) : null}
 
-        <Card gradient className="space-y-5 p-5 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Metric label="Marked today" value={detail.marked_attendance_today ? 'Yes' : 'No'} />
-            <Metric label="Consistent days" value={detail.consistency?.days ?? 0} />
-            <Metric
-              label="Subscription"
-              value={detail.active_subscription ? formatStatusLabel(detail.active_subscription.lifecycle_state) : 'No active plan'}
-            />
-          </div>
-
-          {detail.renewal?.kind === 'starts_on' ? (
-            <Alert variant="info">{detail.renewal.message}</Alert>
-          ) : null}
-        </Card>
-
-        <div className="space-y-3">
-          <SectionHeading
-            eyebrow="Status strip"
-            title="Current state"
-            description="Every active member-state that matters right now, without hiding lower-priority context."
-          />
-          <div className="grid gap-3">
-            {detail.status_highlights.map((highlight) => (
-              <div
-                key={highlight.key}
-                className={`rounded-[1.35rem] border px-4 py-4 shadow-sm shadow-black/5 ${toneClasses(highlight.tone)}`}
-              >
-                <p className="font-label text-[0.66rem] font-bold uppercase tracking-[0.18em]">
-                  {highlight.label}
-                </p>
-                {highlight.detail ? (
-                  <p className="mt-2 text-sm font-medium leading-snug">{highlight.detail}</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
+        <div className="grid gap-3">
+          {visibleStatusHighlights.map((highlight) => (
+            <div
+              key={highlight.key}
+              className={`rounded-[1.35rem] border px-4 py-4 shadow-sm shadow-black/5 ${toneClasses(highlight.tone)}`}
+            >
+              <p className="font-label text-[0.66rem] font-bold uppercase tracking-[0.18em]">
+                {highlight.label}
+              </p>
+              {highlight.detail ? (
+                <p className="mt-2 text-sm font-medium leading-snug">{highlight.detail}</p>
+              ) : null}
+            </div>
+          ))}
         </div>
-
-        <Card className="space-y-4 p-5">
-          <SectionHeading
-            eyebrow="Routine actions"
-            title="Keep profile and billing up to date"
-            description="Edit name or mobile number in Member Profile above. Subscription creation is available only while the member is active."
-          />
-
-          <div className="flex flex-wrap gap-3">
-            {detail.can_add_subscription ? (
-              <Link to={`/members/${id}/subscriptions/new${viewQuery}`}>
-                <Button variant="secondary" icon="add_card">
-                  Add subscription
-                </Button>
-              </Link>
-            ) : (
-              <Button variant="secondary" icon="add_card" disabled>
-                Add subscription
-              </Button>
-            )}
-          </div>
-
-          {!detail.can_add_subscription ? (
-            <Alert variant="warning">
-              Unarchive this member before adding a new subscription.
-            </Alert>
-          ) : null}
-        </Card>
 
         <Card className="space-y-4 border border-red-200 bg-red-50/55 p-5 shadow-sm shadow-black/5 dark:border-red-900/60 dark:bg-red-950/15">
           <SectionHeading

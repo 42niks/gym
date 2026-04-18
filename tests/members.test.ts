@@ -242,6 +242,16 @@ describe('Member Management', () => {
       })).status).toBe(400);
     });
 
+    it('should reject non-object JSON bodies', async () => {
+      const res = await api('/api/members', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify(['bad-body']),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid JSON body');
+    });
+
     it('should reject missing phone', async () => {
       expect((await api('/api/members', {
         method: 'POST',
@@ -329,8 +339,13 @@ describe('Member Management', () => {
       expect(res.status).toBe(200);
 
       const body = await res.json() as any[];
-      expect(body.map((member) => member.full_name)).toEqual(['Risky Riya']);
+      expect(body.map((member) => member.full_name)).toEqual(['Consistent Cora', 'Risky Riya']);
+      expect(body[0].consistency?.status).toBe('consistent');
       expect(body[0].consistency_risk_today).toMatchObject({
+        streak_days: expect.any(Number),
+        message: expect.stringContaining('Attend today'),
+      });
+      expect(body[1].consistency_risk_today).toMatchObject({
         streak_days: expect.any(Number),
         message: expect.stringContaining('Attend today'),
       });
@@ -579,6 +594,17 @@ describe('Member Management', () => {
       });
       expect(res.status).toBe(400);
       expect((await res.json()).error).toBe('phone must be exactly 10 digits');
+    });
+
+    it('should reject non-object patch bodies', async () => {
+      const memberId = await seedMember({ email: 'array-patch@test.com', phone: '1111111111' });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify(['bad-body']),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid JSON body');
     });
 
     it('should return 404 for non-existent member', async () => {

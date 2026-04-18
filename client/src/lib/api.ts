@@ -115,6 +115,12 @@ export interface ConsistencyRiskToday {
   message: string;
 }
 
+export interface OwnerConsistencyState {
+  stage: 'consistent' | 'building' | 'not_consistent';
+  days: number | null;
+  at_risk: boolean;
+}
+
 export interface OwnerStatusHighlight {
   key:
     | 'no_active_subscription'
@@ -186,6 +192,7 @@ export interface MemberListItem extends MemberProfile {
   renewal: Renewal | null;
   consistency_risk_today: ConsistencyRiskToday | null;
   marked_attendance_today: boolean;
+  owner_consistency_state?: OwnerConsistencyState | null;
 }
 
 export interface MemberDetail extends MemberProfile {
@@ -194,6 +201,7 @@ export interface MemberDetail extends MemberProfile {
   renewal: Renewal | null;
   consistency_risk_today: ConsistencyRiskToday | null;
   marked_attendance_today: boolean;
+  owner_consistency_state: OwnerConsistencyState | null;
   status_highlights: OwnerStatusHighlight[];
   archive_action: OwnerArchiveAction;
   can_add_subscription: boolean;

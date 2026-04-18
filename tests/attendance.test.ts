@@ -134,6 +134,48 @@ describe('Attendance', () => {
       expect(removeRes.status).toBe(200);
     });
 
+    it('rejects non-object attendance create payloads', async () => {
+      const subId = await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        total_sessions: 8,
+        amount: 19900,
+      });
+
+      const res = await api(`/api/members/${memberId}/subscriptions/${subId}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify(['2026-06-01']),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid JSON body');
+    });
+
+    it('trims attendance dates before validation', async () => {
+      const subId = await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        total_sessions: 8,
+        amount: 19900,
+      });
+
+      const addRes = await api(`/api/members/${memberId}/subscriptions/${subId}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ date: ' 2026-06-01 ' }),
+      });
+      expect(addRes.status).toBe(200);
+
+      const getRes = await api(`/api/members/${memberId}/subscriptions/${subId}/attendance`, {
+        headers: { Cookie: ownerCookie },
+      });
+      expect((await getRes.json()).attended_dates).toContain('2026-06-01');
+    });
+
     it('resolves private custom packages for owner attendance metadata', async () => {
       const createRes = await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',

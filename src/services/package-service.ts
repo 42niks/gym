@@ -19,6 +19,25 @@ interface PackageDraft {
   is_active: boolean;
 }
 
+const PACKAGE_FIELDS = [
+  'service_type',
+  'sessions',
+  'duration_months',
+  'price',
+  'consistency_window_days',
+  'consistency_min_days',
+  'is_active',
+] as const;
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getUnsupportedFields(body: Record<string, unknown>) {
+  const supportedFields = new Set<string>(PACKAGE_FIELDS);
+  return Object.keys(body).filter((key) => !supportedFields.has(key));
+}
+
 function parseInteger(value: unknown): number | null {
   if (typeof value === 'number' && Number.isInteger(value)) {
     return value;
@@ -149,6 +168,18 @@ export async function listManagedPackages(db: AppDatabase) {
 }
 
 export async function createManagedPackage(db: AppDatabase, body: any) {
+  if (!isPlainObject(body)) {
+    return { error: 'Invalid package payload', status: 400 as const };
+  }
+
+  const unsupportedFields = getUnsupportedFields(body);
+  if (unsupportedFields.length > 0) {
+    return {
+      error: `Unsupported package field${unsupportedFields.length > 1 ? 's' : ''}: ${unsupportedFields.join(', ')}`,
+      status: 400 as const,
+    };
+  }
+
   const draft = buildCreateDraft(body);
   const validationError = draft ? validateDraft(draft) : 'Invalid package payload';
 
@@ -184,6 +215,18 @@ export async function updateManagedPackage(db: AppDatabase, id: number, body: an
     return { error: 'Package not found', status: 404 as const };
   }
 
+  if (!isPlainObject(body)) {
+    return { error: 'Invalid package payload', status: 400 as const };
+  }
+
+  const unsupportedFields = getUnsupportedFields(body);
+  if (unsupportedFields.length > 0) {
+    return {
+      error: `Unsupported package field${unsupportedFields.length > 1 ? 's' : ''}: ${unsupportedFields.join(', ')}`,
+      status: 400 as const,
+    };
+  }
+
   const updates = buildUpdateDraft(body);
   if (!updates) {
     return { error: 'Invalid package payload', status: 400 as const };
@@ -199,10 +242,12 @@ export async function updateManagedPackage(db: AppDatabase, id: number, body: an
   }
 
   try {
-    await updatePackage(db, id, {
-      ...updates,
-      ...(updates.is_active !== undefined ? { is_active: updates.is_active ? 1 : 0 } : {}),
-    });
+    const repoUpdates: Partial<Omit<PackageRow, 'id'>> = {};
+    if (updates.is_active !== undefined) {
+      repoUpdates.is_active = updates.is_active ? 1 : 0;
+    }
+
+    await updatePackage(db, id, repoUpdates);
     const row = await findPackageWithUsageById(db, id, today);
     if (!row) {
       return { error: 'Package not found after update', status: 500 as const };

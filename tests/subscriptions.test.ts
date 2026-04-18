@@ -44,6 +44,16 @@ describe('Subscriptions', () => {
       });
     });
 
+    it('should reject non-object subscription payloads', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify(['not', 'an', 'object']),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid JSON body');
+    });
+
     it('should snapshot price and sessions from package', async () => {
       const body = await (await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
@@ -97,6 +107,79 @@ describe('Subscriptions', () => {
       expect(body.amount).toBe(21000);
     });
 
+    it('should reject unsupported subscription fields', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ package_id: 1, start_date: tomorrow, notes: 'typo' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain('Unsupported subscription field');
+    });
+
+    it('should reject mixed package and custom subscription payloads', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          package_id: 1,
+          custom_package: {
+            service_type: 'Custom Plan',
+            sessions: 15,
+            start_date: tomorrow,
+            end_date: addDays(tomorrow, 29),
+            amount: 21000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+          },
+        }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('custom_package cannot be combined with package_id');
+    });
+
+    it('should reject root override fields with custom package subscriptions', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          start_date: tomorrow,
+          custom_package: {
+            service_type: 'Custom Plan',
+            sessions: 15,
+            start_date: tomorrow,
+            end_date: addDays(tomorrow, 29),
+            amount: 21000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+          },
+        }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('custom_package cannot be combined with root start_date, end_date, or amount');
+    });
+
+    it('should reject unsupported custom package fields', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          custom_package: {
+            service_type: 'Custom Plan',
+            sessions: 15,
+            start_date: tomorrow,
+            end_date: addDays(tomorrow, 29),
+            amount: 21000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+            weird_flag: true,
+          },
+        }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain('Unsupported custom_package field');
+    });
+
     it('should compute end_date correctly for 3-month package', async () => {
       const body = await (await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
@@ -130,6 +213,46 @@ describe('Subscriptions', () => {
       });
       expect(res.status).toBe(400);
       expect((await res.json()).error).toBe('Invalid end_date format');
+    });
+
+    it('should reject invalid custom package numeric field types', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          custom_package: {
+            service_type: 'Custom Plan',
+            sessions: { count: 15 },
+            start_date: tomorrow,
+            end_date: addDays(tomorrow, 29),
+            amount: 21000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+          },
+        }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('custom_package.sessions must be a positive integer');
+    });
+
+    it('should reject non-object custom_package payloads', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ custom_package: 'custom plan' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('custom_package must be an object');
+    });
+
+    it('should reject invalid amount field types', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ package_id: 1, start_date: tomorrow, amount: { total: 21000 } }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('amount must be a positive integer');
     });
 
     it('should reject end_date before start_date for existing package', async () => {

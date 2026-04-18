@@ -1,8 +1,19 @@
 export const BASE_URL = process.env.TEST_BASE_URL ?? 'http://localhost:8002';
 
+declare global {
+  interface Body {
+    json<T = any>(): Promise<T>;
+  }
+}
+
+export interface TestResponse extends Response {
+  json<T = any>(): Promise<T>;
+}
+
 /** Raw HTTP helper — thin wrapper around fetch for the test server */
-export async function api(path: string, options?: RequestInit): Promise<Response> {
-  return fetch(BASE_URL + path, options);
+export async function api(path: string, options?: RequestInit): Promise<TestResponse> {
+  const res = await fetch(BASE_URL + path, options);
+  return res as TestResponse;
 }
 
 // ─── DB control ──────────────────────────────────────────────────────────────

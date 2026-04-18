@@ -69,6 +69,24 @@ describe('Package Management', () => {
     });
   });
 
+  it('rejects non-object package create payloads', async () => {
+    const res = await api('/api/packages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+      body: JSON.stringify(['not', 'an', 'object']),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('Invalid JSON body');
+  });
+
+  it('rejects unsupported package create fields', async () => {
+    const res = await createManagedPackage({ typo_price: 12000 });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Unsupported package field');
+  });
+
   it('rejects a consistency window smaller than 5 days', async () => {
     const res = await createManagedPackage({ consistency_window_days: 4, consistency_min_days: 2 });
 
@@ -132,6 +150,28 @@ describe('Package Management', () => {
     const listRes = await api('/api/packages', { headers: { Cookie: ownerCookie } });
     const packages = await listRes.json();
     expect(packages.find((pkg: any) => pkg.id === 1)).toMatchObject({ is_active: false });
+  });
+
+  it('rejects non-object package patch payloads', async () => {
+    const res = await api('/api/packages/1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+      body: JSON.stringify(['not', 'an', 'object']),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('Invalid JSON body');
+  });
+
+  it('rejects unsupported package patch fields', async () => {
+    const res = await api('/api/packages/1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+      body: JSON.stringify({ archived_at: today }),
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('Unsupported package field');
   });
 
   it('rejects subscription creation on archived packages', async () => {

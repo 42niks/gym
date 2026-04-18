@@ -146,6 +146,11 @@ export const mockMemberDetail: MemberDetail = {
   renewal: null,
   consistency_risk_today: null,
   marked_attendance_today: false,
+  owner_consistency_state: {
+    stage: 'consistent',
+    days: 14,
+    at_risk: false,
+  },
   status_highlights: [
     {
       key: 'consistent',

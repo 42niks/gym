@@ -5,7 +5,7 @@ export interface ConsistencyInput {
   windowDays: number;
   minDays: number;
   earliestSubscriptionStart: string;
-  attendanceDates: string[];
+  attendanceDates: readonly string[];
   today: string;
 }
 

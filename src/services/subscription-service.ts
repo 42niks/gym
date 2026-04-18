@@ -26,6 +26,17 @@ export interface CreateSubscriptionInput {
 export async function createNewSubscription(db: AppDatabase, input: CreateSubscriptionInput) {
   const today = getIstDate();
   const isCustom = !!input.custom_package;
+
+  if (!Number.isInteger(input.member_id) || input.member_id <= 0) {
+    return { error: 'Invalid member id', status: 400 as const };
+  }
+  if (isCustom && input.package_id !== undefined) {
+    return { error: 'custom_package cannot be combined with package_id', status: 400 as const };
+  }
+  if (isCustom && (input.start_date !== undefined || input.end_date !== undefined || input.amount !== undefined)) {
+    return { error: 'custom_package cannot be combined with root start_date, end_date, or amount', status: 400 as const };
+  }
+
   const startDate = isCustom ? input.custom_package!.start_date : input.start_date;
   const endDate = isCustom ? input.custom_package!.end_date : input.end_date;
 
@@ -48,6 +59,7 @@ export async function createNewSubscription(db: AppDatabase, input: CreateSubscr
   if (isCustom) {
     const custom = input.custom_package!;
     if (!custom.service_type?.trim()) return { error: 'custom_package.service_type is required', status: 400 as const };
+    if (custom.service_type.trim().length > 120) return { error: 'custom_package.service_type exceeds 120 characters', status: 400 as const };
     if (!isValidYmdDate(custom.end_date)) return { error: 'Invalid end_date format', status: 400 as const };
     if (custom.end_date < custom.start_date) return { error: 'end_date cannot be before start_date', status: 400 as const };
     if (!Number.isInteger(custom.sessions) || custom.sessions <= 0) return { error: 'custom_package.sessions must be a positive integer', status: 400 as const };

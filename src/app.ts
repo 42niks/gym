@@ -53,6 +53,15 @@ function isValidPhone(phone: string): boolean {
   return /^\d{10}$/.test(phone);
 }
 
+function isJsonObject(value: unknown): value is Record<string, any> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getUnsupportedFields(body: Record<string, any>, supportedFields: readonly string[]) {
+  const supported = new Set(supportedFields);
+  return Object.keys(body).filter((key) => !supported.has(key));
+}
+
 export function createApp(
   db: AppDatabase,
   { secureCookies, allowPasswordlessLogin = false }: CreateAppOptions,
@@ -75,11 +84,15 @@ export function createApp(
     } catch {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
+    if (!isJsonObject(body)) {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
 
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body.password === 'string' ? body.password.trim() : '';
 
     if (!email) return c.json({ error: 'Email is required' }, 400);
+    if (!isValidEmail(email)) return c.json({ error: 'Invalid email format' }, 400);
     if (!password && !allowPasswordlessLogin) return c.json({ error: 'Password is required' }, 400);
 
     const member = await findMemberByEmail(db, email);
@@ -130,6 +143,9 @@ export function createApp(
     } catch {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
+    if (!isJsonObject(body)) {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
 
     const result = await createManagedPackage(db, body);
     if ('error' in result) return c.json({ error: result.error }, result.status);
@@ -144,6 +160,9 @@ export function createApp(
     try {
       body = await c.req.json();
     } catch {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+    if (!isJsonObject(body)) {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
 
@@ -229,6 +248,9 @@ export function createApp(
     } catch {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
+    if (!isJsonObject(body)) {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
 
     const fullName = typeof body.full_name === 'string' ? body.full_name.trim() : '';
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
@@ -275,7 +297,7 @@ export function createApp(
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
 
-    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    if (!isJsonObject(body)) {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
 
@@ -354,16 +376,86 @@ export function createApp(
     } catch {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
+    if (!isJsonObject(body)) {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+
+    const unsupportedRootFields = getUnsupportedFields(body, ['package_id', 'start_date', 'end_date', 'amount', 'custom_package']);
+    if (unsupportedRootFields.length > 0) {
+      return c.json({
+        error: `Unsupported subscription field${unsupportedRootFields.length > 1 ? 's' : ''}: ${unsupportedRootFields.join(', ')}`,
+      }, 400);
+    }
+
+    if (body.custom_package !== undefined && !isJsonObject(body.custom_package)) {
+      return c.json({ error: 'custom_package must be an object' }, 400);
+    }
+    if (body.custom_package !== undefined && body.package_id !== undefined) {
+      return c.json({ error: 'custom_package cannot be combined with package_id' }, 400);
+    }
+    if (body.custom_package !== undefined && (body.start_date !== undefined || body.end_date !== undefined || body.amount !== undefined)) {
+      return c.json({ error: 'custom_package cannot be combined with root start_date, end_date, or amount' }, 400);
+    }
+    if (body.amount !== undefined && !(typeof body.amount === 'number' || typeof body.amount === 'string')) {
+      return c.json({ error: 'amount must be a positive integer' }, 400);
+    }
+    if (body.start_date !== undefined && typeof body.start_date !== 'string') {
+      return c.json({ error: 'Invalid start_date format' }, 400);
+    }
+    if (body.end_date !== undefined && typeof body.end_date !== 'string') {
+      return c.json({ error: 'Invalid end_date format' }, 400);
+    }
+    if (isJsonObject(body.custom_package)) {
+      const unsupportedCustomFields = getUnsupportedFields(body.custom_package, [
+        'service_type',
+        'sessions',
+        'start_date',
+        'end_date',
+        'amount',
+        'consistency_window_days',
+        'consistency_min_days',
+      ]);
+      if (unsupportedCustomFields.length > 0) {
+        return c.json({
+          error: `Unsupported custom_package field${unsupportedCustomFields.length > 1 ? 's' : ''}: ${unsupportedCustomFields.join(', ')}`,
+        }, 400);
+      }
+      if (body.custom_package.service_type !== undefined && typeof body.custom_package.service_type !== 'string') {
+        return c.json({ error: 'custom_package.service_type is required' }, 400);
+      }
+      if (body.custom_package.start_date !== undefined && typeof body.custom_package.start_date !== 'string') {
+        return c.json({ error: 'Invalid start_date format' }, 400);
+      }
+      if (body.custom_package.end_date !== undefined && typeof body.custom_package.end_date !== 'string') {
+        return c.json({ error: 'Invalid end_date format' }, 400);
+      }
+      const customPositiveIntegerFields = [
+        'sessions',
+        'amount',
+        'consistency_window_days',
+        'consistency_min_days',
+      ] as const;
+      for (const field of customPositiveIntegerFields) {
+        const value = body.custom_package[field];
+        if (value !== undefined && !(typeof value === 'number' || typeof value === 'string')) {
+          return c.json({ error: `custom_package.${field} must be a positive integer` }, 400);
+        }
+      }
+    }
 
     const packageId = typeof body.package_id === 'number' ? body.package_id : parseInt(body.package_id, 10);
-    const startDate = typeof body.start_date === 'string' ? body.start_date : undefined;
-    const endDate = typeof body.end_date === 'string' ? body.end_date : undefined;
-    const amount = typeof body.amount === 'number' ? body.amount : parseInt(body.amount, 10);
-    const customPackage = body.custom_package && typeof body.custom_package === 'object' ? {
-      service_type: typeof body.custom_package.service_type === 'string' ? body.custom_package.service_type : '',
+    const startDate = typeof body.start_date === 'string' ? body.start_date.trim() : undefined;
+    const endDate = typeof body.end_date === 'string' ? body.end_date.trim() : undefined;
+    const amountRaw = typeof body.amount === 'number' ? body.amount : parseInt(body.amount, 10);
+    if (body.amount !== undefined && (!Number.isInteger(amountRaw) || amountRaw <= 0)) {
+      return c.json({ error: 'amount must be a positive integer' }, 400);
+    }
+    const amount = amountRaw;
+    const customPackage = isJsonObject(body.custom_package) ? {
+      service_type: typeof body.custom_package.service_type === 'string' ? body.custom_package.service_type.trim() : '',
       sessions: typeof body.custom_package.sessions === 'number' ? body.custom_package.sessions : parseInt(body.custom_package.sessions, 10),
-      start_date: typeof body.custom_package.start_date === 'string' ? body.custom_package.start_date : '',
-      end_date: typeof body.custom_package.end_date === 'string' ? body.custom_package.end_date : '',
+      start_date: typeof body.custom_package.start_date === 'string' ? body.custom_package.start_date.trim() : '',
+      end_date: typeof body.custom_package.end_date === 'string' ? body.custom_package.end_date.trim() : '',
       amount: typeof body.custom_package.amount === 'number' ? body.custom_package.amount : parseInt(body.custom_package.amount, 10),
       consistency_window_days: typeof body.custom_package.consistency_window_days === 'number' ? body.custom_package.consistency_window_days : parseInt(body.custom_package.consistency_window_days, 10),
       consistency_min_days: typeof body.custom_package.consistency_min_days === 'number' ? body.custom_package.consistency_min_days : parseInt(body.custom_package.consistency_min_days, 10),
@@ -411,7 +503,10 @@ export function createApp(
     } catch {
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
-    const date = typeof body.date === 'string' ? body.date : '';
+    if (!isJsonObject(body)) {
+      return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+    const date = typeof body.date === 'string' ? body.date.trim() : '';
     const result = await addAttendanceDate(db, memberId, subscriptionId, date);
     if ('error' in result) return c.json({ error: result.error }, result.status);
     return c.json(result.data, result.status);

@@ -139,6 +139,26 @@ describe('Auth', () => {
       expect(res.status).toBe(400);
     });
 
+    it('should return 400 for invalid JSON body shapes', async () => {
+      const res = await api('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(['owner@base.gym', '9999999999']),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid JSON body');
+    });
+
+    it('should return 400 for invalid email format', async () => {
+      const res = await api('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'owner-at-base.gym', password: '9999999999' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid email format');
+    });
+
     it('should return 400 for missing password', async () => {
       const res = await api('/api/auth/login', {
         method: 'POST',

@@ -9,7 +9,7 @@ import {
 import { deriveLifecycleState } from '../lib/subscription.js';
 import { computeRenewal } from '../lib/renewal.js';
 import { computeConsistency, computeConsistencyWindow } from '../lib/consistency.js';
-import { addDays, getIstDate } from '../lib/date.js';
+import { addDays, diffDays, getIstDate } from '../lib/date.js';
 import { findPackageById } from '../repositories/packages-repo.js';
 
 export const MEMBER_LIST_VIEWS = [
@@ -45,6 +45,12 @@ export interface MemberProfile {
 export interface ConsistencyRiskToday {
   streak_days: number;
   message: string;
+}
+
+interface OwnerConsistencyState {
+  stage: 'consistent' | 'building' | 'not_consistent';
+  days: number | null;
+  at_risk: boolean;
 }
 
 export interface OwnerStatusHighlight {
@@ -243,6 +249,73 @@ function buildRecentAttendance(attendanceDates: string[], today: string, days: n
   return result;
 }
 
+function countTrailingWindowAttendance(attendanceDates: string[], today: string, windowDays: number) {
+  const attendanceSet = new Set(attendanceDates);
+  let count = 0;
+
+  for (let offset = 0; offset < windowDays; offset += 1) {
+    if (attendanceSet.has(addDays(today, -offset))) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
+function buildOwnerConsistencyState(input: {
+  activeSubscription: ReturnType<typeof formatSubscription> | null;
+  consistency: ReturnType<typeof computeConsistency>;
+  consistencyRiskToday: ConsistencyRiskToday | null;
+  attendanceDates: string[];
+  earliestSubscriptionStart: string | null;
+  today: string;
+  windowDays: number | null;
+}): OwnerConsistencyState | null {
+  const {
+    activeSubscription,
+    consistency,
+    consistencyRiskToday,
+    attendanceDates,
+    earliestSubscriptionStart,
+    today,
+    windowDays,
+  } = input;
+
+  if (activeSubscription === null || earliestSubscriptionStart === null || windowDays === null) {
+    return null;
+  }
+
+  if (consistency?.status === 'consistent') {
+    return {
+      stage: 'consistent',
+      days: consistency.days ?? null,
+      at_risk: consistencyRiskToday !== null,
+    };
+  }
+
+  if (diffDays(today, earliestSubscriptionStart) < windowDays) {
+    return {
+      stage: 'building',
+      days: null,
+      at_risk: false,
+    };
+  }
+
+  if (countTrailingWindowAttendance(attendanceDates, today, windowDays) === 0) {
+    return {
+      stage: 'not_consistent',
+      days: null,
+      at_risk: false,
+    };
+  }
+
+  return {
+    stage: 'building',
+    days: null,
+    at_risk: consistencyRiskToday !== null,
+  };
+}
+
 function getConsistencyRiskToday(input: {
   consistency: ReturnType<typeof computeConsistency>;
   consistencyWindow: ReturnType<typeof computeConsistencyWindow>;
@@ -253,7 +326,6 @@ function getConsistencyRiskToday(input: {
 
   if (markedToday) return null;
   if (!consistencyWindow?.streak_days) return null;
-  if (consistency?.status === 'consistent') return null;
   if (consistencyWindow.end_date === today) return null;
 
   return {
@@ -272,15 +344,18 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
 
   let consistency = null;
   let consistencyWindow = null;
+  let consistencyWindowDays: number | null = null;
+  let earliestSubscriptionStart: string | null = null;
   if (activeSub) {
     const pkg = await findPackageById(db, activeSub.package_id, { includePrivate: true });
     if (pkg) {
-      const earliest = await getEarliestSubscriptionStart(db, memberId);
+      consistencyWindowDays = pkg.consistency_window_days;
+      earliestSubscriptionStart = (await getEarliestSubscriptionStart(db, memberId)) ?? null;
       const consistencyInput = {
         hasActiveSubscription: true,
         windowDays: pkg.consistency_window_days,
         minDays: pkg.consistency_min_days,
-        earliestSubscriptionStart: earliest!,
+        earliestSubscriptionStart: earliestSubscriptionStart!,
         attendanceDates,
         today,
       };
@@ -307,6 +382,15 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
   });
 
   const activeSubscription = activeSub ? formatSubscription(activeSub, today) : null;
+  const ownerConsistencyState = buildOwnerConsistencyState({
+    activeSubscription,
+    consistency,
+    consistencyRiskToday,
+    attendanceDates,
+    earliestSubscriptionStart,
+    today,
+    windowDays: consistencyWindowDays,
+  });
 
   return {
     active_subscription: activeSubscription,
@@ -316,6 +400,7 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
     renewal,
     marked_attendance_today: markedToday,
     recent_attendance: activeSub ? buildRecentAttendance(attendanceDates, today, 7) : [],
+    owner_consistency_state: ownerConsistencyState,
     status_highlights: buildStatusHighlights({
       activeSubscription,
       renewal,
@@ -367,6 +452,7 @@ export async function getMemberDetail(db: AppDatabase, id: number) {
       renewal: null,
       consistency_risk_today: null,
       marked_attendance_today: markedToday,
+      owner_consistency_state: null,
       status_highlights: buildStatusHighlights({
         activeSubscription: null,
         renewal: null,
