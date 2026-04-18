@@ -9,6 +9,7 @@ export interface PackageRow {
   consistency_window_days: number;
   consistency_min_days: number;
   is_active: number;
+  visibility_scope: 'public' | 'private';
 }
 
 export interface PackageUsageRow extends PackageRow {
@@ -19,12 +20,13 @@ export interface PackageUsageRow extends PackageRow {
 
 export async function listPackages(
   db: AppDatabase,
-  { includeInactive = false }: { includeInactive?: boolean } = {},
+  { includeInactive = false, includePrivate = false }: { includeInactive?: boolean; includePrivate?: boolean } = {},
 ): Promise<PackageRow[]> {
   return db.all(
     `SELECT *
      FROM packages
-     ${includeInactive ? '' : 'WHERE is_active = 1'}
+     WHERE ${includeInactive ? '1 = 1' : 'is_active = 1'}
+       AND ${includePrivate ? "visibility_scope IN ('public', 'private')" : "visibility_scope = 'public'"}
      ORDER BY is_active DESC, service_type ASC, duration_months ASC, sessions ASC, price ASC, id ASC`
   );
 }
@@ -49,6 +51,7 @@ export async function listPackagesWithUsage(db: AppDatabase, today: string): Pro
         END), 0) AS upcoming_subscription_count
      FROM packages p
      LEFT JOIN subscriptions s ON s.package_id = p.id
+     WHERE p.visibility_scope = 'public'
      GROUP BY p.id
      ORDER BY p.is_active DESC, p.service_type ASC, p.duration_months ASC, p.sessions ASC, p.price ASC, p.id ASC`,
     [today, today],
@@ -58,12 +61,13 @@ export async function listPackagesWithUsage(db: AppDatabase, today: string): Pro
 export async function findPackageById(
   db: AppDatabase,
   id: number,
-  { activeOnly = false }: { activeOnly?: boolean } = {},
+  { activeOnly = false, includePrivate = false }: { activeOnly?: boolean; includePrivate?: boolean } = {},
 ): Promise<PackageRow | undefined> {
   return db.get(
     `SELECT *
      FROM packages
-     WHERE id = ? ${activeOnly ? 'AND is_active = 1' : ''}`,
+     WHERE id = ? ${activeOnly ? 'AND is_active = 1' : ''}
+       AND ${includePrivate ? "visibility_scope IN ('public', 'private')" : "visibility_scope = 'public'"} `,
     [id],
   );
 }
@@ -93,6 +97,7 @@ export async function findPackageWithUsageById(
      FROM packages p
      LEFT JOIN subscriptions s ON s.package_id = p.id
      WHERE p.id = ?
+       AND p.visibility_scope = 'public'
      GROUP BY p.id`,
     [today, today, id],
   );
@@ -110,8 +115,9 @@ export async function createPackage(
       price,
       consistency_window_days,
       consistency_min_days,
-      is_active
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      is_active,
+      visibility_scope
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.service_type,
       data.sessions,
@@ -120,6 +126,7 @@ export async function createPackage(
       data.consistency_window_days,
       data.consistency_min_days,
       data.is_active,
+      data.visibility_scope,
     ],
   );
 

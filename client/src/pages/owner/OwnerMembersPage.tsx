@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type MemberListItem, type OwnerMemberListView } from '../../lib/api.js';
@@ -26,35 +27,35 @@ const VIEW_META: Record<OwnerMemberListView, {
   emptyState: string;
 }> = {
   all: {
-    label: 'All',
+    label: 'All Active',
     tabLabel: 'All',
     description: 'All non-archived members. This is the everyday roster with plans, consistency, and attendance.',
     icon: 'groups',
     emptyState: 'No members found',
   },
   'no-plan': {
-    label: 'No Plan',
+    label: 'No Active Plan',
     tabLabel: 'No plan',
     description: 'Members who need a new plan or are waiting for an upcoming one to start.',
     icon: 'credit_card_off',
     emptyState: 'No members without an active subscription',
   },
   renewal: {
-    label: 'Renewal',
+    label: 'Upcoming Renewal',
     tabLabel: 'Renewal',
     description: 'Members whose current plan ends soon and do not yet have an upcoming renewal.',
     icon: 'notification_important',
     emptyState: 'No renewal alerts right now',
   },
   'at-risk': {
-    label: 'At Risk',
+    label: 'Consistency At Risk',
     tabLabel: 'At risk',
     description: 'Members who should attend today to protect their current streak.',
     icon: 'warning',
     emptyState: 'No members are at immediate consistency risk today',
   },
   building: {
-    label: 'Building',
+    label: 'Building Consistency',
     tabLabel: 'Building',
     description: 'Members with an active plan who are still building their rhythm.',
     icon: 'timeline',
@@ -68,7 +69,7 @@ const VIEW_META: Record<OwnerMemberListView, {
     emptyState: 'No members are currently marked consistent',
   },
   today: {
-    label: 'Today',
+    label: 'Marked Today',
     tabLabel: 'Today',
     description: 'Members who have already marked attendance for the current day.',
     icon: 'today',
@@ -89,11 +90,6 @@ function isOwnerMemberListView(value: string | null): value is OwnerMemberListVi
 
 function resolveCurrentView(searchParams: URLSearchParams): OwnerMemberListView {
   const rawView = searchParams.get('view');
-  if (rawView === 'active') return 'all';
-  if (rawView === 'no-subscription') return 'no-plan';
-  if (rawView === 'renewal-alert') return 'renewal';
-  if (rawView === 'consistency-risk') return 'at-risk';
-  if (rawView === 'not-consistent') return 'building';
   if (isOwnerMemberListView(rawView)) {
     return rawView;
   }
@@ -211,6 +207,44 @@ function BottomViewTabs({
   currentView: OwnerMemberListView;
   onSelect: (view: OwnerMemberListView) => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const tabRefMap = useRef<Partial<Record<OwnerMemberListView, HTMLButtonElement | null>>>({});
+  const didInitScroll = useRef(false);
+
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    const activeTab = tabRefMap.current[currentView];
+    if (!scrollEl || !activeTab) return;
+
+    const maxScrollLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+    if (maxScrollLeft <= 0) return;
+
+    const activeIndex = ALL_VIEWS.indexOf(currentView);
+    const isFirst = activeIndex === 0;
+    const isLast = activeIndex === ALL_VIEWS.length - 1;
+
+    let targetScrollLeft: number;
+    if (isFirst) {
+      targetScrollLeft = 0;
+    } else if (isLast) {
+      targetScrollLeft = maxScrollLeft;
+    } else {
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const tabRect = activeTab.getBoundingClientRect();
+      const tabCenterInScroll = scrollEl.scrollLeft + (tabRect.left - scrollRect.left) + (tabRect.width / 2);
+      targetScrollLeft = tabCenterInScroll - (scrollEl.clientWidth / 2);
+    }
+
+    const clamped = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+    if (!didInitScroll.current) {
+      scrollEl.scrollLeft = clamped;
+      didInitScroll.current = true;
+      return;
+    }
+
+    scrollEl.scrollTo({ left: clamped, behavior: 'smooth' });
+  }, [currentView]);
+
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
       <div
@@ -218,7 +252,7 @@ function BottomViewTabs({
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}
       >
         <div className="members-view-dock pointer-events-auto overflow-hidden rounded-[1.7rem] border border-black backdrop-blur-xl dark:border-white">
-          <div className="members-view-tabs-scroll overflow-x-auto px-3 py-3">
+          <div ref={scrollRef} className="members-view-tabs-scroll overflow-x-auto px-3 py-3">
             <div className="flex min-w-max gap-2">
               {ALL_VIEWS.map((view) => {
                 const meta = VIEW_META[view];
@@ -230,6 +264,9 @@ function BottomViewTabs({
                       <span aria-hidden="true" className="h-7 w-px shrink-0 rounded-full bg-gray-500/65 dark:bg-gray-300/55" />
                     ) : null}
                     <button
+                      ref={(element) => {
+                        tabRefMap.current[view] = element;
+                      }}
                       type="button"
                       onClick={() => onSelect(view)}
                       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 font-label text-[0.7rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
@@ -298,8 +335,7 @@ export default function OwnerMembersPage() {
         </div>
 
         <div className="px-1">
-          <p className="section-eyebrow">Showing</p>
-          <div className="mt-3 flex items-start gap-3">
+          <div className="flex items-start gap-3">
             <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-black bg-white/80 shadow-sm shadow-black/5 dark:border-white dark:bg-white/[0.05]">
               <Icon name={currentMeta.icon} className="text-[1.25rem] text-black/80 dark:text-white/85" />
             </span>

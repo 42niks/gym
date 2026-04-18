@@ -217,7 +217,7 @@ Failure:
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/packages` | Owner auth | Return managed package rows, including archived rows and usage counts |
+| `GET` | `/api/packages` | Owner auth | Return the shared public package catalog, including archived public rows and usage counts |
 
 Response is a flat array sorted by:
 
@@ -324,8 +324,12 @@ Ordering is intentionally unspecified. Clients should sort and group by `lifecyc
 | `GET` | `/api/members/:id` | Owner | Get owner-facing member detail |
 | `PATCH` | `/api/members/:id` | Owner | Update `full_name` and/or `phone` |
 | `POST` | `/api/members/:id/archive` | Owner | Archive a member |
+| `POST` | `/api/members/:id/unarchive` | Owner | Unarchive a member |
 | `GET` | `/api/members/:id/subscriptions` | Owner | List subscriptions for a member |
 | `POST` | `/api/members/:id/subscriptions` | Owner | Create a subscription |
+| `GET` | `/api/members/:memberId/subscriptions/:subscriptionId/attendance` | Owner | View exact attendance dates for a subscription |
+| `POST` | `/api/members/:memberId/subscriptions/:subscriptionId/attendance` | Owner | Add an exact attendance date to a subscription |
+| `DELETE` | `/api/members/:memberId/subscriptions/:subscriptionId/attendance/:date` | Owner | Remove an exact attendance date from a subscription |
 | `POST` | `/api/members/:id/sessions` | Owner | Mark attendance for that member today |
 
 #### `GET /api/members?status=active|archived`
@@ -451,7 +455,32 @@ Failures:
     "message": "You have been consistent for the last 14 days"
   },
   "renewal": null,
-  "marked_attendance_today": false
+  "consistency_risk_today": null,
+  "marked_attendance_today": false,
+  "status_highlights": [
+    {
+      "key": "consistent",
+      "label": "Consistent",
+      "tone": "success",
+      "detail": "You have been consistent for the last 14 days"
+    }
+  ],
+  "archive_action": {
+    "kind": "archive",
+    "allowed": false,
+    "reason": "Complete active or upcoming subscriptions before archiving this member.",
+    "blocked_by": [
+      {
+        "subscription_id": 7,
+        "service_type": "1:1 Personal Training",
+        "lifecycle_state": "active",
+        "start_date": "2026-04-10",
+        "end_date": "2026-05-09"
+      }
+    ]
+  },
+  "can_add_subscription": true,
+  "can_edit_profile": true
 }
 ```
 
@@ -462,6 +491,8 @@ If the member is archived, return:
 - `active_subscription: null`
 - `consistency: null`
 - `renewal: null`
+- `archive_action.kind: "unarchive"`
+- `can_add_subscription: false`
 
 Archived status suppresses renewal messaging on the owner detail view.
 
@@ -490,6 +521,7 @@ Success:
 Failures:
 
 - `400` -> no editable field provided / invalid empty value
+- `400` -> unsupported fields are rejected (for example `email`)
 - `404` -> member not found
 
 Changing `phone` changes future login credentials immediately, but does not revoke already-issued sessions.
@@ -504,13 +536,26 @@ Success:
 
 Failures:
 
-- `409` -> `{"error":"Cannot archive member with active or upcoming subscriptions"}`
+- `409` -> `{"error":"Cannot archive member with active or upcoming subscriptions. Mark relevant subscriptions complete first."}`
 - `409` -> `{"error":"Member is already archived"}`
 
 On success:
 
 1. Update `members.status` to `archived`.
 2. Delete all `user_sessions` rows for that member in the same transaction.
+
+#### `POST /api/members/:id/unarchive`
+
+Success:
+
+```json
+{ "ok": true }
+```
+
+Failures:
+
+- `404` -> `{"error":"Member not found"}`
+- `409` -> `{"error":"Member is already active"}`
 
 ### 4.8 Subscription Endpoints
 
@@ -521,6 +566,10 @@ On success:
 | `POST` | `/api/subscriptions/:id/complete` | Owner | Mark a subscription completed |
 
 `GET /api/members/:id/subscriptions` has the same flat response shape as `GET /api/member/subscription`.
+Owner-only list responses add:
+
+- `can_mark_complete`
+- `can_view_attendance`
 
 #### `POST /api/members/:id/subscriptions`
 
@@ -535,11 +584,12 @@ Request:
 
 Rules:
 
-- `start_date` must be today or future in IST.
+- `start_date` may be past, present, or future, but must be on or after the member's `join_date`.
 - Compute `end_date` from `start_date` + package duration.
 - Snapshot `total_sessions` and `amount` from the selected package row.
 - Reject if the new subscription overlaps any active or upcoming subscription for the member.
-- If the member is archived, set `status = 'active'` in the same transaction.
+- Reject archived members with `409 Cannot create subscription for an archived member`.
+- `custom_package` is supported for one-off private packages that should not appear in `/api/packages`.
 
 Success:
 
@@ -561,9 +611,10 @@ Success:
 
 Failures:
 
-- `400` -> invalid or past `start_date`
+- `400` -> invalid `start_date`
 - `404` -> member or package not found
 - `409` -> overlap with active/upcoming subscription
+- `409` -> archived member cannot receive a new subscription
 
 #### `POST /api/subscriptions/:id/complete`
 
@@ -591,9 +642,14 @@ Completion means:
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `POST` | `/api/member/session` | Member | Mark own attendance for today |
+| `GET` | `/api/members/:memberId/subscriptions/:subscriptionId/attendance` | Owner | View the owner attendance workspace for a subscription |
+| `POST` | `/api/members/:memberId/subscriptions/:subscriptionId/attendance` | Owner | Add an exact attendance date to a subscription |
+| `DELETE` | `/api/members/:memberId/subscriptions/:subscriptionId/attendance/:date` | Owner | Remove an exact attendance date from a subscription |
 | `POST` | `/api/members/:id/sessions` | Owner | Mark attendance for a member for today |
 
-Request body is empty. Attendance is always for the current IST date.
+The exact-date owner endpoints validate subscription ownership, reject out-of-period dates, reject duplicate dates, and prevent attendance from exceeding the subscription's total sessions.
+
+`POST /api/member/session` and `POST /api/members/:id/sessions` accept empty request bodies and always mark the current IST date.
 
 Success:
 

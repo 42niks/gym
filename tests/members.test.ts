@@ -431,6 +431,65 @@ describe('Member Management', () => {
       expect(body).toHaveProperty('consistency');
       expect(body).toHaveProperty('renewal');
       expect(body).toHaveProperty('marked_attendance_today');
+      expect(body).toHaveProperty('status_highlights');
+      expect(body).toHaveProperty('archive_action');
+      expect(body.can_add_subscription).toBe(true);
+      expect(body.can_edit_profile).toBe(true);
+    });
+
+    it('should expose archive blockers and owner status highlights', async () => {
+      const memberId = await seedMember({ email: 'detail-flags@test.com', full_name: 'Detail Flags', phone: '1111111111' });
+      await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        total_sessions: 8,
+        amount: 19900,
+      });
+      await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2027-01-01',
+        end_date: '2027-01-31',
+        total_sessions: 8,
+        amount: 19900,
+      });
+
+      const body = await (await api(`/api/members/${memberId}`, { headers: { Cookie: ownerCookie } })).json();
+      expect(body.status_highlights.map((item: any) => item.key)).toContain('consistency_building');
+      expect(body.archive_action).toMatchObject({
+        kind: 'archive',
+        allowed: false,
+      });
+      expect(body.archive_action.blocked_by).toHaveLength(2);
+    });
+
+    it('should resolve consistency and detail metadata for private custom packages', async () => {
+      const memberId = await seedMember({ email: 'private-detail@test.com', full_name: 'Private Detail', phone: '1111111111' });
+      const createRes = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          custom_package: {
+            service_type: 'Private Detail Plan',
+            sessions: 10,
+            start_date: '2026-04-01',
+            end_date: '2026-04-30',
+            amount: 15000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+          },
+        }),
+      });
+      expect(createRes.status).toBe(201);
+
+      const body = await (await api(`/api/members/${memberId}`, { headers: { Cookie: ownerCookie } })).json();
+      expect(body.active_subscription.service_type).toBe('Private Detail Plan');
+      expect(body.consistency).toMatchObject({
+        status: 'building',
+      });
+      expect(body.status_highlights.map((item: any) => item.key)).toContain('consistency_building');
     });
 
     it('should return 404 for non-existent member', async () => {
@@ -443,6 +502,8 @@ describe('Member Management', () => {
       expect(body.active_subscription).toBeNull();
       expect(body.consistency).toBeNull();
       expect(body.renewal).toBeNull();
+      expect(body.archive_action.kind).toBe('unarchive');
+      expect(body.can_add_subscription).toBe(false);
     });
   });
 
@@ -487,6 +548,17 @@ describe('Member Management', () => {
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
         body: JSON.stringify({}),
       })).status).toBe(400);
+    });
+
+    it('should reject unsupported editable fields', async () => {
+      const memberId = await seedMember({ email: 'unsupported@test.com', phone: '1111111111' });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ email: 'updated@test.com' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toContain('Unsupported editable field');
     });
 
     it('should reject empty full_name after trim', async () => {
@@ -550,7 +622,7 @@ describe('Member Management', () => {
 
       const res = await api(`/api/members/${memberId}/archive`, { method: 'POST', headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(409);
-      expect((await res.json()).error).toBe('Cannot archive member with active or upcoming subscriptions');
+      expect((await res.json()).error).toContain('Mark relevant subscriptions complete first');
     });
 
     it('should reject archive when member has upcoming subscription', async () => {
@@ -572,6 +644,20 @@ describe('Member Management', () => {
       await seedSubscription({ member_id: memberId, package_id: 1, start_date: '2025-01-01', end_date: '2025-01-31', total_sessions: 8, amount: 19900, owner_completed: 1 });
 
       expect((await api(`/api/members/${memberId}/archive`, { method: 'POST', headers: { Cookie: ownerCookie } })).status).toBe(200);
+    });
+  });
+
+  describe('POST /api/members/:id/unarchive', () => {
+    it('should unarchive an archived member', async () => {
+      const memberId = await seedMember({ email: 'archived-now@test.com', phone: '7777777777', status: 'archived' });
+      const res = await api(`/api/members/${memberId}/unarchive`, {
+        method: 'POST',
+        headers: { Cookie: ownerCookie },
+      });
+      expect(res.status).toBe(200);
+      expect((await res.json()).ok).toBe(true);
+      const detail = await (await api(`/api/members/${memberId}`, { headers: { Cookie: ownerCookie } })).json();
+      expect(detail.status).toBe('active');
     });
   });
 

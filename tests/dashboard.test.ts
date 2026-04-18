@@ -85,5 +85,33 @@ describe('Owner Home', () => {
       const names = body.active_members.map((m: any) => m.full_name);
       expect(names).toEqual([...names].sort());
     });
+
+    it('should resolve consistency for members on private custom packages', async () => {
+      const memberId = await seedMember({ email: 'private@test.com', full_name: 'Private Plan', phone: '1111111111' });
+      const createRes = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          custom_package: {
+            service_type: 'Private Dashboard Plan',
+            sessions: 10,
+            start_date: '2026-04-01',
+            end_date: '2026-04-30',
+            amount: 15000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+          },
+        }),
+      });
+      expect(createRes.status).toBe(201);
+
+      const body = await (await api('/api/owner/home', { headers: { Cookie: ownerCookie } })).json();
+      const found = body.active_members.find((member: any) => member.full_name === 'Private Plan');
+      expect(found).toBeTruthy();
+      expect(found.active_subscription.service_type).toBe('Private Dashboard Plan');
+      expect(found.consistency).toMatchObject({
+        status: 'building',
+      });
+    });
   });
 });

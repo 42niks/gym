@@ -43,6 +43,35 @@ export async function listAttendanceDatesForSubscription(
   return rows.map(r => r.date);
 }
 
+export async function hasAttendanceForSubscriptionDate(
+  db: AppDatabase,
+  memberId: number,
+  subscriptionId: number,
+  date: string,
+): Promise<boolean> {
+  const row = await db.get(
+    `SELECT 1
+     FROM sessions
+     WHERE member_id = ? AND subscription_id = ? AND date = ?`,
+    [memberId, subscriptionId, date],
+  );
+  return !!row;
+}
+
+export async function removeAttendanceForSubscriptionDate(
+  db: AppDatabase,
+  memberId: number,
+  subscriptionId: number,
+  date: string,
+): Promise<number> {
+  const result = await db.run(
+    `DELETE FROM sessions
+     WHERE member_id = ? AND subscription_id = ? AND date = ?`,
+    [memberId, subscriptionId, date],
+  );
+  return result.changes;
+}
+
 export async function getMembersCheckedInOnDate(db: AppDatabase, date: string): Promise<{ member_id: number; created_at: string }[]> {
   return db.all(
     `SELECT member_id, created_at FROM sessions WHERE date = ? ORDER BY created_at DESC, member_id ASC`

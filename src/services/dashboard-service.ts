@@ -26,7 +26,7 @@ export async function getDashboard(db: AppDatabase) {
 
     let consistency = null;
     if (activeSub) {
-      const pkg = await findPackageById(db, activeSub.package_id);
+      const pkg = await findPackageById(db, activeSub.package_id, { includePrivate: true });
       if (pkg) {
         const earliest = await getEarliestSubscriptionStart(db, member.id);
         const attendanceDates = await listAttendanceDatesForMember(db, member.id);

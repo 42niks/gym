@@ -503,6 +503,10 @@
     border-color: rgb(var(--line-soft));
   }
 
+  .surface-inset.surface-inset--owner-compact {
+    @apply py-2;
+  }
+
   .empty-state {
     @apply glass-panel px-6 py-10 text-center text-sm text-black dark:text-white;
   }

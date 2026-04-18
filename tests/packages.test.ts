@@ -153,4 +153,28 @@ describe('Package Management', () => {
     expect(res.status).toBe(404);
     expect((await res.json()).error).toBe('Package not found');
   });
+
+  it('keeps custom private packages out of the owner package catalog', async () => {
+    const customSubRes = await api(`/api/members/${memberId}/subscriptions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+      body: JSON.stringify({
+        custom_package: {
+          service_type: 'Private One-Off Package',
+          sessions: 10,
+          start_date: addDays(today, 1),
+          end_date: addDays(today, 30),
+          amount: 17000,
+          consistency_window_days: 7,
+          consistency_min_days: 3,
+        },
+      }),
+    });
+    expect(customSubRes.status).toBe(201);
+
+    const res = await api('/api/packages', { headers: { Cookie: ownerCookie } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.find((pkg: any) => pkg.service_type === 'Private One-Off Package')).toBeUndefined();
+  });
 });

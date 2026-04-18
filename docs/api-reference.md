@@ -120,14 +120,14 @@ This document reflects the backend routes currently implemented in:
 ### GET `/api/packages`
 
 - Access: Owner only
-- Description: Returns the full managed package catalog for owners, including archived rows and usage counts.
+- Description: Returns the shared public package catalog for owners, including archived public rows and usage counts. Private one-off custom packages are excluded.
 - Expected input:
   - No body
   - Valid owner `session_id` cookie
 - Validation:
   - Common authenticated-route checks apply
   - Common owner-route checks apply
-  - All package rows are returned, including archived rows
+  - All public package rows are returned, including archived rows
 - Sample response:
 
 ```json
@@ -539,11 +539,32 @@ This document reflects the backend routes currently implemented in:
     "kind": "ends_soon",
     "message": "Your subscription ends in 3 days"
   },
+  "consistency_risk_today": null,
   "marked_attendance_today": false,
-  "recent_attendance": [
-    { "date": "2026-04-08", "attended": false },
-    { "date": "2026-04-09", "attended": true }
-  ]
+  "status_highlights": [
+    {
+      "key": "consistent",
+      "label": "Consistent",
+      "tone": "success",
+      "detail": "You have been consistent for the last 14 days"
+    }
+  ],
+  "archive_action": {
+    "kind": "archive",
+    "allowed": false,
+    "reason": "Complete active or upcoming subscriptions before archiving this member.",
+    "blocked_by": [
+      {
+        "subscription_id": 31,
+        "service_type": "1:1 Personal Training",
+        "lifecycle_state": "active",
+        "start_date": "2026-04-01",
+        "end_date": "2026-04-30"
+      }
+    ]
+  },
+  "can_add_subscription": true,
+  "can_edit_profile": true
 }
 ```
 
@@ -566,10 +587,11 @@ This document reflects the backend routes currently implemented in:
 - Validation:
   - `id` must parse as an integer and be `> 0`, else `400 Invalid member id`
   - Body must be valid JSON, else `400 Invalid JSON body`
+  - Any field other than `full_name` or `phone` is rejected with `400 Unsupported editable field...`
   - If provided, `full_name` must be a string that remains non-empty after trimming, else `400 full_name cannot be empty`
   - If provided, `full_name` length must be `<= 120`, else `400 full_name exceeds 120 characters`
   - If provided, `phone` must be a string that remains non-empty after trimming, else `400 phone cannot be empty`
-  - If provided, `phone` length must be `<= 32`, else `400 phone exceeds 32 characters`
+  - If provided, `phone` must be exactly 10 digits, else `400 phone must be exactly 10 digits`
   - At least one editable field must be present, else `400 No editable field provided`
   - Member must exist, else `404 Member not found`
 - Sample response:
@@ -596,7 +618,26 @@ This document reflects the backend routes currently implemented in:
   - `id` must parse as an integer and be `> 0`, else `400 Invalid member id`
   - Member must exist, else `404 Member not found`
   - Already archived members return `409 Member is already archived`
-  - Members with active or upcoming subscriptions return `409 Cannot archive member with active or upcoming subscriptions`
+  - Members with active or upcoming subscriptions return `409 Cannot archive member with active or upcoming subscriptions. Mark relevant subscriptions complete first.`
+- Sample response:
+
+```json
+{
+  "ok": true
+}
+```
+
+### POST `/api/members/:id/unarchive`
+
+- Access: Owner only
+- Description: Reactivates an archived member.
+- Expected input:
+  - Path param:
+    - `id`: member id
+- Validation:
+  - `id` must parse as an integer and be `> 0`, else `400 Invalid member id`
+  - Member must exist, else `404 Member not found`
+  - Active members return `409 Member is already active`
 - Sample response:
 
 ```json
@@ -633,7 +674,9 @@ This document reflects the backend routes currently implemented in:
     "remaining_sessions": 7,
     "amount": 29500,
     "owner_completed": false,
-    "lifecycle_state": "active"
+    "lifecycle_state": "active",
+    "can_mark_complete": true,
+    "can_view_attendance": true
   }
 ]
 ```
@@ -641,7 +684,7 @@ This document reflects the backend routes currently implemented in:
 ### POST `/api/members/:id/subscriptions`
 
 - Access: Owner only
-- Description: Creates a new subscription for the member using an active package and a future-or-today start date. Archived members are automatically reactivated inside the transaction.
+- Description: Creates a new subscription for the member using either an active public package or a one-off private custom package.
 - Expected input:
   - Path param:
     - `id`: member id
@@ -657,12 +700,12 @@ This document reflects the backend routes currently implemented in:
 - Validation:
   - `id` must parse as an integer and be `> 0`, else `400 Invalid member id`
   - Body must be valid JSON, else `400 Invalid JSON body`
-  - `package_id` is required and must parse as a positive integer, else `400 package_id is required`
-  - `start_date` is required and must be a string, else `400 start_date is required`
+  - Existing-package mode requires `package_id`; custom-package mode requires `custom_package`
   - `start_date` must match `YYYY-MM-DD`, else `400 Invalid start_date format`
-  - `start_date` cannot be in the past, else `400 start_date cannot be in the past`
+  - `start_date` must be on or after the member `join_date`, else `400 start_date cannot be before member join_date`
   - Member must exist, else `404 Member not found`
   - Package must exist and must be active, else `404 Package not found`
+  - Archived members are rejected with `409 Cannot create subscription for an archived member`
   - New subscription must not overlap an existing active or upcoming subscription, else `409 New subscription overlaps with an existing active or upcoming subscription`
 - Sample response:
 
@@ -703,10 +746,62 @@ This document reflects the backend routes currently implemented in:
 
 ## Owner: Attendance
 
+### GET `/api/members/:memberId/subscriptions/:subscriptionId/attendance`
+
+- Access: Owner only
+- Description: Returns the attendance workspace payload for a specific subscription, including owner edit flags and the full marked-date list.
+- Sample response:
+
+```json
+{
+  "subscription": {
+    "id": 31,
+    "package_id": 1,
+    "service_type": "1:1 Personal Training",
+    "start_date": "2026-04-01",
+    "end_date": "2026-04-30",
+    "total_sessions": 12,
+    "attended_sessions": 5,
+    "remaining_sessions": 7,
+    "amount": 29500,
+    "owner_completed": false,
+    "lifecycle_state": "active"
+  },
+  "consistency_rule": {
+    "min_days": 3,
+    "window_days": 7
+  },
+  "consistency_window": null,
+  "attended_dates": ["2026-04-03", "2026-04-07"],
+  "can_edit_dates": true,
+  "editable_start_date": "2026-04-01",
+  "editable_end_date": "2026-04-30",
+  "can_mark_complete": true
+}
+```
+
+### POST `/api/members/:memberId/subscriptions/:subscriptionId/attendance`
+
+- Access: Owner only
+- Description: Adds a specific attendance date to a subscription.
+- Validation:
+  - Date must be valid `YYYY-MM-DD`
+  - Date must fall within the subscription period
+  - Member cannot have duplicate attendance on the same calendar date
+  - Subscription attendance cannot exceed `total_sessions`
+
+### DELETE `/api/members/:memberId/subscriptions/:subscriptionId/attendance/:date`
+
+- Access: Owner only
+- Description: Removes a specific attendance date from a subscription.
+- Validation:
+  - Date must be valid `YYYY-MM-DD`
+  - The exact subscription attendance row must exist
+
 ### POST `/api/members/:id/sessions`
 
 - Access: Owner only
-- Description: Marks attendance for the specified member for the current day.
+- Description: Marks attendance for the specified member for the current day. This is a legacy convenience endpoint; the owner member detail flow now uses the exact-date subscription attendance workspace instead.
 - Expected input:
   - Path param:
     - `id`: member id

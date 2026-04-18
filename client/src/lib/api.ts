@@ -67,6 +67,8 @@ export interface Subscription {
   amount: number;
   owner_completed: boolean;
   lifecycle_state: 'active' | 'upcoming' | 'completed';
+  can_mark_complete?: boolean;
+  can_view_attendance?: boolean;
 }
 
 export interface ConsistencyRule {
@@ -79,6 +81,10 @@ export interface MemberSubscriptionAttendance {
   consistency_rule: ConsistencyRule;
   consistency_window: ConsistencyWindow | null;
   attended_dates: string[];
+  can_edit_dates: boolean;
+  editable_start_date: string;
+  editable_end_date: string;
+  can_mark_complete: boolean;
 }
 
 export interface Consistency {
@@ -107,6 +113,33 @@ export interface Renewal {
 export interface ConsistencyRiskToday {
   streak_days: number;
   message: string;
+}
+
+export interface OwnerStatusHighlight {
+  key:
+    | 'no_active_subscription'
+    | 'upcoming_renewal'
+    | 'consistency_at_risk'
+    | 'consistency_building'
+    | 'consistent';
+  label: string;
+  tone: 'neutral' | 'warning' | 'info' | 'success';
+  detail: string | null;
+}
+
+export interface OwnerArchiveBlocker {
+  subscription_id: number;
+  service_type: string;
+  lifecycle_state: 'active' | 'upcoming';
+  start_date: string;
+  end_date: string;
+}
+
+export interface OwnerArchiveAction {
+  kind: 'archive' | 'unarchive';
+  allowed: boolean;
+  reason: string | null;
+  blocked_by: OwnerArchiveBlocker[];
 }
 
 export type OwnerMemberListView =
@@ -138,6 +171,7 @@ export interface Package {
   consistency_window_days: number;
   consistency_min_days: number;
   is_active: boolean;
+  visibility_scope?: 'public' | 'private';
 }
 
 export interface ManagedPackage extends Package {
@@ -158,7 +192,12 @@ export interface MemberDetail extends MemberProfile {
   active_subscription: Subscription | null;
   consistency: Consistency | null;
   renewal: Renewal | null;
+  consistency_risk_today: ConsistencyRiskToday | null;
   marked_attendance_today: boolean;
+  status_highlights: OwnerStatusHighlight[];
+  archive_action: OwnerArchiveAction;
+  can_add_subscription: boolean;
+  can_edit_profile: boolean;
 }
 
 export interface DashboardItem {

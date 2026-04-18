@@ -160,6 +160,7 @@ export async function createManagedPackage(db: AppDatabase, body: any) {
     const id = await createPackage(db, {
       ...draft,
       is_active: draft.is_active ? 1 : 0,
+      visibility_scope: 'public',
     });
     const row = await findPackageWithUsageById(db, id, getIstDate());
     if (!row) {

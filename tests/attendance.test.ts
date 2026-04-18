@@ -96,4 +96,78 @@ describe('Attendance', () => {
       expect((await api('/api/members/9999/sessions', { method: 'POST', headers: { Cookie: ownerCookie } })).status).toBe(404);
     });
   });
+
+  describe('Owner attendance dates CRUD', () => {
+    it('allows owner to add and remove an attendance date for a subscription', async () => {
+      const subId = await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        total_sessions: 8,
+        amount: 19900,
+      });
+
+      const addRes = await api(`/api/members/${memberId}/subscriptions/${subId}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ date: '2026-06-01' }),
+      });
+      expect(addRes.status).toBe(200);
+
+      const getRes = await api(`/api/members/${memberId}/subscriptions/${subId}/attendance`, {
+        headers: { Cookie: ownerCookie },
+      });
+      expect(getRes.status).toBe(200);
+      expect((await getRes.json())).toMatchObject({
+        attended_dates: expect.arrayContaining(['2026-06-01']),
+        can_edit_dates: true,
+        editable_start_date: '2026-01-01',
+        editable_end_date: '2026-12-31',
+        can_mark_complete: true,
+      });
+
+      const removeRes = await api(`/api/members/${memberId}/subscriptions/${subId}/attendance/2026-06-01`, {
+        method: 'DELETE',
+        headers: { Cookie: ownerCookie },
+      });
+      expect(removeRes.status).toBe(200);
+    });
+
+    it('resolves private custom packages for owner attendance metadata', async () => {
+      const createRes = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          custom_package: {
+            service_type: 'Private Attendance Plan',
+            sessions: 10,
+            start_date: '2026-04-01',
+            end_date: '2026-04-30',
+            amount: 15000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+          },
+        }),
+      });
+      expect(createRes.status).toBe(201);
+      const subscription = await createRes.json();
+
+      const attendanceRes = await api(`/api/members/${memberId}/subscriptions/${subscription.id}/attendance`, {
+        headers: { Cookie: ownerCookie },
+      });
+      expect(attendanceRes.status).toBe(200);
+      expect(await attendanceRes.json()).toMatchObject({
+        subscription: {
+          id: subscription.id,
+          service_type: 'Private Attendance Plan',
+        },
+        consistency_rule: {
+          min_days: 3,
+          window_days: 7,
+        },
+        can_edit_dates: true,
+      });
+    });
+  });
 });

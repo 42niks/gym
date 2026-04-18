@@ -353,6 +353,8 @@ describe('Auth', () => {
       const token = loginRes.headers.get('set-cookie')!.match(/session_id=([^;]+)/)![1];
 
       expect((await api('/api/members', { headers: { Cookie: `session_id=${token}` } })).status).toBe(403);
+      expect((await api('/api/members/1/unarchive', { method: 'POST', headers: { Cookie: `session_id=${token}` } })).status).toBe(403);
+      expect((await api('/api/members/1/subscriptions/1/attendance', { headers: { Cookie: `session_id=${token}` } })).status).toBe(403);
     });
 
     it('should reject owner from member-only routes with 403', async () => {

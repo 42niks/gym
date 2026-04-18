@@ -54,6 +54,49 @@ describe('Subscriptions', () => {
       expect(body.amount).toBe(29500);
     });
 
+    it('should allow owner to override amount for existing package subscription', async () => {
+      const body = await (await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ package_id: 2, start_date: tomorrow, amount: 31000 }),
+      })).json();
+      expect(body.amount).toBe(31000);
+      expect(body.total_sessions).toBe(12);
+    });
+
+    it('should allow owner to override end_date for existing package subscription', async () => {
+      const customEndDate = addDays(tomorrow, 45);
+      const body = await (await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ package_id: 2, start_date: tomorrow, end_date: customEndDate }),
+      })).json();
+      expect(body.end_date).toBe(customEndDate);
+    });
+
+    it('should create a custom package-backed subscription', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({
+          custom_package: {
+            service_type: 'Custom Plan',
+            sessions: 15,
+            start_date: tomorrow,
+            end_date: addDays(tomorrow, 29),
+            amount: 21000,
+            consistency_window_days: 7,
+            consistency_min_days: 3,
+          },
+        }),
+      });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.service_type).toBe('Custom Plan');
+      expect(body.total_sessions).toBe(15);
+      expect(body.amount).toBe(21000);
+    });
+
     it('should compute end_date correctly for 3-month package', async () => {
       const body = await (await api(`/api/members/${memberId}/subscriptions`, {
         method: 'POST',
@@ -77,6 +120,26 @@ describe('Subscriptions', () => {
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
         body: JSON.stringify({ package_id: 1, start_date: 'not-a-date' }),
       })).status).toBe(400);
+    });
+
+    it('should reject invalid end_date format for existing package', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ package_id: 1, start_date: tomorrow, end_date: 'not-a-date' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid end_date format');
+    });
+
+    it('should reject end_date before start_date for existing package', async () => {
+      const res = await api(`/api/members/${memberId}/subscriptions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ package_id: 1, start_date: tomorrow, end_date: addDays(tomorrow, -1) }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('end_date cannot be before start_date');
     });
 
     it('should reject non-existent package_id', async () => {
@@ -175,6 +238,14 @@ describe('Subscriptions', () => {
       expect(body.filter((sub: any) => sub.lifecycle_state === 'completed').length).toBe(1);
       expect(body.filter((sub: any) => sub.lifecycle_state === 'active').length).toBe(1);
       expect(body.filter((sub: any) => sub.lifecycle_state === 'upcoming').length).toBe(1);
+      expect(body.find((sub: any) => sub.lifecycle_state === 'active')).toMatchObject({
+        can_mark_complete: true,
+        can_view_attendance: true,
+      });
+      expect(body.find((sub: any) => sub.lifecycle_state === 'completed')).toMatchObject({
+        can_mark_complete: false,
+        can_view_attendance: true,
+      });
     });
   });
 

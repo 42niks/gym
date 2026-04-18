@@ -1,12 +1,11 @@
 import type { AppDatabase } from '../db/client.js';
-import { findMemberById, listMembersByStatus, createMember as repoCreateMember, updateMember as repoUpdateMember, archiveMember as repoArchiveMember, type MemberRow } from '../repositories/members-repo.js';
+import { findMemberById, listMembersByStatus, createMember as repoCreateMember, updateMember as repoUpdateMember, unarchiveMember as repoUnarchiveMember, type MemberRow } from '../repositories/members-repo.js';
 import { listSubscriptionsForMember, getEarliestSubscriptionStart, type SubscriptionWithType } from '../repositories/subscriptions-repo.js';
 import {
   listAttendanceDatesForMember,
   listAttendanceDatesForSubscription,
   hasAttendanceForDate,
 } from '../repositories/sessions-repo.js';
-import { deleteAllSessionsForMember } from '../repositories/user-sessions-repo.js';
 import { deriveLifecycleState } from '../lib/subscription.js';
 import { computeRenewal } from '../lib/renewal.js';
 import { computeConsistency, computeConsistencyWindow } from '../lib/consistency.js';
@@ -48,6 +47,33 @@ export interface ConsistencyRiskToday {
   message: string;
 }
 
+export interface OwnerStatusHighlight {
+  key:
+    | 'no_active_subscription'
+    | 'upcoming_renewal'
+    | 'consistency_at_risk'
+    | 'consistency_building'
+    | 'consistent';
+  label: string;
+  tone: 'neutral' | 'warning' | 'info' | 'success';
+  detail: string | null;
+}
+
+export interface OwnerArchiveBlocker {
+  subscription_id: number;
+  service_type: string;
+  lifecycle_state: 'active' | 'upcoming';
+  start_date: string;
+  end_date: string;
+}
+
+export interface OwnerArchiveAction {
+  kind: 'archive' | 'unarchive';
+  allowed: boolean;
+  reason: string | null;
+  blocked_by: OwnerArchiveBlocker[];
+}
+
 export function toProfile(m: MemberRow): MemberProfile {
   return { id: m.id, full_name: m.full_name, email: m.email, phone: m.phone, join_date: m.join_date, status: m.status };
 }
@@ -79,6 +105,15 @@ export function formatSubscription(sub: SubscriptionWithType, today: string) {
   };
 }
 
+function formatOwnerSubscription(sub: SubscriptionWithType, today: string) {
+  const formatted = formatSubscription(sub, today);
+  return {
+    ...formatted,
+    can_mark_complete: formatted.lifecycle_state === 'active' || formatted.lifecycle_state === 'upcoming',
+    can_view_attendance: true,
+  };
+}
+
 export function getActiveSub(subs: SubscriptionWithType[], today: string): SubscriptionWithType | null {
   const actives = subs.filter(s => deriveLifecycleState(s, today) === 'active');
   if (actives.length > 1) throw new Error('Multiple active subscriptions found');
@@ -89,6 +124,108 @@ export function getUpcomingSubs(subs: SubscriptionWithType[], today: string): Su
   return subs
     .filter(s => deriveLifecycleState(s, today) === 'upcoming')
     .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.id - b.id);
+}
+
+function getArchiveBlockers(subs: SubscriptionWithType[], today: string): OwnerArchiveBlocker[] {
+  return subs
+    .map((sub) => {
+      const lifecycleState = deriveLifecycleState(sub, today);
+      if (lifecycleState !== 'active' && lifecycleState !== 'upcoming') return null;
+      return {
+        subscription_id: sub.id,
+        service_type: sub.service_type,
+        lifecycle_state: lifecycleState,
+        start_date: sub.start_date,
+        end_date: sub.end_date,
+      };
+    })
+    .filter((value): value is OwnerArchiveBlocker => value !== null);
+}
+
+function buildStatusHighlights(input: {
+  activeSubscription: ReturnType<typeof formatSubscription> | null;
+  renewal: ReturnType<typeof computeRenewal>;
+  consistency: ReturnType<typeof computeConsistency>;
+  consistencyRiskToday: ConsistencyRiskToday | null;
+}): OwnerStatusHighlight[] {
+  const highlights: OwnerStatusHighlight[] = [];
+
+  if (input.activeSubscription === null) {
+    highlights.push({
+      key: 'no_active_subscription',
+      label: 'No active subscription',
+      tone: 'neutral',
+      detail: 'This member does not have an active subscription right now.',
+    });
+  }
+
+  if (input.renewal?.kind === 'ends_soon') {
+    highlights.push({
+      key: 'upcoming_renewal',
+      label: 'Upcoming renewal',
+      tone: 'warning',
+      detail: input.renewal.message,
+    });
+  }
+
+  if (input.consistencyRiskToday) {
+    highlights.push({
+      key: 'consistency_at_risk',
+      label: 'Consistency at risk',
+      tone: 'warning',
+      detail: input.consistencyRiskToday.message,
+    });
+  }
+
+  if (input.consistency?.status === 'building') {
+    highlights.push({
+      key: 'consistency_building',
+      label: 'Consistency building',
+      tone: 'info',
+      detail: input.consistency.message,
+    });
+  }
+
+  if (input.consistency?.status === 'consistent') {
+    highlights.push({
+      key: 'consistent',
+      label: 'Consistent',
+      tone: 'success',
+      detail: input.consistency.message,
+    });
+  }
+
+  return highlights;
+}
+
+function buildArchiveAction(input: {
+  memberStatus: string;
+  blockers: OwnerArchiveBlocker[];
+}): OwnerArchiveAction {
+  if (input.memberStatus === 'archived') {
+    return {
+      kind: 'unarchive',
+      allowed: true,
+      reason: null,
+      blocked_by: [],
+    };
+  }
+
+  if (input.blockers.length > 0) {
+    return {
+      kind: 'archive',
+      allowed: false,
+      reason: 'Complete active or upcoming subscriptions before archiving this member.',
+      blocked_by: input.blockers,
+    };
+  }
+
+  return {
+    kind: 'archive',
+    allowed: true,
+    reason: null,
+    blocked_by: [],
+  };
 }
 
 function buildRecentAttendance(attendanceDates: string[], today: string, days: number) {
@@ -129,13 +266,14 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
   const subs = await listSubscriptionsForMember(db, memberId);
   const activeSub = getActiveSub(subs, today);
   const upcomingSubs = getUpcomingSubs(subs, today);
+  const archiveBlockers = getArchiveBlockers(subs, today);
   const markedToday = await hasAttendanceForDate(db, memberId, today);
   const attendanceDates = await listAttendanceDatesForMember(db, memberId);
 
   let consistency = null;
   let consistencyWindow = null;
   if (activeSub) {
-    const pkg = await findPackageById(db, activeSub.package_id);
+    const pkg = await findPackageById(db, activeSub.package_id, { includePrivate: true });
     if (pkg) {
       const earliest = await getEarliestSubscriptionStart(db, memberId);
       const consistencyInput = {
@@ -168,14 +306,28 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
     today,
   });
 
+  const activeSubscription = activeSub ? formatSubscription(activeSub, today) : null;
+
   return {
-    active_subscription: activeSub ? formatSubscription(activeSub, today) : null,
+    active_subscription: activeSubscription,
     consistency,
     consistency_window: consistencyWindow,
     consistency_risk_today: consistencyRiskToday,
     renewal,
     marked_attendance_today: markedToday,
     recent_attendance: activeSub ? buildRecentAttendance(attendanceDates, today, 7) : [],
+    status_highlights: buildStatusHighlights({
+      activeSubscription,
+      renewal,
+      consistency,
+      consistencyRiskToday,
+    }),
+    archive_action: buildArchiveAction({
+      memberStatus: 'active',
+      blockers: archiveBlockers,
+    }),
+    can_add_subscription: true,
+    can_edit_profile: true,
   };
 }
 
@@ -207,12 +359,26 @@ export async function getMemberDetail(db: AppDatabase, id: number) {
   const today = getIstDate();
 
   if (member.status === 'archived') {
+    const markedToday = await hasAttendanceForDate(db, member.id, today);
     return {
       ...toProfile(member),
       active_subscription: null,
       consistency: null,
       renewal: null,
-      marked_attendance_today: await hasAttendanceForDate(db, member.id, today),
+      consistency_risk_today: null,
+      marked_attendance_today: markedToday,
+      status_highlights: buildStatusHighlights({
+        activeSubscription: null,
+        renewal: null,
+        consistency: null,
+        consistencyRiskToday: null,
+      }),
+      archive_action: buildArchiveAction({
+        memberStatus: 'archived',
+        blockers: [],
+      }),
+      can_add_subscription: false,
+      can_edit_profile: true,
     };
   }
 
@@ -261,7 +427,7 @@ export async function archiveMemberById(db: AppDatabase, id: number): Promise<{ 
   });
 
   if (hasActiveOrUpcoming) {
-    return { error: 'Cannot archive member with active or upcoming subscriptions' };
+    return { error: 'Cannot archive member with active or upcoming subscriptions. Mark relevant subscriptions complete first.' };
   }
 
   await db.batch([
@@ -271,10 +437,18 @@ export async function archiveMemberById(db: AppDatabase, id: number): Promise<{ 
   return {};
 }
 
+export async function unarchiveMemberById(db: AppDatabase, id: number): Promise<{ error?: string }> {
+  const member = await findMemberById(db, id);
+  if (!member) return { error: 'Member not found' };
+  if (member.status === 'active') return { error: 'Member is already active' };
+  await repoUnarchiveMember(db, id);
+  return {};
+}
+
 export async function listFormattedSubscriptions(db: AppDatabase, memberId: number) {
   const subs = await listSubscriptionsForMember(db, memberId);
   const today = getIstDate();
-  return subs.map(sub => formatSubscription(sub, today));
+  return subs.map(sub => formatOwnerSubscription(sub, today));
 }
 
 export async function getFormattedSubscriptionAttendance(
@@ -287,7 +461,7 @@ export async function getFormattedSubscriptionAttendance(
   const subscription = subs.find(sub => sub.id === subscriptionId);
 
   if (!subscription) return null;
-  const pkg = await findPackageById(db, subscription.package_id);
+  const pkg = await findPackageById(db, subscription.package_id, { includePrivate: true });
 
   if (!pkg) return null;
 
@@ -310,5 +484,9 @@ export async function getFormattedSubscriptionAttendance(
     },
     consistency_window: consistencyWindow,
     attended_dates: attendedDates,
+    can_edit_dates: true,
+    editable_start_date: subscription.start_date,
+    editable_end_date: subscription.end_date,
+    can_mark_complete: deriveLifecycleState(subscription, today) !== 'completed',
   };
 }

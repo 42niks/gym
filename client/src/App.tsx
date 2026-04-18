@@ -12,6 +12,7 @@ import OwnerMembersPage from './pages/owner/OwnerMembersPage.js';
 import OwnerNewMemberPage from './pages/owner/OwnerNewMemberPage.js';
 import OwnerMemberDetailPage from './pages/owner/OwnerMemberDetailPage.js';
 import OwnerNewSubscriptionPage from './pages/owner/OwnerNewSubscriptionPage.js';
+import OwnerSubscriptionAttendancePage from './pages/owner/OwnerSubscriptionAttendancePage.js';
 import OwnerPackagesPage from './pages/owner/OwnerPackagesPage.js';
 import OwnerNewPackagePage from './pages/owner/OwnerNewPackagePage.js';
 import { ownerLinks } from './pages/owner/ownerLinks.js';
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="/members/new" element={<OwnerNewMemberPage />} />
         <Route path="/members/:id" element={<OwnerMemberDetailPage />} />
         <Route path="/members/:id/subscriptions/new" element={<OwnerNewSubscriptionPage />} />
+        <Route path="/members/:id/subscriptions/:subscriptionId/attendance" element={<OwnerSubscriptionAttendancePage />} />
         <Route path="/packages" element={<OwnerPackagesPage />} />
         <Route path="/packages/new" element={<OwnerNewPackagePage />} />
         <Route path="*" element={<NotFoundPage links={ownerLinks} />} />

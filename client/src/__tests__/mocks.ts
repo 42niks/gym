@@ -18,6 +18,7 @@ export const mockSubscription: Subscription = {
   start_date: '2026-04-01', end_date: '2026-04-30',
   total_sessions: 12, attended_sessions: 5, remaining_sessions: 7,
   amount: 29500, owner_completed: false, lifecycle_state: 'active',
+  can_mark_complete: true, can_view_attendance: true,
 };
 
 export const mockCompletedSubscription: Subscription = {
@@ -25,6 +26,7 @@ export const mockCompletedSubscription: Subscription = {
   start_date: '2026-03-01', end_date: '2026-03-31',
   total_sessions: 12, attended_sessions: 12, remaining_sessions: 0,
   amount: 14500, owner_completed: true, lifecycle_state: 'completed',
+  can_mark_complete: false, can_view_attendance: true,
 };
 
 export const mockUpcomingSubscription: Subscription = {
@@ -32,6 +34,7 @@ export const mockUpcomingSubscription: Subscription = {
   start_date: '2026-05-01', end_date: '2026-05-31',
   total_sessions: 12, attended_sessions: 0, remaining_sessions: 12,
   amount: 29500, owner_completed: false, lifecycle_state: 'upcoming',
+  can_mark_complete: true, can_view_attendance: true,
 };
 
 export const mockConsistency: Consistency = {
@@ -93,6 +96,10 @@ export const mockMemberSubscriptionAttendance: MemberSubscriptionAttendance = {
   },
   consistency_window: null,
   attended_dates: ['2026-04-03', '2026-04-07', '2026-04-14'],
+  can_edit_dates: true,
+  editable_start_date: '2026-04-01',
+  editable_end_date: '2026-04-30',
+  can_mark_complete: true,
 };
 
 export const mockPackages: Package[] = [
@@ -137,7 +144,39 @@ export const mockMemberDetail: MemberDetail = {
   active_subscription: mockSubscription,
   consistency: mockConsistency,
   renewal: null,
+  consistency_risk_today: null,
   marked_attendance_today: false,
+  status_highlights: [
+    {
+      key: 'consistent',
+      label: 'Consistent',
+      tone: 'success',
+      detail: 'Consistent for 14 days',
+    },
+  ],
+  archive_action: {
+    kind: 'archive',
+    allowed: false,
+    reason: 'Complete active or upcoming subscriptions before archiving this member.',
+    blocked_by: [
+      {
+        subscription_id: 1,
+        service_type: '1:1 Personal Training',
+        lifecycle_state: 'active',
+        start_date: '2026-04-01',
+        end_date: '2026-04-30',
+      },
+      {
+        subscription_id: 3,
+        service_type: '1:1 Personal Training',
+        lifecycle_state: 'upcoming',
+        start_date: '2026-05-01',
+        end_date: '2026-05-31',
+      },
+    ],
+  },
+  can_add_subscription: true,
+  can_edit_profile: true,
 };
 
 export const mockDashboard: Dashboard = {

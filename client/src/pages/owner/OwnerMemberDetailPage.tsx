@@ -1,12 +1,22 @@
-import { useState } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, type MemberDetail, type Subscription, type OwnerMemberListView, ApiError } from '../../lib/api.js';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type RefObject,
+} from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { api, ApiError, type MemberDetail, type OwnerMemberListView, type Subscription } from '../../lib/api.js';
+import Alert from '../../components/Alert.js';
 import AppShell from '../../components/AppShell.js';
-import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Button from '../../components/Button.js';
+import Card from '../../components/Card.js';
+import ProfileFieldRow from '../../components/ProfileFieldRow.js';
 import Spinner from '../../components/Spinner.js';
+import { formatFullDate, formatStatusLabel } from '../../components/attendance/AttendanceCalendar.js';
 import { ownerLinks } from './ownerLinks.js';
 
 const KNOWN_MEMBER_VIEWS: OwnerMemberListView[] = [
@@ -22,12 +32,12 @@ const KNOWN_MEMBER_VIEWS: OwnerMemberListView[] = [
 
 const MEMBER_VIEW_BACK_LABELS: Record<Exclude<OwnerMemberListView, 'all'>, string> = {
   archived: 'Archived members',
-  'no-plan': 'No Plan',
-  renewal: 'Renewal',
-  'at-risk': 'At Risk',
-  building: 'Building',
+  'no-plan': 'No Active Plan',
+  renewal: 'Upcoming Renewal',
+  'at-risk': 'Consistency At Risk',
+  building: 'Building Consistency',
   consistent: 'Consistent members',
-  today: 'Today',
+  today: 'Marked Today',
 };
 
 function isOwnerMemberListView(value: string | null): value is OwnerMemberListView {
@@ -35,106 +45,37 @@ function isOwnerMemberListView(value: string | null): value is OwnerMemberListVi
 }
 
 function normalizeOwnerMemberListView(value: string | null): OwnerMemberListView | null {
-  if (value === 'active') return 'all';
-  if (value === 'no-subscription') return 'no-plan';
-  if (value === 'renewal-alert') return 'renewal';
-  if (value === 'consistency-risk') return 'at-risk';
-  if (value === 'not-consistent') return 'building';
   return isOwnerMemberListView(value) ? value : null;
 }
 
-function SubCard({ sub, memberId }: { sub: Subscription; memberId: string }) {
-  const queryClient = useQueryClient();
-  const [completing, setCompleting] = useState(false);
-  const [err, setErr] = useState('');
-
-  const variant =
-    sub.lifecycle_state === 'active' ? 'green' as const :
-    sub.lifecycle_state === 'upcoming' ? 'blue' as const :
-    'gray' as const;
-
-  async function handleComplete() {
-    setErr('');
-    setCompleting(true);
-    try {
-      await api.post(`/api/subscriptions/${sub.id}/complete`);
-      queryClient.invalidateQueries({ queryKey: ['member-detail', memberId] });
-      queryClient.invalidateQueries({ queryKey: ['member-subs', memberId] });
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : 'Failed');
-    } finally {
-      setCompleting(false);
-    }
+function toneClasses(tone: MemberDetail['status_highlights'][number]['tone']) {
+  switch (tone) {
+    case 'warning':
+      return 'border-energy-300/70 bg-energy-50/90 text-black dark:border-energy-500/50 dark:bg-energy-500/15 dark:text-energy-100';
+    case 'info':
+      return 'border-brand-300/70 bg-brand-50/90 text-brand-900 dark:border-brand-500/40 dark:bg-brand-500/12 dark:text-brand-100';
+    case 'success':
+      return 'border-emerald-300/70 bg-emerald-50/90 text-emerald-900 dark:border-emerald-500/35 dark:bg-emerald-500/12 dark:text-emerald-100';
+    default:
+      return 'border-black/12 bg-black/[0.04] text-black dark:border-white/12 dark:bg-white/[0.05] dark:text-white';
   }
-
-  return (
-    <Card className="px-5 py-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-headline text-xl font-black italic uppercase tracking-tight text-black dark:text-white">{sub.service_type}</p>
-          <p className="mt-2 text-xs text-black/60 dark:text-white/70">
-            {new Date(sub.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-            {' – '}
-            {new Date(sub.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </p>
-          <p className="mt-2 text-sm text-black/60 dark:text-white/70">
-            {sub.attended_sessions} / {sub.total_sessions} sessions
-            <span className="mx-1.5 text-black/60 dark:text-white/70">·</span>
-            <span className="font-semibold text-black/75 dark:text-white/80">₹{sub.amount.toLocaleString('en-IN')}</span>
-          </p>
-        </div>
-        <Badge variant={variant} icon={sub.lifecycle_state === 'active' ? 'bolt' : sub.lifecycle_state === 'upcoming' ? 'schedule' : 'history'}>
-          {sub.lifecycle_state}
-        </Badge>
-      </div>
-      {sub.lifecycle_state === 'active' && !sub.owner_completed && (
-        <div className="mt-4 border-t border-black pt-4 dark:border-white">
-          <Button variant="ghost" onClick={handleComplete} disabled={completing} className="text-xs px-0 py-0" icon={completing ? 'progress_activity' : 'task_alt'}>
-            {completing ? 'Completing…' : 'Mark complete'}
-          </Button>
-          {err && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{err}</p>}
-        </div>
-      )}
-    </Card>
-  );
 }
 
-function AttendanceButton({ memberId, markedToday }: { memberId: string; markedToday: boolean }) {
-  const queryClient = useQueryClient();
-  const [err, setErr] = useState('');
-
-  const mark = useMutation({
-    mutationFn: () => api.post(`/api/members/${memberId}/sessions`),
-    onSuccess: () => {
-      setErr('');
-      queryClient.invalidateQueries({ queryKey: ['member-detail', memberId] });
-    },
-    onError: (e: any) => setErr(e.message ?? 'Failed'),
-  });
-
-  if (markedToday) {
-    return (
-      <div className="flex items-center gap-2 text-brand-600 dark:text-brand-300">
-        <span className="text-lg">✓</span>
-        <span className="text-sm font-semibold">Attendance marked for today</span>
-      </div>
-    );
+function lifecycleBadgeVariant(state: Subscription['lifecycle_state']) {
+  switch (state) {
+    case 'active':
+      return 'green' as const;
+    case 'upcoming':
+      return 'blue' as const;
+    default:
+      return 'gray' as const;
   }
-
-  return (
-    <div>
-      <Button size="sm" onClick={() => mark.mutate()} disabled={mark.isPending} className="py-2.5" icon={mark.isPending ? 'progress_activity' : 'how_to_reg'}>
-        Mark attendance
-      </Button>
-      {err && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{err}</p>}
-    </div>
-  );
 }
 
 function sortSubscriptions(subs: Subscription[]) {
   const priority: Record<Subscription['lifecycle_state'], number> = {
-    upcoming: 0,
-    active: 1,
+    active: 0,
+    upcoming: 1,
     completed: 2,
   };
 
@@ -148,12 +89,198 @@ function sortSubscriptions(subs: Subscription[]) {
   });
 }
 
+const PROFILE_EDIT_ROW_H = 'h-[3.25rem]';
+
+const profileEditIconBtn = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-white/80 text-black shadow-sm shadow-black/5 transition-colors hover:bg-white disabled:opacity-45 sm:h-[3.25rem] sm:w-[3.25rem] dark:border-white/15 dark:bg-surface-dark/75 dark:text-white dark:hover:bg-surface-raised/80';
+
+function OwnerInlineProfileRow({
+  label,
+  displayValue,
+  field,
+  activeField,
+  draft,
+  onDraftChange,
+  onRequestEdit,
+  onCancel,
+  onConfirm,
+  saving,
+  canEdit,
+  wrapDisplayWords,
+  inputRef,
+  inputMode,
+  maxLength,
+}: {
+  label: string;
+  displayValue: string;
+  field: 'name' | 'phone';
+  activeField: 'name' | 'phone' | null;
+  draft: string;
+  onDraftChange: (v: string) => void;
+  onRequestEdit: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  saving: boolean;
+  canEdit: boolean;
+  wrapDisplayWords: boolean;
+  inputRef: RefObject<HTMLInputElement | null>;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
+  maxLength: number;
+}) {
+  const editing = activeField === field;
+  const labelClass =
+    'shrink-0 font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white';
+
+  if (editing) {
+    return (
+      <div className={`flex w-full min-w-0 items-center gap-1.5 sm:gap-2 ${PROFILE_EDIT_ROW_H}`}>
+        <span className={labelClass}>{label}</span>
+        <input
+          ref={inputRef}
+          className={`box-border w-0 min-w-0 flex-1 rounded-xl border border-black/15 bg-white/90 px-2.5 sm:px-3 text-right text-base font-semibold text-black shadow-sm shadow-black/5 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-300/30 dark:border-white/15 dark:bg-surface-dark/85 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent-400/25 ${PROFILE_EDIT_ROW_H}`}
+          value={draft}
+          maxLength={maxLength}
+          disabled={saving}
+          inputMode={inputMode}
+          aria-label={label}
+          onChange={(e) =>
+            onDraftChange(
+              field === 'phone' ? e.target.value.replace(/\D+/g, '').slice(0, 10) : e.target.value,
+            )
+          }
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void onConfirm();
+            if (e.key === 'Escape') onCancel();
+          }}
+        />
+        <button type="button" className={profileEditIconBtn} aria-label="Cancel" disabled={saving} onClick={onCancel}>
+          <span className="material-symbols-outlined text-[1.35rem] text-red-600 dark:text-red-400">close</span>
+        </button>
+        <button type="button" className={profileEditIconBtn} aria-label="Save" disabled={saving} onClick={() => void onConfirm()}>
+          <span className="material-symbols-outlined text-[1.35rem] text-emerald-600 dark:text-emerald-400">check</span>
+        </button>
+      </div>
+    );
+  }
+
+  const valueWrap = wrapDisplayWords
+    ? 'w-0 min-w-0 flex-1 whitespace-normal break-normal text-right text-base font-semibold text-black dark:text-white'
+    : 'w-0 min-w-0 flex-1 break-words text-right text-base font-semibold text-black dark:text-white';
+
+  return (
+    <div className={`flex w-full min-w-0 items-center justify-between gap-1.5 sm:gap-3 ${PROFILE_EDIT_ROW_H}`}>
+      <span className={labelClass}>{label}</span>
+      <span className={valueWrap}>{displayValue}</span>
+      {canEdit ? (
+        <button type="button" className={profileEditIconBtn} aria-label={`Edit ${label}`} onClick={onRequestEdit}>
+          <span className="material-symbols-outlined text-[1.35rem]">edit</span>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div>
+      <p className="section-eyebrow">{eyebrow}</p>
+      <h3 className="mt-1 text-xl font-black tracking-tight text-black dark:text-white">{title}</h3>
+      {description ? (
+        <p className="mt-2 text-sm text-black/60 dark:text-white/70">{description}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className="rounded-[1.25rem] border border-black/10 bg-white/55 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]">
+      <p className="font-label text-[0.62rem] font-bold uppercase tracking-[0.18em] text-black/55 dark:text-white/60">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-black text-black dark:text-white">{value}</p>
+    </div>
+  );
+}
+
+function SubscriptionCard({
+  memberId,
+  sub,
+  viewQuery,
+  onComplete,
+}: {
+  memberId: string;
+  sub: Subscription;
+  viewQuery: string;
+  onComplete: (subscription: Subscription) => void;
+}) {
+  return (
+    <Card className="space-y-4 p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-headline text-2xl font-black italic uppercase tracking-tight text-black dark:text-white">
+            {sub.service_type}
+          </p>
+          <p className="mt-2 text-sm text-black/60 dark:text-white/70">
+            {formatFullDate(sub.start_date)} - {formatFullDate(sub.end_date)}
+          </p>
+          <p className="mt-1 text-xs text-black/60 dark:text-white/70">
+            ₹{sub.amount.toLocaleString('en-IN')}
+          </p>
+        </div>
+        <Badge variant={lifecycleBadgeVariant(sub.lifecycle_state)} icon={sub.lifecycle_state === 'active' ? 'bolt' : sub.lifecycle_state === 'upcoming' ? 'schedule' : 'history'}>
+          {formatStatusLabel(sub.lifecycle_state)}
+        </Badge>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Metric label="Sessions" value={`${sub.attended_sessions} / ${sub.total_sessions}`} />
+        <Metric label="Remaining" value={sub.remaining_sessions} />
+        <Metric label="Owner state" value={sub.owner_completed ? 'Completed' : 'Open'} />
+      </div>
+
+      <div className="flex flex-wrap gap-3 border-t border-black/10 pt-4 dark:border-white/10">
+        <Link to={`/members/${memberId}/subscriptions/${sub.id}/attendance${viewQuery}`}>
+          <Button variant="secondary" icon="calendar_month">
+            Attendance dates
+          </Button>
+        </Link>
+        {sub.can_mark_complete ? (
+          <Button variant="danger" icon="task_alt" onClick={() => onComplete(sub)}>
+            Mark complete
+          </Button>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
 export default function OwnerMemberDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [archiving, setArchiving] = useState(false);
   const [archiveErr, setArchiveErr] = useState('');
+  const [completionError, setCompletionError] = useState('');
+  const [inlineField, setInlineField] = useState<null | 'name' | 'phone'>(null);
+  const [inlineDraft, setInlineDraft] = useState('');
+  const [inlineSaving, setInlineSaving] = useState(false);
+  const [inlineError, setInlineError] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
 
   const { data: detail, isLoading } = useQuery<MemberDetail>({
     queryKey: ['member-detail', id],
@@ -166,20 +293,94 @@ export default function OwnerMemberDetailPage() {
     enabled: !!id,
   });
 
-  async function handleArchive() {
+  async function invalidateMemberQueries() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['member-detail', id] }),
+      queryClient.invalidateQueries({ queryKey: ['member-subs', id] }),
+      queryClient.invalidateQueries({ queryKey: ['owner-members'] }),
+      queryClient.invalidateQueries({ queryKey: ['owner-home'] }),
+    ]);
+  }
+
+  async function handleArchiveAction() {
     if (!detail) return;
-    const action = detail.status === 'active' ? 'archive' : 'unarchive';
-    if (!confirm(`${action} ${detail.full_name}?`)) return;
+    const actionLabel = detail.archive_action.kind === 'archive' ? 'archive' : 'unarchive';
+    if (detail.archive_action.kind === 'archive' && !detail.archive_action.allowed) return;
+    if (!confirm(`${actionLabel} ${detail.full_name}?`)) return;
+
     setArchiveErr('');
     setArchiving(true);
     try {
-      await api.post(`/api/members/${id}/archive`);
-      queryClient.invalidateQueries({ queryKey: ['member-detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['owner-members'] });
-    } catch (e) {
-      setArchiveErr(e instanceof ApiError ? e.message : 'Failed');
+      await api.post(`/api/members/${id}/${detail.archive_action.kind}`);
+      await invalidateMemberQueries();
+    } catch (error) {
+      setArchiveErr(error instanceof ApiError ? error.message : `Failed to ${actionLabel} member`);
     } finally {
       setArchiving(false);
+    }
+  }
+
+  async function confirmInlineProfileEdit() {
+    if (!id || !inlineField) return;
+
+    if (inlineField === 'name') {
+      const trimmed = inlineDraft.trim();
+      if (!trimmed) {
+        setInlineError('Name is required');
+        return;
+      }
+      setInlineError('');
+      setInlineSaving(true);
+      try {
+        await api.patch(`/api/members/${id}`, { full_name: trimmed });
+        setInlineField(null);
+        await invalidateMemberQueries();
+      } catch (error) {
+        setInlineError(error instanceof ApiError ? error.message : 'Failed to update name');
+      } finally {
+        setInlineSaving(false);
+      }
+      return;
+    }
+
+    const normalizedPhone = inlineDraft.replace(/\D+/g, '').slice(0, 10);
+    if (!/^\d{10}$/.test(normalizedPhone)) {
+      setInlineError('Phone must be exactly 10 digits');
+      return;
+    }
+    setInlineError('');
+    setInlineSaving(true);
+    try {
+      await api.patch(`/api/members/${id}`, { phone: normalizedPhone });
+      setInlineField(null);
+      await invalidateMemberQueries();
+    } catch (error) {
+      setInlineError(error instanceof ApiError ? error.message : 'Failed to update phone');
+    } finally {
+      setInlineSaving(false);
+    }
+  }
+
+  useLayoutEffect(() => {
+    if (inlineField === 'name') {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
+    } else if (inlineField === 'phone') {
+      phoneInputRef.current?.focus();
+      phoneInputRef.current?.select();
+    }
+  }, [inlineField]);
+
+  async function handleComplete(subscription: Subscription) {
+    if (!subscription.can_mark_complete) return;
+    if (!confirm(`Mark ${subscription.service_type} complete? This cannot be undone.`)) return;
+
+    setCompletionError('');
+    try {
+      await api.post(`/api/subscriptions/${subscription.id}/complete`);
+      await invalidateMemberQueries();
+    } catch (error) {
+      setCompletionError(error instanceof ApiError ? error.message : 'Could not mark subscription complete');
     }
   }
 
@@ -195,9 +396,8 @@ export default function OwnerMemberDetailPage() {
     );
   }
 
-  if (!detail) return null;
+  if (!detail || !id) return null;
 
-  const allSubs = sortSubscriptions(subs);
   const requestedView = searchParams.get('view');
   const preservedView = normalizeOwnerMemberListView(requestedView)
     ? normalizeOwnerMemberListView(requestedView)!
@@ -206,65 +406,259 @@ export default function OwnerMemberDetailPage() {
       : 'all';
   const viewQuery = preservedView === 'all' ? '' : `?view=${encodeURIComponent(preservedView)}`;
   const backLink = `/members${viewQuery}`;
-  const backLabel = preservedView === 'all' ? 'All' : MEMBER_VIEW_BACK_LABELS[preservedView];
+  const backLabel = preservedView === 'all' ? 'All Active' : MEMBER_VIEW_BACK_LABELS[preservedView];
+
+  const orderedSubs = sortSubscriptions(subs);
+  const groupedSubs = {
+    active: orderedSubs.filter((sub) => sub.lifecycle_state === 'active'),
+    upcoming: orderedSubs.filter((sub) => sub.lifecycle_state === 'upcoming'),
+    past: orderedSubs.filter((sub) => sub.lifecycle_state === 'completed'),
+  };
 
   return (
     <AppShell links={ownerLinks}>
-      <div className="page-stack">
+      <div className="page-stack max-w-5xl">
         <Link to={backLink} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           {backLabel}
         </Link>
 
         <div>
-          <p className="section-eyebrow">Member record</p>
-          <h2 className="page-title mt-2">Member detail</h2>
+          <h2 className="page-title">Member Profile</h2>
         </div>
 
-        <Card className="px-5 py-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="font-headline text-3xl font-black italic uppercase tracking-tight text-black dark:text-white">{detail.full_name}</h2>
-              <p className="mt-1 break-all text-sm text-black/60 dark:text-white/70">{detail.email}</p>
-              <p className="mt-0.5 text-xs text-black/60 dark:text-white/70">{detail.phone}</p>
-              <p className="mt-1 text-xs text-black/60 dark:text-white/70">
-                Joined {new Date(detail.join_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-              {detail.consistency && (
-                <p className="mt-1 text-xs text-black/60 dark:text-white/70">{detail.consistency.message}</p>
-              )}
-              {detail.renewal && (detail.renewal.kind === 'ends_soon' || detail.renewal.kind === 'no_active') && (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 font-medium">{detail.renewal.message}</p>
-              )}
-            </div>
-            <Badge variant={detail.status === 'active' ? 'green' : 'gray'} icon={detail.status === 'active' ? 'check_circle' : 'archive'}>
-              {detail.status}
-            </Badge>
+        <div className="grid w-full gap-2">
+          <div className="surface-inset surface-inset--owner-compact">
+            <OwnerInlineProfileRow
+              label="Name"
+              displayValue={detail.full_name}
+              field="name"
+              activeField={inlineField}
+              draft={inlineDraft}
+              onDraftChange={setInlineDraft}
+              onRequestEdit={() => {
+                setInlineError('');
+                setInlineDraft(detail.full_name);
+                setInlineField('name');
+              }}
+              onCancel={() => {
+                setInlineField(null);
+                setInlineError('');
+              }}
+              onConfirm={confirmInlineProfileEdit}
+              saving={inlineSaving}
+              canEdit={detail.can_edit_profile}
+              wrapDisplayWords
+              inputRef={nameInputRef}
+              maxLength={120}
+            />
+          </div>
+          <div className="surface-inset surface-inset--owner-compact">
+            <ProfileFieldRow compact label="Email" value={detail.email} />
+          </div>
+          <div className="surface-inset surface-inset--owner-compact">
+            <OwnerInlineProfileRow
+              label="Mobile"
+              displayValue={detail.phone}
+              field="phone"
+              activeField={inlineField}
+              draft={inlineDraft}
+              onDraftChange={setInlineDraft}
+              onRequestEdit={() => {
+                setInlineError('');
+                setInlineDraft(detail.phone.replace(/\D+/g, '').slice(0, 10));
+                setInlineField('phone');
+              }}
+              onCancel={() => {
+                setInlineField(null);
+                setInlineError('');
+              }}
+              onConfirm={confirmInlineProfileEdit}
+              saving={inlineSaving}
+              canEdit={detail.can_edit_profile}
+              wrapDisplayWords={false}
+              inputRef={phoneInputRef}
+              inputMode="numeric"
+              maxLength={10}
+            />
+          </div>
+          <div className="surface-inset surface-inset--owner-compact">
+            <ProfileFieldRow
+              compact
+              label="Member since"
+              value={new Date(detail.join_date).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+            />
+          </div>
+        </div>
+        {detail.can_edit_profile ? (
+          <p className="min-h-[1.125rem] text-xs leading-[1.125rem] text-red-600 dark:text-red-400" aria-live="polite">
+            {inlineError || '\u00a0'}
+          </p>
+        ) : null}
+
+        <Card gradient className="space-y-5 p-5 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Metric label="Marked today" value={detail.marked_attendance_today ? 'Yes' : 'No'} />
+            <Metric label="Consistent days" value={detail.consistency?.days ?? 0} />
+            <Metric
+              label="Subscription"
+              value={detail.active_subscription ? formatStatusLabel(detail.active_subscription.lifecycle_state) : 'No active plan'}
+            />
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-black pt-4 dark:border-white">
-            {detail.active_subscription && (
-              <AttendanceButton memberId={id!} markedToday={detail.marked_attendance_today} />
-            )}
-            <Link to={`/members/${id}/subscriptions/new${viewQuery}`}>
-              <Button variant="secondary" className="py-2.5 text-sm" icon="add_card">
-                Subscription
-              </Button>
-            </Link>
-            <Button variant="ghost" onClick={handleArchive} disabled={archiving} className="text-sm py-0" icon={detail.status === 'active' ? 'archive' : 'unarchive'}>
-              {archiving ? '…' : detail.status === 'active' ? 'Archive' : 'Unarchive'}
-            </Button>
-          </div>
-          {archiveErr && <p className="text-xs text-red-600 dark:text-red-400 mt-2">{archiveErr}</p>}
+          {detail.renewal?.kind === 'starts_on' ? (
+            <Alert variant="info">{detail.renewal.message}</Alert>
+          ) : null}
         </Card>
 
-        <div>
-          <h3 className="section-eyebrow mb-3">Subscriptions</h3>
-          {allSubs.length === 0 ? (
-            <div className="empty-state">No subscriptions yet</div>
-          ) : (
+        <div className="space-y-3">
+          <SectionHeading
+            eyebrow="Status strip"
+            title="Current state"
+            description="Every active member-state that matters right now, without hiding lower-priority context."
+          />
+          <div className="grid gap-3">
+            {detail.status_highlights.map((highlight) => (
+              <div
+                key={highlight.key}
+                className={`rounded-[1.35rem] border px-4 py-4 shadow-sm shadow-black/5 ${toneClasses(highlight.tone)}`}
+              >
+                <p className="font-label text-[0.66rem] font-bold uppercase tracking-[0.18em]">
+                  {highlight.label}
+                </p>
+                {highlight.detail ? (
+                  <p className="mt-2 text-sm font-medium leading-snug">{highlight.detail}</p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <Card className="space-y-4 p-5">
+          <SectionHeading
+            eyebrow="Routine actions"
+            title="Keep profile and billing up to date"
+            description="Edit name or mobile number in Member Profile above. Subscription creation is available only while the member is active."
+          />
+
+          <div className="flex flex-wrap gap-3">
+            {detail.can_add_subscription ? (
+              <Link to={`/members/${id}/subscriptions/new${viewQuery}`}>
+                <Button variant="secondary" icon="add_card">
+                  Add subscription
+                </Button>
+              </Link>
+            ) : (
+              <Button variant="secondary" icon="add_card" disabled>
+                Add subscription
+              </Button>
+            )}
+          </div>
+
+          {!detail.can_add_subscription ? (
+            <Alert variant="warning">
+              Unarchive this member before adding a new subscription.
+            </Alert>
+          ) : null}
+        </Card>
+
+        <Card className="space-y-4 border border-red-200 bg-red-50/55 p-5 shadow-sm shadow-black/5 dark:border-red-900/60 dark:bg-red-950/15">
+          <SectionHeading
+            eyebrow="Destructive actions"
+            title={detail.archive_action.kind === 'archive' ? 'Archive member' : 'Unarchive member'}
+            description={
+              detail.archive_action.kind === 'archive'
+                ? 'Archiving signs the member out and removes them from the active roster.'
+                : 'Unarchiving restores the member to the active roster.'
+            }
+          />
+
+          {detail.archive_action.kind === 'archive' && !detail.archive_action.allowed ? (
+            <Alert variant="warning">
+              {detail.archive_action.reason}
+            </Alert>
+          ) : null}
+
+          {detail.archive_action.blocked_by.length > 0 ? (
             <div className="space-y-3">
-              {allSubs.map(s => <SubCard key={s.id} sub={s} memberId={id!} />)}
+              {detail.archive_action.blocked_by.map((blocker) => (
+                <div
+                  key={blocker.subscription_id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-black/10 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-black dark:text-white">{blocker.service_type}</p>
+                    <p className="text-xs text-black/60 dark:text-white/70">
+                      {formatStatusLabel(blocker.lifecycle_state)} • {formatFullDate(blocker.start_date)} - {formatFullDate(blocker.end_date)}
+                    </p>
+                  </div>
+                  <Link to={`/members/${id}/subscriptions/${blocker.subscription_id}/attendance${viewQuery}`}>
+                    <Button variant="secondary" icon="calendar_month">
+                      Review & complete
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="danger"
+              onClick={handleArchiveAction}
+              disabled={archiving || (detail.archive_action.kind === 'archive' && !detail.archive_action.allowed)}
+              icon={archiving ? 'progress_activity' : detail.archive_action.kind === 'archive' ? 'archive' : 'unarchive'}
+            >
+              {archiving
+                ? (detail.archive_action.kind === 'archive' ? 'Archiving…' : 'Unarchiving…')
+                : detail.archive_action.kind === 'archive'
+                  ? 'Archive member'
+                  : 'Unarchive member'}
+            </Button>
+          </div>
+
+          {archiveErr ? <Alert variant="error">{archiveErr}</Alert> : null}
+        </Card>
+
+        <div className="space-y-4">
+          <SectionHeading
+            eyebrow="Subscription history"
+            title="Past, active, and upcoming plans"
+            description="Attendance dates, progress, and completion all stay attached to the exact subscription they belong to."
+          />
+
+          {completionError ? <Alert variant="error">{completionError}</Alert> : null}
+
+          {subs.length === 0 ? (
+            <div className="empty-state">No subscriptions yet.</div>
+          ) : (
+            <div className="space-y-6">
+              {([
+                ['active', groupedSubs.active, 'Active subscriptions'],
+                ['upcoming', groupedSubs.upcoming, 'Upcoming subscriptions'],
+                ['past', groupedSubs.past, 'Past subscriptions'],
+              ] as const).map(([key, items, heading]) => (
+                items.length > 0 ? (
+                  <div key={key} className="space-y-3">
+                    <p className="section-eyebrow">{heading}</p>
+                    <div className="space-y-3">
+                      {items.map((sub) => (
+                        <SubscriptionCard
+                          key={sub.id}
+                          memberId={id}
+                          sub={sub}
+                          viewQuery={viewQuery}
+                          onComplete={handleComplete}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null
+              ))}
             </div>
           )}
         </div>
