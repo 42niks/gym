@@ -1,9 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerMemberDetailPage from '../pages/owner/OwnerMemberDetailPage.js';
 import { renderWithProviders } from './test-utils.js';
-import { mockMemberDetail, mockSubscriptions } from './mocks.js';
+import {
+  mockCompletedSubscription,
+  mockMemberDetail,
+  mockSubscription,
+  mockSubscriptions,
+  mockUpcomingSubscription,
+} from './mocks.js';
 
 const { mockApiGet, mockApiPost, mockApiPatch } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
@@ -12,7 +18,11 @@ const { mockApiGet, mockApiPost, mockApiPatch } = vi.hoisted(() => ({
 }));
 
 vi.mock('../context/AuthContext.js', () => ({
-  useAuth: () => ({ logout: vi.fn(), user: { id: 1, role: 'owner', full_name: 'Sam Chen', email: 'owner@thebase.fit' }, loading: false }),
+  useAuth: () => ({
+    logout: vi.fn(),
+    user: { id: 1, role: 'owner', full_name: 'Sam Chen', email: 'owner@thebase.fit' },
+    loading: false,
+  }),
   AuthProvider: ({ children }: any) => children,
 }));
 
@@ -40,154 +50,218 @@ function configurePageData({
   });
 }
 
+function expectBefore(left: HTMLElement, right: HTMLElement) {
+  expect(left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   configurePageData();
 });
 
 describe('OwnerMemberDetailPage', () => {
-  it('renders the member header and status strip', async () => {
+  it('renders the redesigned sections and billing order', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
     await waitFor(() => {
-      expect(screen.getByText('Alex Kumar')).toBeInTheDocument();
-      expect(screen.getByText(/member@thebase.fit/)).toBeInTheDocument();
-      expect(screen.getByText('Current state')).toBeInTheDocument();
-      expect(screen.getByText('Consistent')).toBeInTheDocument();
+      expect(screen.getByText('BIO')).toBeInTheDocument();
+      expect(screen.getByText('OVERVIEW')).toBeInTheDocument();
+      expect(screen.getByText('BILLING')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('Alex Kumar')).toBeInTheDocument();
+    expect(screen.getByText('ACTIVE SUBSCRIPTION')).toBeInTheDocument();
+    expect(screen.getByText('Upcoming subscriptions')).toBeInTheDocument();
+    expect(screen.getByText('Past subscriptions')).toBeInTheDocument();
+    expect(screen.getByText(/^Starts in \d+d$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Ended \d+d ago$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^\d+d left$/i)).toBeInTheDocument();
+    expect(screen.getByText('7 left')).toBeInTheDocument();
+
+    expectBefore(screen.getByText('ACTIVE SUBSCRIPTION'), screen.getByText('Upcoming subscriptions'));
+    expectBefore(screen.getByText('Upcoming subscriptions'), screen.getByText('Past subscriptions'));
   });
 
-  it('renders grouped subscription history and keeps attendance links', async () => {
+  it('keeps complete before attendance in the active subscription card', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
-    await waitFor(() => {
-      expect(screen.getByText('Active subscriptions')).toBeInTheDocument();
-      expect(screen.getByText('Upcoming subscriptions')).toBeInTheDocument();
-      expect(screen.getByText('Past subscriptions')).toBeInTheDocument();
-      expect(screen.getAllByRole('link', { name: /attendance dates/i })[0]).toHaveAttribute(
-        'href',
-        '/members/2/subscriptions/1/attendance',
-      );
-    });
+    const activeSection = await screen.findByText('ACTIVE SUBSCRIPTION');
+    const activeCard = activeSection.closest('.glass-panel');
+    expect(activeCard).not.toBeNull();
+
+    const completeButton = within(activeCard as HTMLElement).getByRole('button', { name: /complete/i });
+    const attendanceButton = within(activeCard as HTMLElement).getByRole('button', { name: /attendance/i });
+    expectBefore(completeButton, attendanceButton);
   });
 
-  it('does not show the deprecated mark attendance button', async () => {
-    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /mark attendance/i })).not.toBeInTheDocument();
-    });
-  });
-
-  it('shows marked today metrics when attendance is already done', async () => {
-    configurePageData({
-      detail: {
-        ...mockMemberDetail,
-        marked_attendance_today: true,
-      },
-    });
-    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Marked today')).toBeInTheDocument();
-      expect(screen.getByText('Yes')).toBeInTheDocument();
-    });
-  });
-
-  it('shows blocked archive guidance with review links', async () => {
-    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-
-    await waitFor(() => {
-      expect(screen.getByText(/Complete active or upcoming subscriptions before archiving this member/i)).toBeInTheDocument();
-      expect(screen.getAllByRole('link', { name: /review & complete/i })).toHaveLength(2);
-      expect(screen.getByRole('button', { name: /archive member/i })).toBeDisabled();
-    });
-  });
-
-  it('saves name and phone edits from inline profile rows', async () => {
+  it('shows inline validation errors inside the edited bio rows', async () => {
     const user = userEvent.setup();
-    mockApiPatch.mockResolvedValue({});
-
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
     await waitFor(() => expect(screen.getByRole('button', { name: /edit name/i })).toBeInTheDocument());
+
+    const bioCard = screen.getByText('Name').closest('.surface-inset');
+    expect(bioCard).not.toBeNull();
+
     await user.click(screen.getByRole('button', { name: /edit name/i }));
     await user.clear(screen.getByLabelText(/^name$/i));
-    await user.type(screen.getByLabelText(/^name$/i), 'A New Name');
     await user.click(screen.getByRole('button', { name: /^save$/i }));
+    expect(within(bioCard as HTMLElement).getByText('Name is required')).toBeInTheDocument();
 
-    expect(mockApiPatch).toHaveBeenCalledWith('/api/members/2', { full_name: 'A New Name' });
-
-    await user.click(screen.getByRole('button', { name: /edit mobile number/i }));
-    await user.clear(screen.getByLabelText(/mobile number/i));
-    await user.type(screen.getByLabelText(/mobile number/i), '99999-99999');
+    await user.click(screen.getByRole('button', { name: /more/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /edit mobile/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /edit mobile/i }));
+    await user.clear(screen.getByLabelText(/^mobile$/i));
+    await user.type(screen.getByLabelText(/^mobile$/i), '123');
     await user.click(screen.getByRole('button', { name: /^save$/i }));
-
-    expect(mockApiPatch).toHaveBeenCalledWith('/api/members/2', { phone: '9999999999' });
+    expect(within(bioCard as HTMLElement).getByText('Phone must be exactly 10 digits')).toBeInTheDocument();
   });
 
-  it('defaults the back link to the all members view and preserves selected view links', async () => {
+  it('renders the empty active card with an add link and preserved view query', async () => {
+    configurePageData({
+      detail: {
+        ...mockMemberDetail,
+        active_subscription: null,
+      },
+      subscriptions: [],
+    });
+
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2?view=today' });
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /marked today$/i })).toHaveAttribute('href', '/members?view=today');
-      expect(screen.getByRole('link', { name: /add subscription/i })).toHaveAttribute('href', '/members/2/subscriptions/new?view=today');
+      expect(screen.getByText('This member has no subsciption active for today')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /add/i })).toHaveAttribute('href', '/members/2/subscriptions/new?view=today');
     });
   });
 
-  it('returns archived members to the archived list and hides subscription creation', async () => {
+  it('disables the empty active card CTA when the member cannot add subscriptions', async () => {
     configurePageData({
       detail: {
         ...mockMemberDetail,
         status: 'archived',
         active_subscription: null,
-        consistency: null,
-        renewal: null,
-        status_highlights: [
-          {
-            key: 'no_active_subscription',
-            label: 'No active subscription',
-            tone: 'neutral',
-            detail: 'This member does not have an active subscription right now.',
-          },
-        ],
+        can_add_subscription: false,
         archive_action: {
           kind: 'unarchive',
           allowed: true,
           reason: null,
           blocked_by: [],
         },
-        can_add_subscription: false,
       },
       subscriptions: [],
     });
+
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /archived members$/i })).toHaveAttribute('href', '/members?view=archived');
-      expect(screen.getByRole('button', { name: /add subscription/i })).toBeDisabled();
-      expect(screen.getByText(/Unarchive this member before adding a new subscription/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /unarchive to add/i })).toBeDisabled();
+      expect(screen.queryByRole('link', { name: /add/i })).not.toBeInTheDocument();
     });
   });
 
-  it('unarchives an archived member when confirmed', async () => {
+  it('sorts upcoming by start date and past by end date regardless of API order', async () => {
+    configurePageData({
+      subscriptions: [
+        { ...mockUpcomingSubscription, id: 31, service_type: 'Zulu Upcoming', start_date: '2026-06-01', end_date: '2026-06-30' },
+        { ...mockCompletedSubscription, id: 41, service_type: 'Older Past', start_date: '2026-02-01', end_date: '2026-02-28' },
+        mockSubscription,
+        { ...mockUpcomingSubscription, id: 32, service_type: 'Alpha Upcoming', start_date: '2026-05-01', end_date: '2026-05-31' },
+        { ...mockCompletedSubscription, id: 42, service_type: 'Recent Past', start_date: '2026-03-01', end_date: '2026-03-31' },
+      ],
+    });
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    const alphaUpcoming = await screen.findByText('Alpha Upcoming');
+    const zuluUpcoming = screen.getByText('Zulu Upcoming');
+    const recentPast = screen.getByText('Recent Past');
+    const olderPast = screen.getByText('Older Past');
+
+    expectBefore(alphaUpcoming, zuluUpcoming);
+    expectBefore(recentPast, olderPast);
+  });
+
+  it('does not render deprecated status highlight cards even if the API sends them', async () => {
+    configurePageData({
+      detail: {
+        ...mockMemberDetail,
+        renewal: { kind: 'ends_soon', message: 'Your subscription ends soon, please renew.' },
+        status_highlights: [
+          {
+            key: 'upcoming_renewal',
+            label: 'Upcoming renewal',
+            tone: 'warning',
+            detail: 'Your subscription ends soon, please renew.',
+          },
+          {
+            key: 'consistency_building',
+            label: 'Consistency building',
+            tone: 'info',
+            detail: 'You are building your consistency, keep it up!',
+          },
+        ],
+      },
+    });
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Renewal')).toBeInTheDocument();
+      expect(screen.queryByText('Upcoming renewal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Consistency building')).not.toBeInTheDocument();
+    });
+  });
+
+  it('handles malformed subscription data without crashing and falls back safely', async () => {
+    configurePageData({
+      detail: {
+        ...mockMemberDetail,
+        active_subscription: {
+          ...mockSubscription,
+          service_type: '',
+          start_date: 'not-a-date',
+          end_date: 'also-bad',
+          total_sessions: -8,
+          attended_sessions: 99,
+          remaining_sessions: -12,
+          amount: Number.NaN,
+        },
+      },
+      subscriptions: [
+        {
+          ...mockSubscription,
+          service_type: '',
+          start_date: 'not-a-date',
+          end_date: 'also-bad',
+          total_sessions: -8,
+          attended_sessions: 99,
+          remaining_sessions: -12,
+          amount: Number.NaN,
+        },
+      ],
+    });
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Untitled package')).toBeInTheDocument();
+      expect(screen.getByText('₹0')).toBeInTheDocument();
+      expect(screen.getByText('not-a-date - also-bad')).toBeInTheDocument();
+      expect(screen.getByText('0 of 0 used')).toBeInTheDocument();
+    });
+  });
+
+  it('shows archive blockers and unarchives when confirmed', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockApiPost.mockResolvedValue({ ok: true });
+
     configurePageData({
       detail: {
         ...mockMemberDetail,
         status: 'archived',
         active_subscription: null,
-        consistency: null,
-        renewal: null,
-        status_highlights: [
-          {
-            key: 'no_active_subscription',
-            label: 'No active subscription',
-            tone: 'neutral',
-            detail: 'This member does not have an active subscription right now.',
-          },
-        ],
         archive_action: {
           kind: 'unarchive',
           allowed: true,
@@ -207,14 +281,5 @@ describe('OwnerMemberDetailPage', () => {
 
     expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/unarchive');
     confirmSpy.mockRestore();
-  });
-
-  it('shows an explicit empty state when no subscriptions exist', async () => {
-    configurePageData({ subscriptions: [] });
-    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
-
-    await waitFor(() => {
-      expect(screen.getByText('No subscriptions yet.')).toBeInTheDocument();
-    });
   });
 });

@@ -301,6 +301,18 @@ describe('Member Management', () => {
       ]);
     });
 
+    it('sorts names lexically without case sensitivity', async () => {
+      await seedMember({ full_name: 'zara', email: 'zara@test.com', phone: '1111111111' });
+      await seedMember({ full_name: 'Alex', email: 'alex@test.com', phone: '2222222222' });
+      await seedMember({ full_name: 'ben', email: 'ben@test.com', phone: '3333333333' });
+
+      const res = await api('/api/members', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any[];
+      expect(body.map((member) => member.full_name)).toEqual(['Alex', 'ben', 'zara']);
+    });
+
     it('supports the all view explicitly and excludes archived members', async () => {
       await seedMembersViewFixtures();
 

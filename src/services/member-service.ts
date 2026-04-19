@@ -84,6 +84,12 @@ export function toProfile(m: MemberRow): MemberProfile {
   return { id: m.id, full_name: m.full_name, email: m.email, phone: m.phone, join_date: m.join_date, status: m.status };
 }
 
+function sortMembersLexically<T extends { id: number; full_name: string }>(members: T[]) {
+  return [...members].sort((a, b) =>
+    a.full_name.localeCompare(b.full_name, 'en', { sensitivity: 'base' }) || a.id - b.id
+  );
+}
+
 export function isMemberListView(value: string): value is MemberListView {
   return MEMBER_LIST_VIEWS.includes(value as MemberListView);
 }
@@ -478,7 +484,7 @@ export async function listMembers(db: AppDatabase, view: MemberListView) {
   const today = getIstDate();
 
   if (view === 'archived') {
-    return members.map(m => toProfile(m));
+    return sortMembersLexically(members.map(m => toProfile(m)));
   }
 
   const enrichedMembers = await Promise.all(members.map(async (m) => {
@@ -486,7 +492,7 @@ export async function listMembers(db: AppDatabase, view: MemberListView) {
     return { ...toProfile(m), ...enrichment };
   }));
 
-  return enrichedMembers.filter(member => matchesMemberView(member, view));
+  return sortMembersLexically(enrichedMembers.filter(member => matchesMemberView(member, view)));
 }
 
 export async function createNewMember(db: AppDatabase, data: { full_name: string; email: string; phone: string; join_date: string }) {

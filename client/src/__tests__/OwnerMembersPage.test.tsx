@@ -57,7 +57,7 @@ describe('OwnerMembersPage', () => {
 
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/members');
-      expect(screen.getByRole('heading', { level: 3, name: 'All' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'All Active' })).toBeInTheDocument();
       expect(screen.getByText('Alex Kumar')).toBeInTheDocument();
       expect(screen.getByText('7 left')).toBeInTheDocument();
     });
@@ -76,7 +76,7 @@ describe('OwnerMembersPage', () => {
 
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=no-plan');
-      expect(screen.getByText('No Plan')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'No Active Plan' })).toBeInTheDocument();
       expect(screen.getByText('Starts soon')).toBeInTheDocument();
       expect(screen.getByText('20 Apr')).toBeInTheDocument();
     });
@@ -98,7 +98,7 @@ describe('OwnerMembersPage', () => {
 
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=today');
-      expect(screen.getByRole('heading', { level: 3, name: 'Today' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'Marked Today' })).toBeInTheDocument();
       expect(screen.getAllByText('In today').length).toBeGreaterThan(0);
     });
   });
