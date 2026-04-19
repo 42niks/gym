@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerMembersPage from '../pages/owner/OwnerMembersPage.js';
 import { renderWithProviders } from './test-utils.js';
-import { mockMemberListItem, mockRenewalStartsOn } from './mocks.js';
+import { mockMemberListItem, mockRenewalEndsSoon, mockRenewalStartsOn } from './mocks.js';
 
 const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }));
 
@@ -17,14 +17,89 @@ vi.mock('../lib/api.js', async () => {
   return { ...actual, api: { get: mockApiGet, post: vi.fn(), patch: vi.fn() } };
 });
 
-function tabLabels(container: HTMLElement) {
+function dockButtonLabels(container: HTMLElement) {
   const dock = container.querySelector('.members-view-dock');
   if (!dock) return [];
 
   return Array.from(dock.querySelectorAll('button')).map((button) => {
     const iconText = button.querySelector('.material-symbols-outlined')?.textContent ?? '';
-    return button.textContent?.replace(iconText, '').replace(/\s+/g, ' ').trim() ?? '';
+    return button.textContent
+      ?.replace(iconText, '')
+      .replace(/\s+/g, ' ')
+      .replace(/([A-Za-z])(\d+)$/, '$1 $2')
+      .trim() ?? '';
   });
+}
+
+function createMember(name: string, overrides: Record<string, unknown> = {}) {
+  return {
+    ...mockMemberListItem,
+    id: Math.floor(Math.random() * 10000) + 1,
+    full_name: name,
+    ...overrides,
+  };
+}
+
+function configureMemberListResponses(
+  overrides: Partial<Record<string, any[]>> = {},
+) {
+  const responses: Record<string, any[]> = {
+    '/api/members': [
+      createMember('Alex Kumar'),
+    ],
+    '/api/members?view=no-plan': [
+      createMember('Bianca Shah', {
+        active_subscription: null,
+        renewal: mockRenewalStartsOn,
+        owner_consistency_state: { stage: 'not_consistent', days: 0, at_risk: false },
+      }),
+    ],
+    '/api/members?view=renewal': [
+      createMember('Cyrus Nair', {
+        renewal: mockRenewalEndsSoon,
+      }),
+    ],
+    '/api/members?view=at-risk': [
+      createMember('Diya Arora', {
+        consistency_risk_today: { streak_days: 6, message: 'Attend today to keep the streak alive.' },
+        owner_consistency_state: { stage: 'building', days: 6, at_risk: true },
+      }),
+    ],
+    '/api/members?view=building': [
+      createMember('Eshan Roy', {
+        consistency: { status: 'building', days: 3, message: 'Still building consistency.' },
+        owner_consistency_state: { stage: 'building', days: 3, at_risk: false },
+      }),
+    ],
+    '/api/members?view=consistent': [
+      createMember('Farah Ali', {
+        owner_consistency_state: { stage: 'consistent', days: 11, at_risk: false },
+      }),
+    ],
+    '/api/members?view=today': [
+      createMember('Gia Sen', {
+        marked_attendance_today: true,
+        owner_consistency_state: { stage: 'building', days: 5, at_risk: false },
+      }),
+    ],
+    '/api/members?view=archived': [
+      createMember('Hari Iyer', {
+        status: 'archived',
+        active_subscription: null,
+        consistency: null,
+        renewal: null,
+        consistency_risk_today: null,
+      }),
+    ],
+    ...overrides,
+  };
+
+  mockApiGet.mockImplementation((url: string) => {
+    if (url in responses) return Promise.resolve(responses[url]);
+    return Promise.reject(new Error(`Unexpected GET ${url}`));
+  });
+
+  return responses;
 }
 
 beforeEach(() => {
@@ -38,7 +113,7 @@ describe('OwnerMembersPage', () => {
 
     expect(screen.getByRole('heading', { name: 'MEMBERS' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /new/i })).toHaveAttribute('href', '/members/new');
-    expect(tabLabels(container)).toEqual([
+    expect(dockButtonLabels(container)).toEqual([
       'All',
       'No plan',
       'Renewal',
@@ -50,46 +125,49 @@ describe('OwnerMembersPage', () => {
     ]);
   });
 
-  it('loads the all view by default', async () => {
-    mockApiGet.mockResolvedValue([mockMemberListItem]);
+  it('loads the all view by default with the redesigned member card', async () => {
+    configureMemberListResponses();
 
     renderWithProviders(<OwnerMembersPage />, { route: '/members' });
 
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/members');
       expect(screen.getByRole('heading', { level: 3, name: 'All Active' })).toBeInTheDocument();
-      expect(screen.getByText('Alex Kumar')).toBeInTheDocument();
-      expect(screen.getByText('7 left')).toBeInTheDocument();
     });
+
+    const memberName = await screen.findByText('Alex Kumar');
+    const memberCard = memberName.closest('a');
+    expect(memberCard).not.toBeNull();
+    expect(within(memberCard as HTMLElement).getByText('Alex Kumar')).toBeInTheDocument();
+    expect(within(memberCard as HTMLElement).getByText('Consistent')).toBeInTheDocument();
+    expect(within(memberCard as HTMLElement).getByText('Not In Today')).toBeInTheDocument();
+    expect(within(memberCard as HTMLElement).getByText('Active')).toBeInTheDocument();
+    expect(screen.queryByText('member@thebase.fit')).not.toBeInTheDocument();
+    expect(screen.queryByText('7 left')).not.toBeInTheDocument();
   });
 
-  it('loads a selected view from the URL and renders view-specific copy', async () => {
-    mockApiGet.mockResolvedValue([
-      {
-        ...mockMemberListItem,
-        active_subscription: null,
-        renewal: mockRenewalStartsOn,
-      },
-    ]);
+  it('loads a selected view from the URL and keeps the same card model', async () => {
+    configureMemberListResponses();
 
     renderWithProviders(<OwnerMembersPage />, { route: '/members?view=no-plan' });
 
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=no-plan');
       expect(screen.getByRole('heading', { level: 3, name: 'No Active Plan' })).toBeInTheDocument();
-      expect(screen.getByText('Starts soon')).toBeInTheDocument();
-      expect(screen.getByText('20 Apr')).toBeInTheDocument();
     });
+
+    const memberName = await screen.findByText('Bianca Shah');
+    const memberCard = memberName.closest('a');
+    expect(memberCard).not.toBeNull();
+    expect(within(memberCard as HTMLElement).getByText('Bianca Shah')).toBeInTheDocument();
+    expect(within(memberCard as HTMLElement).getByText('No Plan')).toBeInTheDocument();
+    expect(screen.queryByText('Starts soon')).not.toBeInTheDocument();
+    expect(screen.queryByText('20 Apr')).not.toBeInTheDocument();
   });
 
   it('switches to the today view from the bottom tabs', async () => {
     const user = userEvent.setup();
-    mockApiGet.mockImplementation((url: string) => {
-      if (url === '/api/members?view=today') {
-        return Promise.resolve([{ ...mockMemberListItem, marked_attendance_today: true }]);
-      }
-      return Promise.resolve([mockMemberListItem]);
-    });
+    configureMemberListResponses();
 
     renderWithProviders(<OwnerMembersPage />, { route: '/members' });
 
@@ -99,21 +177,66 @@ describe('OwnerMembersPage', () => {
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=today');
       expect(screen.getByRole('heading', { level: 3, name: 'Marked Today' })).toBeInTheDocument();
-      expect(screen.getAllByText('In today').length).toBeGreaterThan(0);
     });
+
+    expect(screen.getByText('In Today')).toBeInTheDocument();
+  });
+
+  it('shows counts in the active view header and the dock tabs', async () => {
+    configureMemberListResponses({
+      '/api/members': [createMember('Alex Kumar'), createMember('Brin Das')],
+      '/api/members?view=no-plan': [createMember('Casey Noor', { active_subscription: null })],
+      '/api/members?view=renewal': [createMember('Div Patel', { renewal: mockRenewalEndsSoon }), createMember('Ena Gill', { renewal: mockRenewalEndsSoon }), createMember('Fahim Ali', { renewal: mockRenewalEndsSoon })],
+      '/api/members?view=at-risk': [createMember('Gita Sen')],
+      '/api/members?view=building': [createMember('Hari Iyer')],
+      '/api/members?view=consistent': [createMember('Ishaan Rao'), createMember('Jiya Khan')],
+      '/api/members?view=today': [createMember('Kabir Jain')],
+      '/api/members?view=archived': [createMember('Lina Dutt', { status: 'archived' })],
+    });
+
+    const { container } = renderWithProviders(<OwnerMembersPage />, { route: '/members?view=renewal' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 3, name: 'Upcoming Renewal' })).toBeInTheDocument();
+      expect(dockButtonLabels(container)).toEqual([
+        'All 2',
+        'No plan 1',
+        'Renewal 3',
+        'At risk 1',
+        'Building 1',
+        'Consistent 2',
+        'Today 1',
+        'Archived 1',
+      ]);
+    });
+
+    const headingRow = screen.getByRole('heading', { level: 3, name: 'Upcoming Renewal' }).parentElement;
+    expect(headingRow).not.toBeNull();
+    expect(within(headingRow as HTMLElement).getByText('3')).toBeInTheDocument();
+  });
+
+  it('fails soft when one tab count request errors', async () => {
+    const responses = configureMemberListResponses();
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/members?view=renewal') {
+        return Promise.reject(new Error('boom'));
+      }
+      if (url in responses) return Promise.resolve(responses[url]);
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    const { container } = renderWithProviders(<OwnerMembersPage />, { route: '/members' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 3, name: 'All Active' })).toBeInTheDocument();
+      expect(dockButtonLabels(container)).toContain('All 1');
+    });
+
+    expect(dockButtonLabels(container)).toContain('Renewal');
   });
 
   it('renders archived members from the archived view', async () => {
-    mockApiGet.mockResolvedValue([
-      {
-        ...mockMemberListItem,
-        status: 'archived',
-        active_subscription: null,
-        consistency: null,
-        renewal: null,
-        consistency_risk_today: null,
-      },
-    ]);
+    configureMemberListResponses();
 
     renderWithProviders(<OwnerMembersPage />, { route: '/members?view=archived' });
 

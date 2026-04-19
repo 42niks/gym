@@ -5,6 +5,7 @@ import { api, type MemberListItem, type OwnerMemberListView } from '../../lib/ap
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
+import MemberStatusPill, { type MemberStatusPillSpec } from '../../components/MemberStatusPill.js';
 import Spinner from '../../components/Spinner.js';
 import { ownerLinks } from './ownerLinks.js';
 
@@ -84,6 +85,17 @@ const VIEW_META: Record<OwnerMemberListView, {
   },
 };
 
+const PACKAGE_ICON_META = [
+  { match: '1:1 personal training', icon: 'person' },
+  { match: 'group personal training', icon: 'groups' },
+  { match: 'mma/kickboxing personal training', icon: 'sports_mma' },
+  { match: 'boxing', icon: 'sports_mma' },
+] as const;
+
+const MEMBER_CARD_CLASS = 'rounded-2xl border border-zinc-300 bg-white/55 px-4 py-4 shadow-sm shadow-black/5 backdrop-blur-sm transition-all hover:border-zinc-400 hover:bg-white/72 dark:border-zinc-600 dark:bg-black/20 dark:hover:border-zinc-500 dark:hover:bg-black/28';
+
+type MemberPill = MemberStatusPillSpec;
+
 function isOwnerMemberListView(value: string | null): value is OwnerMemberListView {
   return value !== null && ALL_VIEWS.includes(value as OwnerMemberListView);
 }
@@ -105,106 +117,92 @@ function formatJoinDate(value: string) {
   });
 }
 
-function formatShortDate(value: string) {
-  return new Date(value).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-  });
-}
-
 function getMemberHref(memberId: number, view: OwnerMemberListView) {
   return view === 'all' ? `/members/${memberId}` : `/members/${memberId}?view=${encodeURIComponent(view)}`;
 }
 
-function getViewLead(member: MemberListItem, view: OwnerMemberListView) {
-  switch (view) {
-    case 'no-plan':
-      return member.renewal?.message ?? 'No active subscription yet.';
-    case 'renewal':
-      return member.renewal?.message ?? 'Needs renewal follow-up.';
-    case 'at-risk':
-      return member.consistency_risk_today?.message ?? null;
-    case 'building':
-      return member.consistency?.message ?? 'Still building consistency.';
-    case 'consistent':
-      return member.consistency?.message ?? null;
-    case 'today':
-      return member.consistency?.message ?? member.renewal?.message ?? 'Checked in today.';
-    case 'all':
-      return member.consistency?.message ?? member.renewal?.message ?? null;
-    case 'archived':
-      return null;
-  }
+function getMembersEndpoint(view: OwnerMemberListView) {
+  return view === 'all'
+    ? '/api/members'
+    : `/api/members?view=${encodeURIComponent(view)}`;
 }
 
-function getMembershipSummary(member: MemberListItem) {
-  if (member.active_subscription) {
-    return {
-      primary: `${member.active_subscription.remaining_sessions} left`,
-      secondary: member.active_subscription.service_type,
-      className: 'text-brand-600 dark:text-brand-300',
-    };
-  }
-
-  if (member.renewal?.kind === 'starts_on' && member.renewal.upcoming_start_date) {
-    return {
-      primary: 'Starts soon',
-      secondary: formatShortDate(member.renewal.upcoming_start_date),
-      className: 'text-sky-700 dark:text-sky-300',
-    };
-  }
-
-  return {
-    primary: 'No plan',
-    secondary: null,
-    className: 'text-black/65 dark:text-white/75',
-  };
+function getPackageIcon(serviceType: string | null | undefined) {
+  if (!serviceType) return 'credit_card_off';
+  const normalized = serviceType.trim().toLowerCase();
+  return PACKAGE_ICON_META.find((item) => normalized.includes(item.match))?.icon ?? 'inventory_2';
 }
 
-function getViewBadge(member: MemberListItem, view: OwnerMemberListView) {
-  switch (view) {
-    case 'no-plan':
-      return {
-        label: member.renewal?.kind === 'starts_on' ? 'Upcoming' : 'No plan',
-        className: 'border-sky-500/25 bg-sky-500/10 text-sky-700 dark:text-sky-300',
-      };
-    case 'renewal':
-      return {
-        label: 'Renew soon',
-        className: 'border-orange-500/25 bg-orange-500/10 text-orange-700 dark:text-orange-300',
-      };
-    case 'at-risk':
-      return {
-        label: 'Attend today',
-        className: 'border-red-500/25 bg-red-500/10 text-red-700 dark:text-red-300',
-      };
-    case 'building':
-      return {
-        label: 'Building',
-        className: 'border-stone-500/25 bg-stone-500/10 text-stone-700 dark:text-stone-300',
-      };
-    case 'consistent':
-      return {
-        label: member.consistency?.status === 'consistent' && member.consistency.days
-          ? `${member.consistency.days}d streak`
-          : 'Consistent',
-        className: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-      };
-    case 'today':
-      return {
-        label: 'In today',
-        className: 'border-brand-500/25 bg-brand-500/10 text-brand-700 dark:text-brand-300',
-      };
-    default:
-      return null;
+function buildAllConsistencyPills(member: MemberListItem): MemberPill[] {
+  const pills: MemberPill[] = [];
+  const ownerStage = member.owner_consistency_state?.stage;
+  const fallbackStage = member.consistency?.status === 'consistent'
+    ? 'consistent'
+    : member.consistency?.status === 'building'
+      ? 'building'
+      : null;
+  const stage = ownerStage ?? fallbackStage;
+  const atRisk = member.owner_consistency_state?.at_risk ?? (member.consistency_risk_today !== null);
+
+  if (stage === 'consistent') {
+    pills.push({ key: 'consistent', label: 'Consistent', icon: 'moving' });
+  } else if (stage === 'building') {
+    pills.push({ key: 'building', label: 'Building', icon: 'timeline' });
+  } else if (stage === 'not_consistent') {
+    pills.push({ key: 'not-consistent', label: 'Not Consistent', icon: 'block' });
   }
+
+  if (atRisk) {
+    pills.push({ key: 'at-risk', label: 'At Risk', icon: 'warning', tone: 'warning' });
+  }
+
+  pills.push({
+    key: 'today',
+    label: member.marked_attendance_today ? 'In Today' : 'Not In Today',
+    icon: 'today',
+    tone: member.marked_attendance_today ? 'default' : 'neutral',
+  });
+
+  return pills;
+}
+
+function buildAllSubscriptionPills(member: MemberListItem): MemberPill[] {
+  const pills: MemberPill[] = [
+    member.active_subscription
+      ? { key: 'active', label: 'Active', icon: 'bolt' }
+      : { key: 'no-plan', label: 'No Plan', icon: 'credit_card_off', tone: 'neutral' },
+  ];
+
+  if (member.renewal?.kind === 'ends_soon') {
+    pills.push({ key: 'renewal', label: 'Renewal', icon: 'notification_important', tone: 'warning' });
+  }
+
+  return pills;
+}
+
+function MemberPillCluster({
+  pills,
+  className = '',
+}: {
+  pills: MemberPill[];
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-wrap gap-2 ${className}`}>
+      {pills.map((pill) => (
+        <MemberStatusPill key={pill.key} pill={pill} />
+      ))}
+    </div>
+  );
 }
 
 function BottomViewTabs({
   currentView,
+  counts,
   onSelect,
 }: {
   currentView: OwnerMemberListView;
+  counts: Partial<Record<OwnerMemberListView, number>>;
   onSelect: (view: OwnerMemberListView) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -257,6 +255,7 @@ function BottomViewTabs({
               {ALL_VIEWS.map((view) => {
                 const meta = VIEW_META[view];
                 const active = view === currentView;
+                const count = counts[view];
 
                 return (
                   <div key={view} className="flex items-center gap-2">
@@ -277,6 +276,11 @@ function BottomViewTabs({
                     >
                       <Icon name={meta.icon} className="text-[0.95rem]" />
                       {meta.tabLabel}
+                      {typeof count === 'number' ? (
+                        <span className="text-[0.68rem] tracking-[0.12em] opacity-70">
+                          {count}
+                        </span>
+                      ) : null}
                     </button>
                   </div>
                 );
@@ -296,10 +300,32 @@ export default function OwnerMembersPage() {
 
   const { data: members = [], isLoading } = useQuery<MemberListItem[]>({
     queryKey: ['owner-members', currentView],
-    queryFn: () => api.get(currentView === 'all'
-      ? '/api/members'
-      : `/api/members?view=${encodeURIComponent(currentView)}`),
+    queryFn: () => api.get(getMembersEndpoint(currentView)),
   });
+
+  const { data: memberCounts = {} } = useQuery<Record<OwnerMemberListView, number>>({
+    queryKey: ['owner-member-counts'],
+    queryFn: async () => {
+      const results = await Promise.allSettled(
+        ALL_VIEWS.map(async (view) => {
+          const items = await api.get<MemberListItem[]>(getMembersEndpoint(view));
+          return [view, items.length] as const;
+        }),
+      );
+
+      return results.reduce<Partial<Record<OwnerMemberListView, number>>>((acc, result) => {
+        if (result.status === 'fulfilled') {
+          const [view, count] = result.value;
+          acc[view] = count;
+        }
+        return acc;
+      }, {}) as Record<OwnerMemberListView, number>;
+    },
+  });
+
+  const resolvedMemberCounts = isLoading
+    ? memberCounts
+    : { ...memberCounts, [currentView]: members.length };
 
   function handleViewSelect(view: OwnerMemberListView) {
     const nextParams = new URLSearchParams(searchParams);
@@ -340,9 +366,14 @@ export default function OwnerMembersPage() {
               <Icon name={currentMeta.icon} className="text-[1.25rem] text-black/80 dark:text-white/85" />
             </span>
             <div className="min-w-0">
-              <h3 className="font-headline text-[2rem] font-black italic leading-[0.92] tracking-[-0.04em] text-black dark:text-white sm:text-[2.3rem]">
-                {currentMeta.label}
-              </h3>
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="min-w-0 flex-1 font-headline text-[2rem] font-black italic leading-[0.92] tracking-[-0.04em] text-black dark:text-white sm:text-[2.3rem]">
+                  {currentMeta.label}
+                </h3>
+                <span className="shrink-0 text-right font-headline text-[2rem] font-black italic leading-[0.92] tracking-[-0.04em] text-black dark:text-white sm:text-[2.3rem]">
+                  {members.length}
+                </span>
+              </div>
               <p className="mt-2 max-w-[28rem] text-xs leading-snug text-black/60 dark:text-white/70">
                 {currentMeta.description}
               </p>
@@ -362,7 +393,7 @@ export default function OwnerMembersPage() {
               <Link
                 key={member.id}
                 to={getMemberHref(member.id, currentView)}
-                className="block rounded-2xl px-4 py-4 transition-all hover:bg-surface-raised/80 dark:hover:bg-surface-raised/60"
+                className={`block ${MEMBER_CARD_CLASS}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -383,41 +414,61 @@ export default function OwnerMembersPage() {
         ) : (
           <Card className="space-y-1.5 p-3">
             {members.map((member) => {
-              const summary = getMembershipSummary(member);
-              const lead = getViewLead(member, currentView);
-              const badge = getViewBadge(member, currentView);
+              const consistencyPills = buildAllConsistencyPills(member);
+              const subscriptionPills = buildAllSubscriptionPills(member);
+              const todayPill = consistencyPills.find((pill) => pill.key === 'today');
+              const headlineConsistencyPills = consistencyPills.filter((pill) => pill.key !== 'today');
+              const topConsistencyPills = headlineConsistencyPills.length > 0
+                ? headlineConsistencyPills
+                : todayPill
+                  ? [todayPill]
+                  : [];
+              const bottomConsistencyPills = headlineConsistencyPills.length > 0 && todayPill ? [todayPill] : [];
+              const topSubscriptionPills = subscriptionPills.slice(0, 1);
+              const bottomSubscriptionPills = subscriptionPills.slice(1);
 
               return (
                 <Link
                   key={member.id}
                   to={getMemberHref(member.id, currentView)}
-                  className="flex items-center justify-between gap-4 rounded-2xl px-4 py-4 transition-all hover:bg-surface-raised/80 dark:hover:bg-surface-raised/60"
+                  className={`block ${MEMBER_CARD_CLASS}`}
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-bold text-black dark:text-white">{member.full_name}</p>
-                      {badge ? (
-                        <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 font-label text-[0.64rem] font-bold italic uppercase tracking-[0.16em] ${badge.className}`}>
-                          {badge.label}
-                        </span>
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <p className="min-w-0 flex-1 pr-2 text-lg font-bold text-black dark:text-white">{member.full_name}</p>
+                      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-black bg-white/80 shadow-sm shadow-black/5 dark:border-white dark:bg-white/[0.05]">
+                        <Icon
+                          name={getPackageIcon(member.active_subscription?.service_type)}
+                          className="text-[1.25rem] text-black/80 dark:text-white/85"
+                        />
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {(topConsistencyPills.length > 0 || topSubscriptionPills.length > 0) ? (
+                        <div className="flex items-start justify-between gap-3">
+                          {topConsistencyPills.length > 0 ? (
+                            <MemberPillCluster pills={topConsistencyPills} className="min-w-0 flex-1" />
+                          ) : (
+                            <div className="min-w-0 flex-1" />
+                          )}
+                          {topSubscriptionPills.length > 0 ? (
+                            <MemberPillCluster pills={topSubscriptionPills} className="shrink-0 justify-end" />
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {(bottomConsistencyPills.length > 0 || bottomSubscriptionPills.length > 0) ? (
+                        <div className="flex items-start justify-between gap-3">
+                          {bottomConsistencyPills.length > 0 ? (
+                            <MemberPillCluster pills={bottomConsistencyPills} className="min-w-0 flex-1" />
+                          ) : (
+                            <div className="min-w-0 flex-1" />
+                          )}
+                          {bottomSubscriptionPills.length > 0 ? (
+                            <MemberPillCluster pills={bottomSubscriptionPills} className="shrink-0 justify-end" />
+                          ) : null}
+                        </div>
                       ) : null}
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-black/60 dark:text-white/70">{member.email}</p>
-                    {lead ? (
-                      <p className="mt-1 max-w-[15rem] text-xs leading-snug text-black/65 dark:text-white/75">
-                        {lead}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="ml-2 shrink-0 text-right">
-                    <p className={`text-xs font-bold ${summary.className}`}>{summary.primary}</p>
-                    {summary.secondary ? (
-                      <p className="mt-0.5 text-xs text-black/60 dark:text-white/70">{summary.secondary}</p>
-                    ) : null}
-                    {member.marked_attendance_today ? (
-                      <p className="mt-1 text-xs font-medium text-brand-600 dark:text-brand-300">In today</p>
-                    ) : null}
                   </div>
                 </Link>
               );
@@ -426,7 +477,7 @@ export default function OwnerMembersPage() {
         )}
       </div>
 
-      <BottomViewTabs currentView={currentView} onSelect={handleViewSelect} />
+      <BottomViewTabs currentView={currentView} counts={resolvedMemberCounts} onSelect={handleViewSelect} />
     </AppShell>
   );
 }

@@ -82,6 +82,18 @@ describe('OwnerMemberDetailPage', () => {
     expectBefore(screen.getByText('Upcoming subscriptions'), screen.getByText('Past subscriptions'));
   });
 
+  it('uses the shared status pill palette in the overview cards', async () => {
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    const activePill = await screen.findByText('Active');
+    expect(activePill.parentElement).toHaveClass('bg-energy-100/55');
+    expect(activePill.parentElement).toHaveClass('text-energy-500');
+
+    const consistentDaysSurface = screen.getByText('14 Days').closest('.member-status-pill-consistent-surface');
+    expect(consistentDaysSurface).not.toBeNull();
+    expect(consistentDaysSurface?.parentElement).toHaveClass('member-status-pill-consistent-frame');
+  });
+
   it('keeps complete before attendance in the active subscription card', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 

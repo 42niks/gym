@@ -1,5 +1,4 @@
 import {
-  forwardRef,
   useLayoutEffect,
   useRef,
   useState,
@@ -15,6 +14,7 @@ import AppShell from '../../components/AppShell.js';
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
+import MemberStatusPill, { type MemberStatusPillSpec } from '../../components/MemberStatusPill.js';
 import ProfileFieldRow from '../../components/ProfileFieldRow.js';
 import Spinner from '../../components/Spinner.js';
 import { formatFullDate, formatStatusLabel } from '../../components/attendance/AttendanceCalendar.js';
@@ -179,11 +179,7 @@ const PILL_CARD_SINGLE_ROW_MIN_HEIGHT_PX = 52;
 const PILL_CARD_ROW_GAP_PX = 8;
 const PILL_CARD_PILL_FALLBACK_HEIGHT_PX = 24;
 
-type PillSpec = {
-  key: string;
-  label: string;
-  icon?: string;
-};
+type PillSpec = MemberStatusPillSpec;
 
 function computePillRows(widths: number[], availableWidth: number) {
   if (widths.length === 0 || availableWidth <= 0) return 1;
@@ -209,24 +205,6 @@ function computePillRows(widths: number[], availableWidth: number) {
 
   return Math.max(rows, 1);
 }
-
-const StatusPill = forwardRef<HTMLSpanElement, {
-  label: string;
-  icon?: string;
-}>(function StatusPill({
-  label,
-  icon,
-}, ref) {
-  return (
-    <span
-      ref={ref}
-      className="inline-flex items-center whitespace-nowrap rounded-full border border-black bg-black/[0.04] px-2.5 py-1 font-label text-[0.67rem] font-bold italic uppercase tracking-[0.16em] text-black dark:border-white dark:bg-white/[0.04] dark:text-white"
-    >
-      {icon ? <Icon name={icon} className="mr-[0.5ch] text-[0.85rem]" /> : null}
-      <span>{label}</span>
-    </span>
-  );
-});
 
 function CompactPillCard({
   label,
@@ -296,13 +274,15 @@ function CompactPillCard({
         </span>
         <div ref={pillsWrapRef} className="ml-auto flex min-w-0 flex-1 flex-wrap justify-end gap-2">
           {pills.map((pill, index) => (
-            <StatusPill
+            <MemberStatusPill
               key={pill.key}
               ref={(node) => {
                 pillRefs.current[index] = node;
               }}
-              label={pill.label}
-              icon={pill.icon}
+              pill={pill}
+              className="whitespace-nowrap"
+              contentClassName="text-[0.67rem]"
+              iconClassName="text-[0.85rem]"
             />
           ))}
         </div>
@@ -314,9 +294,10 @@ function CompactPillCard({
 function buildSubscriptionPills(detail: MemberDetail): PillSpec[] {
   const pills: PillSpec[] = [
     {
-      key: 'subscription-state',
+      key: detail.active_subscription ? 'active' : 'no-plan',
       label: detail.active_subscription ? 'Active' : 'No plan',
       icon: detail.active_subscription ? 'bolt' : 'credit_card_off',
+      tone: detail.active_subscription ? 'default' : 'neutral',
     },
   ];
 
@@ -325,6 +306,7 @@ function buildSubscriptionPills(detail: MemberDetail): PillSpec[] {
       key: 'renewal',
       label: 'Renewal',
       icon: 'notification_important',
+      tone: 'warning',
     });
   }
 
@@ -372,6 +354,7 @@ function buildConsistencyPills(detail: MemberDetail): PillSpec[] {
         key: 'at-risk',
         label: 'At risk',
         icon: 'warning',
+        tone: 'warning',
       });
     }
   }
@@ -380,6 +363,7 @@ function buildConsistencyPills(detail: MemberDetail): PillSpec[] {
     key: 'today-status',
     label: detail.marked_attendance_today ? 'In today' : 'Not in today',
     icon: 'today',
+    tone: detail.marked_attendance_today ? 'default' : 'neutral',
   });
 
   return pills;

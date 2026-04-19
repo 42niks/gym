@@ -273,6 +273,57 @@
     backface-visibility: hidden;
   }
 
+  .member-status-pill-consistent-frame {
+    position: relative;
+    isolation: isolate;
+    contain: paint;
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    border-radius: 9999px;
+    background: rgb(var(--color-brand-600));
+  }
+
+  .dark .member-status-pill-consistent-frame {
+    background: rgb(var(--color-brand-700));
+  }
+
+  .member-status-pill-consistent-surface {
+    border-radius: calc(9999px - 1px);
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    background:
+      radial-gradient(
+        170% 150% at 50% -60%,
+        rgb(var(--color-brand-400)) 0%,
+        rgb(var(--color-brand-500)) 58%,
+        transparent 50%
+      ),
+      linear-gradient(
+        180deg,
+        rgb(var(--color-brand-500)) 0%,
+        rgb(var(--color-brand-600)) 52%,
+        rgb(var(--color-brand-700)) 100%
+      );
+  }
+
+  .dark .member-status-pill-consistent-surface {
+    background:
+      radial-gradient(
+        170% 150% at 50% -60%,
+        rgb(var(--color-brand-400) / 0.82) 0%,
+        rgb(var(--color-brand-500) / 0.9) 58%,
+        transparent 59%
+      ),
+      linear-gradient(
+        180deg,
+        rgb(var(--color-brand-600) / 0.96) 0%,
+        rgb(var(--color-brand-700) / 0.98) 52%,
+        rgb(var(--color-brand-800)) 100%
+      );
+  }
+
   .owner-home-attendance-frame {
     position: relative;
     isolation: isolate;

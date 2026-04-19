@@ -211,7 +211,8 @@ export async function applyDevSampleSeed(db: AppDatabase): Promise<void> {
     }),
   };
 
-  const consistentDates = buildDateList(today, [-20, -18, -16, -14, -12, -10, -8, -6, -4, -2, 0]);
+  const consistentTodayDates = buildDateList(today, [-20, -18, -16, -14, -12, -10, -8, -6, -4, -2, 0]);
+  const consistentAtRiskDates = buildDateList(today, [-20, -18, -16, -14, -12, -10, -8, -6, -4, -2, -1]);
   const atRiskDates = buildDateList(today, [-13, -10, -8, -7, -4, -2]);
   const renewalDates = buildDateList(today, [-18, -16, -14, -12, -10, -8, -6, -4, -2]);
   const consistentStart = addDays(today, -46);
@@ -227,6 +228,7 @@ export async function applyDevSampleSeed(db: AppDatabase): Promise<void> {
 
   try {
     for (let index = 0; index < CONSISTENT_NAMES.length; index++) {
+      const consistentDates = index === 0 ? consistentAtRiskDates : consistentTodayDates;
       const memberId = await insertMember(db, {
         fullName: CONSISTENT_NAMES[index],
         email: makeEmail('consistent', index),
