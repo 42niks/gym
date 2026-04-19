@@ -40,6 +40,7 @@ export interface MemberProfile {
   phone: string;
   join_date: string;
   status: string;
+  archived_at: string | null;
 }
 
 export interface ConsistencyRiskToday {
@@ -81,7 +82,15 @@ export interface OwnerArchiveAction {
 }
 
 export function toProfile(m: MemberRow): MemberProfile {
-  return { id: m.id, full_name: m.full_name, email: m.email, phone: m.phone, join_date: m.join_date, status: m.status };
+  return {
+    id: m.id,
+    full_name: m.full_name,
+    email: m.email,
+    phone: m.phone,
+    join_date: m.join_date,
+    status: m.status,
+    archived_at: m.archived_at,
+  };
 }
 
 function sortMembersLexically<T extends { id: number; full_name: string }>(members: T[]) {
@@ -523,7 +532,7 @@ export async function archiveMemberById(db: AppDatabase, id: number): Promise<{ 
   }
 
   await db.batch([
-    { sql: `UPDATE members SET status = 'archived' WHERE id = ?`, params: [id] },
+    { sql: `UPDATE members SET status = 'archived', archived_at = ? WHERE id = ?`, params: [today, id] },
     { sql: `DELETE FROM user_sessions WHERE member_id = ?`, params: [id] },
   ]);
   return {};

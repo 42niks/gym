@@ -1,6 +1,7 @@
 import type { AppDatabase } from '../db/client.js';
 import { applyPackageSeed } from '../db/index.js';
 import { createApp } from '../app.js';
+import { getIstDate } from '../lib/date.js';
 
 export function registerTestRoutes(
   app: ReturnType<typeof createApp>,
@@ -33,9 +34,10 @@ export function registerTestRoutes(
 
   app.post('/api/__test__/member', async (c) => {
     const body = await c.req.json();
+    const archivedAt = body.archived_at ?? (body.status === 'archived' ? getIstDate() : null);
     const result = await db.run(
-      `INSERT INTO members (role, full_name, email, phone, join_date, status)
-       VALUES (?, ?, LOWER(?), ?, ?, ?)`,
+      `INSERT INTO members (role, full_name, email, phone, join_date, status, archived_at)
+       VALUES (?, ?, LOWER(?), ?, ?, ?, ?)`,
       [
         body.role ?? 'member',
         body.full_name ?? 'Test User',
@@ -43,6 +45,7 @@ export function registerTestRoutes(
         body.phone ?? '1234567890',
         body.join_date ?? '2026-01-01',
         body.status ?? 'active',
+        archivedAt,
       ],
     );
     return c.json({ id: result.lastRowId }, 201);

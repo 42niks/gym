@@ -72,6 +72,7 @@ type MemberSeed = {
   phone: string;
   joinDate: string;
   status?: 'active' | 'archived';
+  archivedAt?: string | null;
 };
 
 async function findMemberIdByEmail(db: AppDatabase, email: string): Promise<number | null> {
@@ -102,9 +103,9 @@ async function findPackageId(db: AppDatabase, key: PackageKey): Promise<number> 
 
 async function insertMember(db: AppDatabase, member: MemberSeed): Promise<number> {
   const result = await db.run(
-    `INSERT INTO members (role, full_name, email, phone, join_date, status)
-     VALUES ('member', ?, LOWER(?), ?, ?, ?)`,
-    [member.fullName, member.email, member.phone, member.joinDate, member.status ?? 'active'],
+    `INSERT INTO members (role, full_name, email, phone, join_date, status, archived_at)
+     VALUES ('member', ?, LOWER(?), ?, ?, ?, ?)`,
+    [member.fullName, member.email, member.phone, member.joinDate, member.status ?? 'active', member.archivedAt ?? null],
   );
 
   return result.lastRowId;
@@ -332,6 +333,7 @@ export async function applyDevSampleSeed(db: AppDatabase): Promise<void> {
         phone: makePhone(500000000 + index + 1),
         joinDate: addDays(today, -(180 - index * 3)),
         status: 'archived',
+        archivedAt: addDays(today, -(100 - index * 6)),
       });
     }
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerPackagesPage from '../pages/owner/OwnerPackagesPage.js';
 import { renderWithProviders } from './test-utils.js';
@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe('OwnerPackagesPage', () => {
-  it('renders the packages heading, new-link, and icon tabs', async () => {
+  it('renders the packages heading, new link, and dock tabs with counts', async () => {
     mockApiGet.mockResolvedValue(managedPackages);
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages' });
@@ -85,9 +85,9 @@ describe('OwnerPackagesPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'PACKAGES' })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /new/i })).toHaveAttribute('href', '/packages/new');
-      expect(screen.getByRole('button', { name: '1:1 Personal Training' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Group Personal Training' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'MMA/Kickboxing Personal Training' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /1:1 personal training 1/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /group personal training 1/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /archived packages 1/i })).toBeInTheDocument();
     });
   });
 
@@ -96,14 +96,24 @@ describe('OwnerPackagesPage', () => {
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
+    let selectedCard: HTMLElement | null = null;
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Group Personal Training' })).toBeInTheDocument();
-      expect(screen.getByText('16')).toBeInTheDocument();
-      expect(screen.getByText('2 months')).toBeInTheDocument();
-      expect(screen.getByText('₹18,000')).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument();
+      selectedCard = screen.getByRole('heading', { name: 'Group Personal Training' }).closest('.glass-panel');
+      expect(selectedCard).not.toBeNull();
+      expect(within(selectedCard as HTMLElement).getByText('16')).toBeInTheDocument();
+      expect(within(selectedCard as HTMLElement).getByText('2 months')).toBeInTheDocument();
+      expect(within(selectedCard as HTMLElement).getByText('₹18,000')).toBeInTheDocument();
+      expect(within(selectedCard as HTMLElement).getByRole('button', { name: /archive/i })).toBeInTheDocument();
     });
+
+    expect(
+      screen.getByText((content, element) => (
+        element?.tagName === 'SPAN'
+        && element.className.includes('font-headline')
+        && content.trim() === '1'
+      )),
+    ).toBeInTheDocument();
   });
 
   it('archives an active package from the table', async () => {
@@ -113,8 +123,12 @@ describe('OwnerPackagesPage', () => {
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /archive/i }));
+    const selectedCard = await screen.findByRole('heading', { name: 'Group Personal Training' });
+    const card = selectedCard.closest('.glass-panel');
+    expect(card).not.toBeNull();
+
+    await waitFor(() => expect(within(card as HTMLElement).getByRole('button', { name: /archive/i })).toBeInTheDocument());
+    await user.click(within(card as HTMLElement).getByRole('button', { name: /archive/i }));
 
     await waitFor(() => {
       expect(mockConfirm).toHaveBeenCalled();
@@ -130,23 +144,31 @@ describe('OwnerPackagesPage', () => {
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /archive/i }));
+    const selectedCard = await screen.findByRole('heading', { name: 'Group Personal Training' });
+    const card = selectedCard.closest('.glass-panel');
+    expect(card).not.toBeNull();
+
+    await waitFor(() => expect(within(card as HTMLElement).getByRole('button', { name: /archive/i })).toBeInTheDocument());
+    await user.click(within(card as HTMLElement).getByRole('button', { name: /archive/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Archive failed')).toBeInTheDocument();
     });
   });
 
-  it('shows archived state instead of the archive action for inactive packages', async () => {
+  it('routes an archived service type into the archived packages tab', async () => {
     mockApiGet.mockResolvedValue(managedPackages);
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=MMA%2FKickboxing%20Personal%20Training' });
 
+    let archivedCard: HTMLElement | null = null;
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'MMA/Kickboxing Personal Training' })).toBeInTheDocument();
-      expect(screen.getByText('Archived')).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /archive/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Archived Packages' })).toBeInTheDocument();
+      archivedCard = screen.getByRole('heading', { name: 'Archived Packages' }).closest('.glass-panel');
+      expect(archivedCard).not.toBeNull();
+      expect(within(archivedCard as HTMLElement).getByText('MMA/Kickboxing Personal Training')).toBeInTheDocument();
+      expect(within(archivedCard as HTMLElement).getByText(/^Archived$/i)).toBeInTheDocument();
+      expect(within(archivedCard as HTMLElement).queryByRole('button', { name: /archive/i })).not.toBeInTheDocument();
     });
   });
 });

@@ -7,6 +7,7 @@ import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
 import MemberStatusPill, { type MemberStatusPillSpec } from '../../components/MemberStatusPill.js';
 import Spinner from '../../components/Spinner.js';
+import { formatFullDate } from '../../components/attendance/AttendanceCalendar.js';
 import { ownerLinks } from './ownerLinks.js';
 
 const ALL_VIEWS: OwnerMemberListView[] = [
@@ -30,8 +31,8 @@ const VIEW_META: Record<OwnerMemberListView, {
   all: {
     label: 'All Active',
     tabLabel: 'All',
-    description: 'All non-archived members. This is the everyday roster with plans, consistency, and attendance.',
-    icon: 'groups',
+    description: 'All members (excluding archived)',
+    icon: 'view_cozy',
     emptyState: 'No members found',
   },
   'no-plan': {
@@ -44,7 +45,7 @@ const VIEW_META: Record<OwnerMemberListView, {
   renewal: {
     label: 'Upcoming Renewal',
     tabLabel: 'Renewal',
-    description: 'Members whose current plan ends soon and do not yet have an upcoming renewal.',
+    description: 'Members whose current plan ends soon and do not yet have an upcoming subscription.',
     icon: 'notification_important',
     emptyState: 'No renewal alerts right now',
   },
@@ -65,14 +66,14 @@ const VIEW_META: Record<OwnerMemberListView, {
   consistent: {
     label: 'Consistent',
     tabLabel: 'Consistent',
-    description: 'Members currently meeting the attendance rhythm of their active package.',
+    description: 'Members currently meeting the consistency rule of their active package.',
     icon: 'moving',
     emptyState: 'No members are currently marked consistent',
   },
   today: {
     label: 'Marked Today',
     tabLabel: 'Today',
-    description: 'Members who have already marked attendance for the current day.',
+    description: 'Members who have marked their attendance for the current day.',
     icon: 'today',
     emptyState: 'No members have checked in today',
   },
@@ -109,12 +110,58 @@ function resolveCurrentView(searchParams: URLSearchParams): OwnerMemberListView 
   return searchParams.get('status') === 'archived' ? 'archived' : 'all';
 }
 
-function formatJoinDate(value: string) {
-  return new Date(value).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'long',
+function parseDateParts(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    Number.isNaN(candidate.getTime())
+    || candidate.getUTCFullYear() !== year
+    || candidate.getUTCMonth() !== month - 1
+    || candidate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function toUtcDate(value: string) {
+  const parts = parseDateParts(value);
+  if (!parts) return null;
+  return new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+}
+
+function getIstTodayDateString() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
     year: 'numeric',
-  });
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+function diffUtcDays(start: string, end: string) {
+  const startDate = toUtcDate(start);
+  const endDate = toUtcDate(end);
+  if (!startDate || !endDate) return 0;
+  return Math.round((endDate.getTime() - startDate.getTime()) / 86400000);
+}
+
+function formatArchivedDate(value: string | null) {
+  if (!value) return 'Archived date unavailable';
+  return `Archived ${formatFullDate(value)}`;
+}
+
+function formatArchivedAge(value: string | null) {
+  if (!value) return null;
+  const daysSinceArchive = Math.max(0, diffUtcDays(value, getIstTodayDateString()));
+  return `${daysSinceArchive}d ago`;
 }
 
 function getMemberHref(memberId: number, view: OwnerMemberListView) {
@@ -389,27 +436,34 @@ export default function OwnerMembersPage() {
           <div className="empty-state">{currentMeta.emptyState}</div>
         ) : currentView === 'archived' ? (
           <Card className="space-y-1.5 p-3">
-            {members.map((member) => (
-              <Link
-                key={member.id}
-                to={getMemberHref(member.id, currentView)}
-                className={`block ${MEMBER_CARD_CLASS}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-black dark:text-white">{member.full_name}</p>
-                    <p className="mt-0.5 break-all text-xs text-black/60 dark:text-white/70">{member.email}</p>
-                    <p className="mt-0.5 text-xs text-black/60 dark:text-white/70">{member.phone}</p>
+            {members.map((member) => {
+              const archivedAge = formatArchivedAge(member.archived_at);
+
+              return (
+                <Link
+                  key={member.id}
+                  to={getMemberHref(member.id, currentView)}
+                  className={`block ${MEMBER_CARD_CLASS}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-black dark:text-white">{member.full_name}</p>
+                      <p className="mt-2 text-sm text-black/70 dark:text-white/75">
+                        {formatArchivedDate(member.archived_at)}
+                      </p>
+                      {archivedAge ? (
+                        <p className="mt-1 text-[0.72rem] font-label font-bold italic tracking-[0.08em] text-black/50 dark:text-white/55">
+                          {archivedAge}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] border border-black bg-white/80 shadow-sm shadow-black/5 dark:border-white dark:bg-white/[0.05]">
+                      <Icon name="archive" className="text-[1.1rem] text-black/80 dark:text-white/85" />
+                    </span>
                   </div>
-                  <span className="inline-flex shrink-0 items-center rounded-full border border-black/15 bg-black/[0.04] px-2.5 py-1 font-label text-[0.64rem] font-bold italic uppercase tracking-[0.16em] text-black/70 dark:border-white/15 dark:bg-white/[0.04] dark:text-white/75">
-                    Archived
-                  </span>
-                </div>
-                <p className="mt-3 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-black/50 dark:text-white/50">
-                  Joined {formatJoinDate(member.join_date)}
-                </p>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </Card>
         ) : (
           <Card className="space-y-1.5 p-3">

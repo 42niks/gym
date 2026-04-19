@@ -8,26 +8,27 @@ export interface MemberRow {
   phone: string;
   join_date: string;
   status: string;
+  archived_at: string | null;
   created_at: string;
 }
 
 export async function findMemberByEmail(db: AppDatabase, email: string): Promise<MemberRow | undefined> {
   return db.get(
-    `SELECT id, role, full_name, email, phone, join_date, status, created_at
+    `SELECT id, role, full_name, email, phone, join_date, status, archived_at, created_at
      FROM members WHERE LOWER(email) = LOWER(?)`
   , [email.trim().toLowerCase()]);
 }
 
 export async function findMemberById(db: AppDatabase, id: number): Promise<MemberRow | undefined> {
   return db.get(
-    `SELECT id, role, full_name, email, phone, join_date, status, created_at
+    `SELECT id, role, full_name, email, phone, join_date, status, archived_at, created_at
      FROM members WHERE id = ?`
   , [id]);
 }
 
 export async function listMembersByStatus(db: AppDatabase, status: string): Promise<MemberRow[]> {
   return db.all(
-    `SELECT id, role, full_name, email, phone, join_date, status, created_at
+    `SELECT id, role, full_name, email, phone, join_date, status, archived_at, created_at
      FROM members WHERE status = ? AND role = 'member'
      ORDER BY LOWER(full_name) ASC, id ASC`
   , [status]);
@@ -65,10 +66,10 @@ export async function updateMember(
   return findMemberById(db, id);
 }
 
-export async function archiveMember(db: AppDatabase, id: number): Promise<void> {
-  await db.run(`UPDATE members SET status = 'archived' WHERE id = ?`, [id]);
+export async function archiveMember(db: AppDatabase, id: number, archivedAt: string): Promise<void> {
+  await db.run(`UPDATE members SET status = 'archived', archived_at = ? WHERE id = ?`, [archivedAt, id]);
 }
 
 export async function unarchiveMember(db: AppDatabase, id: number): Promise<void> {
-  await db.run(`UPDATE members SET status = 'active' WHERE id = ?`, [id]);
+  await db.run(`UPDATE members SET status = 'active', archived_at = NULL WHERE id = ?`, [id]);
 }

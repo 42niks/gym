@@ -85,6 +85,7 @@ function configureMemberListResponses(
     '/api/members?view=archived': [
       createMember('Hari Iyer', {
         status: 'archived',
+        archived_at: '2026-04-10',
         active_subscription: null,
         consistency: null,
         renewal: null,
@@ -243,7 +244,10 @@ describe('OwnerMembersPage', () => {
     await waitFor(() => {
       expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=archived');
       expect(screen.getByRole('heading', { level: 3, name: 'Archived' })).toBeInTheDocument();
-      expect(screen.getByText(/joined 7 april 2026/i)).toBeInTheDocument();
+      expect(screen.getByText('Hari Iyer')).toBeInTheDocument();
+      expect(screen.getByText('Archived 10 Apr 2026')).toBeInTheDocument();
     });
+
+    expect(screen.queryByText('member@thebase.fit')).not.toBeInTheDocument();
   });
 });

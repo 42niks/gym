@@ -52,6 +52,7 @@ export async function seedMember(overrides?: {
   email?: string;
   phone?: string;
   status?: string;
+  archived_at?: string | null;
 }): Promise<number> {
   const res = await api('/api/__test__/member', {
     method: 'POST',
@@ -63,6 +64,7 @@ export async function seedMember(overrides?: {
       phone: overrides?.phone ?? '1234567890',
       join_date: '2026-01-15',
       status: overrides?.status ?? 'active',
+      archived_at: overrides?.archived_at,
     }),
   });
   const body = await res.json();

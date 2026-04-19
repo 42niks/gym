@@ -61,7 +61,7 @@ export const mockRenewalStartsOn: Renewal = {
 
 export const mockMemberProfile: MemberProfile = {
   id: 2, full_name: 'Alex Kumar', email: 'member@thebase.fit',
-  phone: '9876543210', join_date: '2026-04-07', status: 'active',
+  phone: '9876543210', join_date: '2026-04-07', status: 'active', archived_at: null,
 };
 
 export const mockMemberHome: MemberHome = {

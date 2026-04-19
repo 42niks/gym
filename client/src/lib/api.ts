@@ -53,6 +53,7 @@ export interface MemberProfile {
   phone: string;
   join_date: string;
   status: 'active' | 'archived';
+  archived_at: string | null;
 }
 
 export interface Subscription {
