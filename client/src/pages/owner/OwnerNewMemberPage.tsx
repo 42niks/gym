@@ -7,14 +7,28 @@ import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
 import { ownerLinks } from './ownerLinks.js';
 import { getFirstFormErrorMessage } from '../../lib/formValidation.js';
-import { formatYmdForInput, parseInputDateToYmd } from '../../lib/dateInput.js';
+
+function isValidYmdDate(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+
+  return !Number.isNaN(candidate.getTime())
+    && candidate.getUTCFullYear() === year
+    && candidate.getUTCMonth() === month - 1
+    && candidate.getUTCDate() === day;
+}
 
 export default function OwnerNewMemberPage() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [joinDateInput, setJoinDateInput] = useState(formatYmdForInput(new Date().toISOString().slice(0, 10)));
+  const [joinDateInput, setJoinDateInput] = useState(new Date().toISOString().slice(0, 10));
   const [error, setError] = useState('');
   const [errorPulse, setErrorPulse] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -37,9 +51,8 @@ export default function OwnerNewMemberPage() {
       showError(validationError);
       return;
     }
-    const joinDate = parseInputDateToYmd(joinDateInput);
-    if (!joinDate) {
-      showError('Join date must be in dd-mm-yyyy format');
+    if (!isValidYmdDate(joinDateInput)) {
+      showError('Select a valid join date');
       return;
     }
     setLoading(true);
@@ -48,7 +61,7 @@ export default function OwnerNewMemberPage() {
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
-        join_date: joinDate,
+        join_date: joinDateInput,
       });
       navigate(`/members/${member.id}`);
     } catch (err) {
@@ -74,12 +87,10 @@ export default function OwnerNewMemberPage() {
           <Input
             label="Join date"
             labelClassName="ml-3 not-italic"
-            type="text"
-            inputMode="numeric"
+            type="date"
             required
             value={joinDateInput}
             onChange={e => setJoinDateInput(e.target.value)}
-            placeholder="dd-mm-yyyy"
           />
 
           {error && (

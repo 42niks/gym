@@ -11,7 +11,6 @@ import Input from '../../components/Input.js';
 import Spinner from '../../components/Spinner.js';
 import { formatFullDate } from '../../components/attendance/AttendanceCalendar.js';
 import { ownerLinks } from './ownerLinks.js';
-import { formatYmdForInput, parseInputDateToYmd } from '../../lib/dateInput.js';
 
 function parseDateParts(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -58,6 +57,13 @@ function computeEndDate(fromStartDate: string, durationMonths: number) {
   const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + durationMonths, start.getUTCDate()));
   end.setUTCDate(end.getUTCDate() - 1);
   return end.toISOString().slice(0, 10);
+}
+
+function getNextDate(value: string) {
+  const date = toUtcDate(value);
+  if (!date) return '';
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 function formatCurrency(amount: number) {
@@ -109,7 +115,7 @@ const emptyCustomPackageForm: PackageFormData = {
 };
 
 const CUSTOM_SERVICE_TYPE = '__custom__';
-const CUSTOM_PACKAGE_LABEL_CLASS = 'not-italic';
+const CUSTOM_PACKAGE_LABEL_CLASS = 'pl-4 not-italic';
 const serviceTypeOptions = [
   '1:1 Personal Training',
   'Group Personal Training',
@@ -310,7 +316,7 @@ export default function OwnerNewSubscriptionPage() {
   const [selectedPackageType, setSelectedPackageType] = useState<string | null>(null);
   const [mode, setMode] = useState<'existing' | 'custom'>('existing');
   const [startDate, setStartDate] = useState(getIstTodayDateString());
-  const [startDateInput, setStartDateInput] = useState(formatYmdForInput(getIstTodayDateString()));
+  const [startDateInput, setStartDateInput] = useState(getIstTodayDateString());
   const [existingEndDate, setExistingEndDate] = useState('');
   const [existingEndDateInput, setExistingEndDateInput] = useState('');
   const [existingEndDateTouched, setExistingEndDateTouched] = useState(false);
@@ -345,7 +351,7 @@ export default function OwnerNewSubscriptionPage() {
     if (!memberDetail || !isValidYmdDate(memberDetail.join_date)) return;
     setStartDate((current) => {
       const nextValue = current < memberDetail.join_date ? memberDetail.join_date : current;
-      setStartDateInput(formatYmdForInput(nextValue));
+      setStartDateInput(nextValue);
       return nextValue;
     });
   }, [memberDetail]);
@@ -382,8 +388,9 @@ export default function OwnerNewSubscriptionPage() {
     : firstExistingPackageTabKey;
   const activeExistingPackageTab = existingPackageTabs.find((tab) => tab.key === activeExistingPackageTabKey) ?? null;
 
-  const parsedStartDate = parseInputDateToYmd(startDateInput);
+  const parsedStartDate = isValidYmdDate(startDateInput) ? startDateInput : null;
   const resolvedStartDate = parsedStartDate ?? startDate;
+  const minimumEndDate = parsedStartDate ? getNextDate(parsedStartDate) : '';
   const derivedEndDate = mode === 'existing' && selectedPackage
     ? computeEndDate(resolvedStartDate, selectedPackage.duration_months)
     : null;
@@ -433,7 +440,7 @@ export default function OwnerNewSubscriptionPage() {
     }
     if (!existingEndDateTouched || !existingEndDate) {
       setExistingEndDate(derivedEndDate);
-      setExistingEndDateInput(formatYmdForInput(derivedEndDate));
+      setExistingEndDateInput(derivedEndDate);
     }
   }, [derivedEndDate, existingEndDate, existingEndDateTouched, mode]);
 
@@ -642,7 +649,7 @@ export default function OwnerNewSubscriptionPage() {
     if (!memberDetail) return 'Could not load member details.';
     if (!memberDetail.can_add_subscription) return 'Unarchive this member before adding a subscription.';
     if (!startDateInput.trim()) return 'Start date is required.';
-    if (!parsedStartDate) return 'Start date must be in dd-mm-yyyy format.';
+    if (!parsedStartDate) return 'Select a valid start date.';
     if (parsedStartDate < memberDetail.join_date) {
       return `Start date cannot be before ${formatFullDate(memberDetail.join_date)}.`;
     }
@@ -650,9 +657,9 @@ export default function OwnerNewSubscriptionPage() {
     if (mode === 'existing') {
       if (!hasVisiblePackages) return 'No active packages are available. Switch to a custom package or create a new shared package first.';
       if (!selectedPackage) return 'Select an existing package.';
-      const parsedExistingEndDate = parseInputDateToYmd(existingEndDateInput);
+      const parsedExistingEndDate = isValidYmdDate(existingEndDateInput) ? existingEndDateInput : null;
       if (!existingEndDateInput.trim()) return 'End date is required.';
-      if (!parsedExistingEndDate) return 'End date must be in dd-mm-yyyy format.';
+      if (!parsedExistingEndDate) return 'Select a valid end date.';
       if (parsedExistingEndDate <= parsedStartDate) return 'End date must be after start date.';
       if (!amount || Number.parseInt(amount, 10) <= 0) return 'Amount must be greater than 0.';
       return null;
@@ -660,9 +667,9 @@ export default function OwnerNewSubscriptionPage() {
 
     if (!customForm.service_type.trim()) return 'Service type is required.';
     if (!customForm.sessions || Number.parseInt(customForm.sessions, 10) <= 0) return 'Number of sessions must be greater than 0.';
-    const parsedCustomEndDate = parseInputDateToYmd(customEndDateInput);
+    const parsedCustomEndDate = isValidYmdDate(customEndDateInput) ? customEndDateInput : null;
     if (!customEndDateInput.trim()) return 'End date is required.';
-    if (!parsedCustomEndDate) return 'End date must be in dd-mm-yyyy format.';
+    if (!parsedCustomEndDate) return 'Select a valid end date.';
     if (parsedCustomEndDate <= parsedStartDate) return 'End date must be after start date.';
     if (!customForm.price || Number.parseInt(customForm.price, 10) <= 0) return 'Amount must be greater than 0.';
     if (!customForm.consistency_window_days || Number.parseInt(customForm.consistency_window_days, 10) < 5) return 'Consistency window must be at least 5 days.';
@@ -682,19 +689,19 @@ export default function OwnerNewSubscriptionPage() {
       return;
     }
 
-    const startDateYmd = parseInputDateToYmd(startDateInput);
-    const existingEndDateYmd = parseInputDateToYmd(existingEndDateInput);
-    const customEndDateYmd = parseInputDateToYmd(customEndDateInput);
+    const startDateYmd = isValidYmdDate(startDateInput) ? startDateInput : null;
+    const existingEndDateYmd = isValidYmdDate(existingEndDateInput) ? existingEndDateInput : null;
+    const customEndDateYmd = isValidYmdDate(customEndDateInput) ? customEndDateInput : null;
     if (!startDateYmd) {
-      setError('Start date must be in dd-mm-yyyy format.');
+      setError('Select a valid start date.');
       return;
     }
     if (mode === 'existing' && !existingEndDateYmd) {
-      setError('End date must be in dd-mm-yyyy format.');
+      setError('Select a valid end date.');
       return;
     }
     if (mode === 'custom' && !customEndDateYmd) {
-      setError('End date must be in dd-mm-yyyy format.');
+      setError('Select a valid end date.');
       return;
     }
 
@@ -796,7 +803,7 @@ export default function OwnerNewSubscriptionPage() {
           </Card>
         ) : (
           <>
-            <div className="-mx-1 px-1 py-1">
+            <div className="-mx-1 px-1 pb-1 pt-0">
               <div className="members-view-dock pointer-events-auto overflow-hidden rounded-[1.7rem] border border-black backdrop-blur-xl dark:border-white">
                 <div ref={modeTabsScrollRef} className="members-view-tabs-scroll overflow-x-auto px-3 py-3.5">
                   <div className="flex min-w-max gap-2">
@@ -870,9 +877,10 @@ export default function OwnerNewSubscriptionPage() {
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
-                        <table className="min-w-[42rem] w-full border-collapse text-left">
+                        <table className="min-w-max w-max border-collapse text-left">
                           <thead>
                             <tr className="bg-black/[0.03] dark:bg-white/[0.03]">
+                              <th className="w-[3rem] px-4 py-3 sm:px-5" aria-label="Select package" />
                               <th className="px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[0.18em] text-black/60 dark:text-white/70 sm:px-5">
                                 Sessions
                               </th>
@@ -884,9 +892,6 @@ export default function OwnerNewSubscriptionPage() {
                               </th>
                               <th className="px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[0.18em] text-black/60 dark:text-white/70">
                                 Consistency
-                              </th>
-                              <th className="w-[8.75rem] px-4 py-3 font-label text-[0.65rem] font-bold uppercase tracking-[0.18em] text-black/60 dark:text-white/70 sm:px-5">
-                                Action
                               </th>
                             </tr>
                           </thead>
@@ -903,6 +908,21 @@ export default function OwnerNewSubscriptionPage() {
                                       : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'
                                   }`}
                                 >
+                                  <td className="w-[3rem] px-4 py-3.5 sm:px-5">
+                                    <input
+                                      type="radio"
+                                      name="existing-package-selection"
+                                      checked={selected}
+                                      onChange={() => {
+                                        setSelectedPackage(pkg);
+                                        setSelectedPackageType(pkg.service_type);
+                                        setAmount(String(pkg.price));
+                                        setExistingEndDateTouched(false);
+                                      }}
+                                      className="h-4 w-4 accent-brand-600 dark:accent-brand-400"
+                                      aria-label={`Select ${pkg.sessions} sessions package`}
+                                    />
+                                  </td>
                                   <td className="px-4 py-3.5 sm:px-5">
                                     <p className="text-base font-black text-black dark:text-white">{pkg.sessions}</p>
                                   </td>
@@ -916,32 +936,6 @@ export default function OwnerNewSubscriptionPage() {
                                   </td>
                                   <td className="px-4 py-3.5">
                                     <p className="text-sm text-black/75 dark:text-white/80">{formatConsistency(pkg)}</p>
-                                  </td>
-                                  <td className="w-[8.75rem] px-4 py-3.5 sm:px-5">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedPackage(pkg);
-                                        setSelectedPackageType(pkg.service_type);
-                                        setAmount(String(pkg.price));
-                                        setExistingEndDateTouched(false);
-                                      }}
-                                      aria-pressed={selected}
-                                      className={`inline-flex min-w-[7.5rem] items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 font-label text-[0.68rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
-                                        selected
-                                          ? 'border-brand-600 bg-brand-600 text-white shadow-panel dark:border-brand-400 dark:bg-brand-400 dark:text-black'
-                                          : 'border-black bg-white/80 text-black/80 shadow-sm shadow-black/5 hover:border-brand-300 hover:bg-brand-50/60 dark:border-white dark:bg-surface-dark/75 dark:text-white/80 dark:hover:bg-surface-raised/85'
-                                      }`}
-                                    >
-                                      {selected ? (
-                                        <>
-                                          <Icon name="check" className="text-[0.9rem]" />
-                                          Selected
-                                        </>
-                                      ) : (
-                                        'Select'
-                                      )}
-                                    </button>
                                   </td>
                                 </tr>
                               );
@@ -1000,38 +994,23 @@ export default function OwnerNewSubscriptionPage() {
                     <Input
                       label="Start date"
                       labelClassName="ml-4 not-italic"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
-                      placeholder="dd-mm-yyyy"
+                      type="date"
                       required
                       value={startDateInput}
                       onChange={(event) => setStartDateInput(event.target.value)}
-                      onBlur={() => {
-                        const parsed = parseInputDateToYmd(startDateInput);
-                        if (!parsed) return;
-                        setStartDate(parsed);
-                        setStartDateInput(formatYmdForInput(parsed));
-                      }}
+                      min={memberDetail?.join_date}
                     />
                     <Input
                       label="End date"
                       labelClassName="ml-4 not-italic"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
-                      placeholder="dd-mm-yyyy"
+                      type="date"
                       required
                       value={existingEndDateInput}
+                      min={minimumEndDate || undefined}
                       onChange={(event) => {
                         setExistingEndDateInput(event.target.value);
+                        setExistingEndDate(event.target.value);
                         setExistingEndDateTouched(true);
-                      }}
-                      onBlur={() => {
-                        const parsed = parseInputDateToYmd(existingEndDateInput);
-                        if (!parsed) return;
-                        setExistingEndDate(parsed);
-                        setExistingEndDateInput(formatYmdForInput(parsed));
                       }}
                     />
                   </div>
@@ -1044,6 +1023,7 @@ export default function OwnerNewSubscriptionPage() {
                     pattern="[0-9]*"
                     value={amount}
                     onChange={(event) => setAmount(normalizeDigits(event.target.value))}
+                    className="text-right"
                   />
 
                   {selectedPackage ? (
@@ -1063,43 +1043,6 @@ export default function OwnerNewSubscriptionPage() {
                   <Alert variant="info">
                     This custom package is private to this subscription and will not appear in the shared package catalog for other members.
                   </Alert>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Input
-                      label="Start date"
-                      labelClassName={CUSTOM_PACKAGE_LABEL_CLASS}
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
-                      placeholder="dd-mm-yyyy"
-                      required
-                      value={startDateInput}
-                      onChange={(event) => setStartDateInput(event.target.value)}
-                      onBlur={() => {
-                        const parsed = parseInputDateToYmd(startDateInput);
-                        if (!parsed) return;
-                        setStartDate(parsed);
-                        setStartDateInput(formatYmdForInput(parsed));
-                      }}
-                    />
-                    <Input
-                      label="End date"
-                      labelClassName={CUSTOM_PACKAGE_LABEL_CLASS}
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
-                      placeholder="dd-mm-yyyy"
-                      required
-                      value={customEndDateInput}
-                      onChange={(event) => setCustomEndDateInput(event.target.value)}
-                      onBlur={(event) => {
-                        const parsed = parseInputDateToYmd(event.target.value);
-                        if (!parsed) return;
-                        setCustomForm((current) => ({ ...current, end_date: parsed }));
-                        setCustomEndDateInput(formatYmdForInput(parsed));
-                      }}
-                    />
-                  </div>
 
                   <div>
                     <label htmlFor="service-type" className={`field-label ${CUSTOM_PACKAGE_LABEL_CLASS}`}>
@@ -1149,6 +1092,31 @@ export default function OwnerNewSubscriptionPage() {
                   ) : null}
 
                   <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      label="Start date"
+                      labelClassName={CUSTOM_PACKAGE_LABEL_CLASS}
+                      type="date"
+                      required
+                      value={startDateInput}
+                      onChange={(event) => setStartDateInput(event.target.value)}
+                      min={memberDetail?.join_date}
+                    />
+                    <Input
+                      label="End date"
+                      labelClassName={CUSTOM_PACKAGE_LABEL_CLASS}
+                      type="date"
+                      required
+                      value={customEndDateInput}
+                      min={minimumEndDate || undefined}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setCustomEndDateInput(nextValue);
+                        setCustomForm((current) => ({ ...current, end_date: nextValue }));
+                      }}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <StepperInput
                       id="custom-sessions"
                       label="Sessions"
@@ -1170,7 +1138,7 @@ export default function OwnerNewSubscriptionPage() {
                       required
                       value={customForm.price}
                       onChange={handleCustomPriceChange}
-                      className="w-full"
+                      className="w-full text-right"
                     />
                     <StepperInput
                       id="custom-consistency-window-days"

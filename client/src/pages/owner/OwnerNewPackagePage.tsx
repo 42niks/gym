@@ -462,6 +462,7 @@ export default function OwnerNewPackagePage() {
               required
               value={form.price}
               onChange={handlePriceChange}
+              className="text-right"
             />
             <StepperInput
               id="consistency-window-days"
