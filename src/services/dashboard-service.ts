@@ -1,12 +1,8 @@
 import type { AppDatabase } from '../db/client.js';
 import { listMembersByStatus } from '../repositories/members-repo.js';
-import { listSubscriptionsForMember, getEarliestSubscriptionStart } from '../repositories/subscriptions-repo.js';
-import { listAttendanceDatesForMember, hasAttendanceForDate, getMembersCheckedInOnDate } from '../repositories/sessions-repo.js';
-import { findPackageById } from '../repositories/packages-repo.js';
-import { computeRenewal } from '../lib/renewal.js';
-import { computeConsistency } from '../lib/consistency.js';
+import { hasAttendanceForDate, getMembersCheckedInOnDate } from '../repositories/sessions-repo.js';
 import { addDays, getIstDate } from '../lib/date.js';
-import { formatSubscription, getActiveSub, getUpcomingSubs } from './member-service.js';
+import { computeMemberEnrichment } from './member-service.js';
 
 export async function getDashboard(db: AppDatabase) {
   const today = getIstDate();
@@ -17,68 +13,67 @@ export async function getDashboard(db: AppDatabase) {
   const renewalNoActive: any[] = [];
   const renewalNearingEnd: any[] = [];
   const activeMembersList: any[] = [];
+  const consistencyPipeline = {
+    not_consistent: 0,
+    building: 0,
+    consistent: 0,
+  };
+  const atRisk = {
+    total: 0,
+    building: 0,
+    consistent: 0,
+  };
+  let renewalDueCount = 0;
+  let noActivePlanCount = 0;
 
   for (const member of activeMembers) {
-    const subs = await listSubscriptionsForMember(db, member.id);
-    const activeSub = getActiveSub(subs, today);
-    const upcomingSubs = getUpcomingSubs(subs, today);
-    const markedToday = await hasAttendanceForDate(db, member.id, today);
-
-    let consistency = null;
-    if (activeSub) {
-      const pkg = await findPackageById(db, activeSub.package_id, { includePrivate: true });
-      if (pkg) {
-        const earliest = await getEarliestSubscriptionStart(db, member.id);
-        const attendanceDates = await listAttendanceDatesForMember(db, member.id);
-        consistency = computeConsistency({
-          hasActiveSubscription: true,
-          windowDays: pkg.consistency_window_days,
-          minDays: pkg.consistency_min_days,
-          earliestSubscriptionStart: earliest!,
-          attendanceDates,
-          today,
-        });
-      }
-    }
-
-    const renewal = computeRenewal({
-      active: activeSub ? {
-        end_date: activeSub.end_date,
-        total_sessions: activeSub.total_sessions,
-        attended_sessions: activeSub.attended_sessions,
-      } : null,
-      upcomingStartDate: upcomingSubs[0]?.start_date ?? null,
-      today,
-    });
-
-    const formattedSub = activeSub ? formatSubscription(activeSub, today) : null;
+    const enrichment = await computeMemberEnrichment(db, member.id, today);
+    const ownerState = enrichment.owner_consistency_state;
 
     // Populate renewal sections
-    if (renewal?.kind === 'ends_soon') {
+    if (enrichment.renewal?.kind === 'ends_soon') {
       renewalNearingEnd.push({
         member_id: member.id,
         full_name: member.full_name,
         status: member.status,
-        active_subscription: formattedSub,
-        renewal,
+        active_subscription: enrichment.active_subscription,
+        renewal: enrichment.renewal,
       });
+      renewalDueCount += 1;
     }
-    if (renewal?.kind === 'no_active' || renewal?.kind === 'starts_on') {
+    if (enrichment.renewal?.kind === 'no_active' || enrichment.renewal?.kind === 'starts_on') {
       renewalNoActive.push({
         member_id: member.id,
         full_name: member.full_name,
         status: member.status,
-        renewal,
+        renewal: enrichment.renewal,
       });
+    }
+
+    if (enrichment.active_subscription === null) {
+      noActivePlanCount += 1;
+    }
+
+    if (ownerState?.stage === 'consistent') consistencyPipeline.consistent += 1;
+    if (ownerState?.stage === 'building') consistencyPipeline.building += 1;
+    if (ownerState?.stage === 'not_consistent') consistencyPipeline.not_consistent += 1;
+
+    if (ownerState?.at_risk) {
+      atRisk.total += 1;
+      if (ownerState.stage === 'consistent') atRisk.consistent += 1;
+      if (ownerState.stage === 'building') atRisk.building += 1;
     }
 
     activeMembersList.push({
       member_id: member.id,
       full_name: member.full_name,
       status: member.status,
-      active_subscription: formattedSub,
-      consistency,
-      marked_attendance_today: markedToday,
+      active_subscription: enrichment.active_subscription,
+      consistency: enrichment.consistency,
+      owner_consistency_state: enrichment.owner_consistency_state,
+      consistency_risk_today: enrichment.consistency_risk_today,
+      marked_attendance_today: enrichment.marked_attendance_today,
+      renewal: enrichment.renewal,
     });
   }
 
@@ -112,6 +107,10 @@ export async function getDashboard(db: AppDatabase) {
       present_yesterday: checkedInYesterday.length,
       delta: checkedInToday.length - checkedInYesterday.length,
     },
+    consistency_pipeline: consistencyPipeline,
+    at_risk: atRisk,
+    renewal_due_count: renewalDueCount,
+    no_active_plan_count: noActivePlanCount,
     renewal_no_active: renewalNoActive,
     renewal_nearing_end: renewalNearingEnd,
     checked_in_today: checkedInToday,

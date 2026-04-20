@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerNewMemberPage from '../pages/owner/OwnerNewMemberPage.js';
 import { renderWithProviders } from './test-utils.js';
@@ -50,8 +50,7 @@ describe('OwnerNewMemberPage', () => {
     await user.type(screen.getByLabelText(/full name/i), 'Jane Doe');
     await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
     await user.type(screen.getByLabelText(/phone/i), '9876543210');
-    await user.clear(screen.getByLabelText(/join date/i));
-    await user.type(screen.getByLabelText(/join date/i), '07-04-2026');
+    fireEvent.change(screen.getByLabelText(/join date/i), { target: { value: '2026-04-07' } });
     await user.click(screen.getByRole('button', { name: /create member/i }));
 
     await waitFor(() => {
@@ -89,19 +88,18 @@ describe('OwnerNewMemberPage', () => {
     expect(phoneInput).toHaveValue('9876543210');
   });
 
-  it('shows an inline error when join date is not dd-mm-yyyy', async () => {
+  it('shows an inline error when join date is missing', async () => {
     const user = userEvent.setup();
     renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
 
     await user.type(screen.getByLabelText(/full name/i), 'Jane Doe');
     await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
     await user.type(screen.getByLabelText(/phone/i), '9876543210');
-    await user.clear(screen.getByLabelText(/join date/i));
-    await user.type(screen.getByLabelText(/join date/i), '2026-04-07');
+    fireEvent.change(screen.getByLabelText(/join date/i), { target: { value: '' } });
     await user.click(screen.getByRole('button', { name: /create member/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Join date must be in dd-mm-yyyy format')).toBeInTheDocument();
+      expect(screen.getByText('Join date is required.')).toBeInTheDocument();
       expect(mockApiPost).not.toHaveBeenCalled();
     });
   });

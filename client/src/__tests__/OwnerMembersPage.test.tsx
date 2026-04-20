@@ -65,6 +65,13 @@ function configureMemberListResponses(
         owner_consistency_state: { stage: 'building', days: 6, at_risk: true },
       }),
     ],
+    '/api/members?view=not-consistent': [
+      createMember('Naina Paul', {
+        consistency: { status: 'building', message: 'Consistency slipped recently.' },
+        consistency_risk_today: null,
+        owner_consistency_state: { stage: 'not_consistent', days: null, at_risk: false },
+      }),
+    ],
     '/api/members?view=building': [
       createMember('Eshan Roy', {
         consistency: { status: 'building', days: 3, message: 'Still building consistency.' },
@@ -119,6 +126,7 @@ describe('OwnerMembersPage', () => {
       'No plan',
       'Renewal',
       'At risk',
+      'Not consistent',
       'Building',
       'Consistent',
       'Today',
@@ -166,6 +174,23 @@ describe('OwnerMembersPage', () => {
     expect(screen.queryByText('20 Apr')).not.toBeInTheDocument();
   });
 
+  it('loads the not consistent view from the URL without collapsing it into building', async () => {
+    configureMemberListResponses();
+
+    renderWithProviders(<OwnerMembersPage />, { route: '/members?view=not-consistent' });
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=not-consistent');
+      expect(screen.getByRole('heading', { level: 3, name: 'Not Consistent' })).toBeInTheDocument();
+    });
+
+    const memberName = await screen.findByText('Naina Paul');
+    const memberCard = memberName.closest('a');
+    expect(memberCard).not.toBeNull();
+    expect(within(memberCard as HTMLElement).getByText('Not Consistent')).toBeInTheDocument();
+    expect(within(memberCard as HTMLElement).queryByText('Building')).not.toBeInTheDocument();
+  });
+
   it('switches to the today view from the bottom tabs', async () => {
     const user = userEvent.setup();
     configureMemberListResponses();
@@ -189,6 +214,7 @@ describe('OwnerMembersPage', () => {
       '/api/members?view=no-plan': [createMember('Casey Noor', { active_subscription: null })],
       '/api/members?view=renewal': [createMember('Div Patel', { renewal: mockRenewalEndsSoon }), createMember('Ena Gill', { renewal: mockRenewalEndsSoon }), createMember('Fahim Ali', { renewal: mockRenewalEndsSoon })],
       '/api/members?view=at-risk': [createMember('Gita Sen')],
+      '/api/members?view=not-consistent': [createMember('Hema Noor', { owner_consistency_state: { stage: 'not_consistent', days: null, at_risk: false } })],
       '/api/members?view=building': [createMember('Hari Iyer')],
       '/api/members?view=consistent': [createMember('Ishaan Rao'), createMember('Jiya Khan')],
       '/api/members?view=today': [createMember('Kabir Jain')],
@@ -204,6 +230,7 @@ describe('OwnerMembersPage', () => {
         'No plan 1',
         'Renewal 3',
         'At risk 1',
+        'Not consistent 1',
         'Building 1',
         'Consistent 2',
         'Today 1',

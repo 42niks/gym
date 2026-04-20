@@ -190,6 +190,18 @@ export const mockDashboard: Dashboard = {
     present_yesterday: 0,
     delta: 1,
   },
+  consistency_pipeline: {
+    not_consistent: 5,
+    building: 8,
+    consistent: 12,
+  },
+  at_risk: {
+    total: 16,
+    consistent: 2,
+    building: 14,
+  },
+  renewal_due_count: 3,
+  no_active_plan_count: 1,
   renewal_no_active: [
     { member_id: 3, full_name: 'Test User', status: 'active', renewal: mockRenewalNoActive },
   ],

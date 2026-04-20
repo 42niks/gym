@@ -42,8 +42,8 @@ function configurePageData({
 
 async function selectFirstExistingPackage(user: ReturnType<typeof userEvent.setup>) {
   const table = await screen.findByRole('table');
-  const selectButtons = within(table).getAllByRole('button', { name: /select/i });
-  await user.click(selectButtons[0]);
+  const selectRadios = within(table).getAllByRole('radio', { name: /select/i });
+  await user.click(selectRadios[0]);
 }
 
 beforeEach(() => {
@@ -93,11 +93,11 @@ describe('OwnerNewSubscriptionPage', () => {
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
     await selectFirstExistingPackage(user);
-    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '07-04-2026' } });
+    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2026-04-07' } });
 
-    expect(screen.getByLabelText(/^start date$/i)).toHaveValue('07-04-2026');
+    expect(screen.getByLabelText(/^start date$/i)).toHaveValue('2026-04-07');
     expect(screen.getByLabelText(/amount/i)).toHaveValue('29500');
-    expect(screen.getByLabelText(/^end date$/i)).toHaveValue('06-05-2026');
+    expect(screen.getByLabelText(/^end date$/i)).toHaveValue('2026-05-06');
     expect(screen.getByText(/suggested end date is 6 may 2026/i)).toBeInTheDocument();
   });
 
@@ -120,8 +120,8 @@ describe('OwnerNewSubscriptionPage', () => {
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
     await selectFirstExistingPackage(user);
-    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '07-04-2026' } });
-    fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '06-05-2026' } });
+    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2026-04-07' } });
+    fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '2026-05-06' } });
     await user.click(screen.getByRole('button', { name: /create subscription/i }));
 
     await waitFor(() => {
@@ -141,12 +141,14 @@ describe('OwnerNewSubscriptionPage', () => {
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
     await selectFirstExistingPackage(user);
-    fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '10-05-2026' } });
+    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2026-04-07' } });
+    fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '2026-05-10' } });
     await user.click(screen.getByRole('button', { name: /create subscription/i }));
 
     await waitFor(() => {
       expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/subscriptions', expect.objectContaining({
         package_id: 1,
+        start_date: '2026-04-07',
         end_date: '2026-05-10',
       }));
     });
@@ -162,8 +164,8 @@ describe('OwnerNewSubscriptionPage', () => {
     await user.type(screen.getByLabelText(/new service type/i), 'Special Plan');
     await user.clear(screen.getByLabelText(/^sessions$/i));
     await user.type(screen.getByLabelText(/^sessions$/i), '15');
-    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '01-06-2026' } });
-    fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '30-06-2026' } });
+    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2026-06-01' } });
+    fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '2026-06-30' } });
     await user.clear(screen.getByLabelText(/price/i));
     await user.type(screen.getByLabelText(/price/i), '21000');
     await user.click(screen.getByRole('button', { name: /add subscription/i }));
@@ -236,16 +238,16 @@ describe('OwnerNewSubscriptionPage', () => {
     });
   });
 
-  it('shows a date format error for non dd-mm-yyyy input', async () => {
+  it('shows a validation error for an invalid start date', async () => {
     const user = userEvent.setup();
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
     await selectFirstExistingPackage(user);
-    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2026-04-07' } });
+    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '' } });
     await user.click(screen.getByRole('button', { name: /create subscription/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Start date must be in dd-mm-yyyy format.')).toBeInTheDocument();
+      expect(screen.getByText('Start date is required.')).toBeInTheDocument();
       expect(mockApiPost).not.toHaveBeenCalled();
     });
   });

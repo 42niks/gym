@@ -15,6 +15,7 @@ const ALL_VIEWS: OwnerMemberListView[] = [
   'no-plan',
   'renewal',
   'at-risk',
+  'not-consistent',
   'building',
   'consistent',
   'today',
@@ -55,6 +56,13 @@ const VIEW_META: Record<OwnerMemberListView, {
     description: 'Members who should attend today to protect their current streak.',
     icon: 'warning',
     emptyState: 'No members are at immediate consistency risk today',
+  },
+  'not-consistent': {
+    label: 'Not Consistent',
+    tabLabel: 'Not consistent',
+    description: 'Members with an active plan who are currently out of consistency habit.',
+    icon: 'block',
+    emptyState: 'No members are currently in the not consistent state',
   },
   building: {
     label: 'Building Consistency',
@@ -178,6 +186,13 @@ function getPackageIcon(serviceType: string | null | undefined) {
   if (!serviceType) return 'credit_card_off';
   const normalized = serviceType.trim().toLowerCase();
   return PACKAGE_ICON_META.find((item) => normalized.includes(item.match))?.icon ?? 'inventory_2';
+}
+
+function getViewIconToneClass(view: OwnerMemberListView) {
+  if (view === 'at-risk' || view === 'renewal') return 'text-orange-700 dark:text-orange-300';
+  if (view === 'consistent' || view === 'building') return 'text-brand-600 dark:text-brand-300';
+  if (view === 'not-consistent' || view === 'no-plan') return 'text-black/70 dark:text-white/75';
+  return 'text-black/80 dark:text-white/85';
 }
 
 function buildAllConsistencyPills(member: MemberListItem): MemberPill[] {
@@ -410,7 +425,7 @@ export default function OwnerMembersPage() {
         <div className="px-1">
           <div className="flex items-start gap-3">
             <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-black bg-white/80 shadow-sm shadow-black/5 dark:border-white dark:bg-white/[0.05]">
-              <Icon name={currentMeta.icon} className="text-[1.25rem] text-black/80 dark:text-white/85" />
+              <Icon name={currentMeta.icon} className={`text-[1.25rem] ${getViewIconToneClass(currentView)}`} />
             </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">

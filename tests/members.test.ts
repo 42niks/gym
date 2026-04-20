@@ -130,6 +130,22 @@ async function seedMembersViewFixtures() {
   });
 }
 
+async function seedNotConsistentMemberFixture() {
+  const today = getIstDate();
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'Not Consistent Nora',
+    email: 'nora@test.com',
+    phone: '9999999998',
+    package_id: 2,
+    start_date: addDays(today, -20),
+    end_date: computeEndDate(addDays(today, -20), 1),
+    total_sessions: 12,
+    amount: 29500,
+    attendance_dates: [-15, -13, -12].map((offset) => addDays(today, offset)),
+  });
+}
+
 describe('Member Management', () => {
   let ownerCookie: string;
 
@@ -363,6 +379,29 @@ describe('Member Management', () => {
       });
     });
 
+    it('lists the not consistent view separately from the building view', async () => {
+      await seedMembersViewFixtures();
+      await seedNotConsistentMemberFixture();
+
+      const notConsistentRes = await api('/api/members?view=not-consistent', { headers: { Cookie: ownerCookie } });
+      const buildingRes = await api('/api/members?view=building', { headers: { Cookie: ownerCookie } });
+
+      expect(notConsistentRes.status).toBe(200);
+      expect(buildingRes.status).toBe(200);
+
+      const notConsistentBody = await notConsistentRes.json() as any[];
+      const buildingBody = await buildingRes.json() as any[];
+
+      expect(notConsistentBody.map((member) => member.full_name)).toEqual(['Not Consistent Nora']);
+      expect(notConsistentBody[0].consistency).toMatchObject({ status: 'building' });
+      expect(notConsistentBody[0].owner_consistency_state).toMatchObject({
+        stage: 'not_consistent',
+        at_risk: false,
+      });
+      expect(notConsistentBody[0].consistency_risk_today).toBeNull();
+      expect(buildingBody.map((member) => member.full_name)).not.toContain('Not Consistent Nora');
+    });
+
     it('lists the building view', async () => {
       await seedMembersViewFixtures();
 
@@ -440,8 +479,13 @@ describe('Member Management', () => {
       expect(body[0]).toHaveProperty('active_subscription');
       expect(body[0]).toHaveProperty('consistency');
       expect(body[0]).toHaveProperty('renewal');
+      expect(body[0]).toHaveProperty('owner_consistency_state');
       expect(body[0]).toHaveProperty('consistency_risk_today');
       expect(body[0]).toHaveProperty('marked_attendance_today');
+      expect(body[0].owner_consistency_state).toMatchObject({
+        stage: 'not_consistent',
+        at_risk: false,
+      });
     });
   });
 

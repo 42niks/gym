@@ -154,6 +154,7 @@ export type OwnerMemberListView =
   | 'no-plan'
   | 'renewal'
   | 'at-risk'
+  | 'not-consistent'
   | 'building'
   | 'consistent'
   | 'today'
@@ -227,6 +228,18 @@ export interface AttendanceSummary {
 
 export interface Dashboard {
   attendance_summary: AttendanceSummary;
+  consistency_pipeline: {
+    not_consistent: number;
+    building: number;
+    consistent: number;
+  };
+  at_risk: {
+    total: number;
+    building: number;
+    consistent: number;
+  };
+  renewal_due_count: number;
+  no_active_plan_count: number;
   renewal_no_active: DashboardItem[];
   renewal_nearing_end: DashboardItem[];
   checked_in_today: DashboardItem[];

@@ -17,6 +17,7 @@ export const MEMBER_LIST_VIEWS = [
   'no-plan',
   'renewal',
   'at-risk',
+  'not-consistent',
   'building',
   'consistent',
   'today',
@@ -29,7 +30,7 @@ const LEGACY_MEMBER_LIST_VIEW_ALIASES = {
   active: 'all',
   'no-subscription': 'no-plan',
   'renewal-alert': 'renewal',
-  'not-consistent': 'building',
+  'not-consistent': 'not-consistent',
   'consistency-risk': 'at-risk',
 } as const satisfies Record<string, MemberListView>;
 
@@ -443,8 +444,13 @@ function matchesMemberView(member: ActiveMemberListItem, view: Exclude<MemberLis
       return member.renewal?.kind === 'ends_soon';
     case 'at-risk':
       return member.consistency_risk_today !== null;
+    case 'not-consistent':
+      return member.owner_consistency_state?.stage === 'not_consistent';
     case 'building':
-      return member.active_subscription !== null && member.consistency?.status !== 'consistent';
+      return member.owner_consistency_state?.stage === 'building'
+        || (member.owner_consistency_state === null
+          && member.active_subscription !== null
+          && member.consistency?.status !== 'consistent');
     case 'consistent':
       return member.consistency?.status === 'consistent';
     case 'today':
