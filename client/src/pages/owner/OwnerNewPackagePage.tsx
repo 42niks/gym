@@ -133,7 +133,7 @@ function StepperInput({
       >
         {label}
       </label>
-      <div className="mx-auto flex w-3/4 items-center gap-2">
+      <div className="flex w-full items-center gap-2">
         <button
           type="button"
           onClick={() => handleClick(-1, decrementDisabled)}

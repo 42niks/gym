@@ -259,7 +259,7 @@ function StepperInput({
       <label htmlFor={id} className={`field-label ${labelClassName}`}>
         {label}
       </label>
-      <div className="mx-auto flex w-3/4 items-center gap-2">
+      <div className="flex w-full items-center gap-2">
         <button
           type="button"
           onClick={() => handleClick(-1, decrementDisabled)}
@@ -321,6 +321,12 @@ export default function OwnerNewSubscriptionPage() {
   const [customServiceType, setCustomServiceType] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const modeTabsScrollRef = useRef<HTMLDivElement | null>(null);
+  const modeTabRefMap = useRef<Partial<Record<typeof SUBSCRIPTION_MODES[number]['key'], HTMLButtonElement | null>>>({});
+  const didInitModeTabsScroll = useRef(false);
+  const packageTypeTabsScrollRef = useRef<HTMLDivElement | null>(null);
+  const packageTypeTabRefMap = useRef<Record<string, HTMLButtonElement | null>>({});
+  const didInitPackageTypeTabsScroll = useRef(false);
   const view = searchParams.get('view');
   const viewQuery = view ? `?view=${encodeURIComponent(view)}` : '';
 
@@ -430,6 +436,76 @@ export default function OwnerNewSubscriptionPage() {
       setExistingEndDateInput(formatYmdForInput(derivedEndDate));
     }
   }, [derivedEndDate, existingEndDate, existingEndDateTouched, mode]);
+
+  useEffect(() => {
+    const scrollEl = modeTabsScrollRef.current;
+    const activeTab = modeTabRefMap.current[mode];
+    if (!scrollEl || !activeTab) return;
+
+    const maxScrollLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+    if (maxScrollLeft <= 0) return;
+
+    const activeIndex = SUBSCRIPTION_MODES.findIndex((tab) => tab.key === mode);
+    const isFirst = activeIndex === 0;
+    const isLast = activeIndex === SUBSCRIPTION_MODES.length - 1;
+
+    let targetScrollLeft: number;
+    if (isFirst) {
+      targetScrollLeft = 0;
+    } else if (isLast) {
+      targetScrollLeft = maxScrollLeft;
+    } else {
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const tabRect = activeTab.getBoundingClientRect();
+      const tabCenterInScroll = scrollEl.scrollLeft + (tabRect.left - scrollRect.left) + (tabRect.width / 2);
+      targetScrollLeft = tabCenterInScroll - (scrollEl.clientWidth / 2);
+    }
+
+    const clamped = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+    if (!didInitModeTabsScroll.current) {
+      scrollEl.scrollLeft = clamped;
+      didInitModeTabsScroll.current = true;
+      return;
+    }
+
+    scrollEl.scrollTo({ left: clamped, behavior: 'smooth' });
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== 'existing' || !activeExistingPackageTabKey) return;
+
+    const scrollEl = packageTypeTabsScrollRef.current;
+    const activeTab = packageTypeTabRefMap.current[activeExistingPackageTabKey];
+    if (!scrollEl || !activeTab) return;
+
+    const maxScrollLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+    if (maxScrollLeft <= 0) return;
+
+    const activeIndex = existingPackageTabs.findIndex((tab) => tab.key === activeExistingPackageTabKey);
+    const isFirst = activeIndex === 0;
+    const isLast = activeIndex === existingPackageTabs.length - 1;
+
+    let targetScrollLeft: number;
+    if (isFirst) {
+      targetScrollLeft = 0;
+    } else if (isLast) {
+      targetScrollLeft = maxScrollLeft;
+    } else {
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const tabRect = activeTab.getBoundingClientRect();
+      const tabCenterInScroll = scrollEl.scrollLeft + (tabRect.left - scrollRect.left) + (tabRect.width / 2);
+      targetScrollLeft = tabCenterInScroll - (scrollEl.clientWidth / 2);
+    }
+
+    const clamped = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+    if (!didInitPackageTypeTabsScroll.current) {
+      scrollEl.scrollLeft = clamped;
+      didInitPackageTypeTabsScroll.current = true;
+      return;
+    }
+
+    scrollEl.scrollTo({ left: clamped, behavior: 'smooth' });
+  }, [activeExistingPackageTabKey, existingPackageTabs, mode]);
 
   function normalizeDigits(value: string) {
     return value.replace(/\D+/g, '');
@@ -721,27 +797,32 @@ export default function OwnerNewSubscriptionPage() {
         ) : (
           <>
             <div className="-mx-1 px-1 py-1">
-              <div className="members-view-tabs-scroll overflow-x-auto">
-                <div className="flex min-w-max gap-2">
-                  {SUBSCRIPTION_MODES.map((tab) => {
-                    const active = mode === tab.key;
+              <div className="members-view-dock pointer-events-auto overflow-hidden rounded-[1.7rem] border border-black backdrop-blur-xl dark:border-white">
+                <div ref={modeTabsScrollRef} className="members-view-tabs-scroll overflow-x-auto px-3 py-3.5">
+                  <div className="flex min-w-max gap-2">
+                    {SUBSCRIPTION_MODES.map((tab) => {
+                      const active = mode === tab.key;
 
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setMode(tab.key)}
-                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 font-label text-[0.7rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
-                          active
-                            ? 'members-view-tab-active border-black bg-white text-black shadow-panel dark:border-white dark:text-white'
-                            : 'members-view-tab-inactive border-black/15 text-black/70 hover:border-black/25 hover:text-black dark:border-white/15 dark:text-white/75 dark:hover:border-white/25 dark:hover:text-white'
-                        }`}
-                      >
-                        <Icon name={tab.icon} className="text-[0.95rem]" />
-                        {tab.label}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          ref={(element) => {
+                            modeTabRefMap.current[tab.key] = element;
+                          }}
+                          key={tab.key}
+                          type="button"
+                          onClick={() => setMode(tab.key)}
+                          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 font-label text-[0.7rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
+                            active
+                              ? 'members-view-tab-active border-black bg-white text-black shadow-panel dark:border-white dark:text-white'
+                              : 'members-view-tab-inactive border-black/15 text-black/70 hover:border-black/25 hover:text-black dark:border-white/15 dark:text-white/75 dark:hover:border-white/25 dark:hover:text-white'
+                          }`}
+                        >
+                          <Icon name={tab.icon} className="text-[0.95rem]" />
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -750,29 +831,34 @@ export default function OwnerNewSubscriptionPage() {
               {mode === 'existing' ? (
                 <div className="space-y-4">
                   <div className="-mx-1 px-1">
-                    <div className="members-view-tabs-scroll overflow-x-auto">
-                      <div className="flex min-w-max gap-2">
-                        {existingPackageTabs.map((tab) => {
-                          const active = tab.key === activeExistingPackageTabKey;
+                    <div className="members-view-dock pointer-events-auto overflow-hidden rounded-[1.7rem] border border-black backdrop-blur-xl dark:border-white">
+                      <div ref={packageTypeTabsScrollRef} className="members-view-tabs-scroll overflow-x-auto px-3 py-3">
+                        <div className="flex min-w-max gap-2">
+                          {existingPackageTabs.map((tab) => {
+                            const active = tab.key === activeExistingPackageTabKey;
 
-                          return (
-                            <button
-                              key={tab.key}
-                              type="button"
-                              title={tab.title}
-                              onClick={() => setSelectedPackageType(tab.key)}
-                              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 font-label text-[0.7rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
-                                active
-                                  ? 'members-view-tab-active border-black bg-white text-black shadow-panel dark:border-white dark:text-white'
-                                  : 'members-view-tab-inactive border-black/15 text-black/70 hover:border-black/25 hover:text-black dark:border-white/15 dark:text-white/75 dark:hover:border-white/25 dark:hover:text-white'
-                              }`}
-                            >
-                              <Icon name={tab.icon} className="text-[0.95rem]" />
-                              {tab.label}
-                              <span className="text-[0.68rem] tracking-[0.12em] opacity-70">{tab.count}</span>
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                ref={(element) => {
+                                  packageTypeTabRefMap.current[tab.key] = element;
+                                }}
+                                key={tab.key}
+                                type="button"
+                                title={tab.title}
+                                onClick={() => setSelectedPackageType(tab.key)}
+                                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 font-label text-[0.7rem] font-bold italic uppercase tracking-[0.18em] transition-all ${
+                                  active
+                                    ? 'members-view-tab-active border-black bg-white text-black shadow-panel dark:border-white dark:text-white'
+                                    : 'members-view-tab-inactive border-black/15 text-black/70 hover:border-black/25 hover:text-black dark:border-white/15 dark:text-white/75 dark:hover:border-white/25 dark:hover:text-white'
+                                }`}
+                              >
+                                <Icon name={tab.icon} className="text-[0.95rem]" />
+                                {tab.label}
+                                <span className="text-[0.68rem] tracking-[0.12em] opacity-70">{tab.count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -878,6 +964,36 @@ export default function OwnerNewSubscriptionPage() {
                     <Alert variant="info">
                       Select a package above to prefill the price and suggested dates for this subscription.
                     </Alert>
+                  ) : null}
+
+                  {selectedPackage ? (
+                    <div className="rounded-[1.1rem] border border-black/10 bg-black/[0.02] p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                      <p className="font-label text-[0.62rem] font-bold uppercase tracking-[0.2em] text-black/60 dark:text-white/65">
+                        Selected package
+                      </p>
+                      <div className="mt-2 grid gap-2 text-sm text-black/80 dark:text-white/85 sm:grid-cols-2">
+                        <p>
+                          <span className="font-semibold text-black dark:text-white">Service:</span>
+                          {' '}
+                          {selectedPackage.service_type}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-black dark:text-white">Sessions:</span>
+                          {' '}
+                          {selectedPackage.sessions}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-black dark:text-white">Duration:</span>
+                          {' '}
+                          {formatDuration(selectedPackage.duration_months)}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-black dark:text-white">Consistency:</span>
+                          {' '}
+                          {formatConsistency(selectedPackage)}
+                        </p>
+                      </div>
+                    </div>
                   ) : null}
 
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -1054,7 +1170,7 @@ export default function OwnerNewSubscriptionPage() {
                       required
                       value={customForm.price}
                       onChange={handleCustomPriceChange}
-                      className="mx-auto block w-3/4"
+                      className="w-full"
                     />
                     <StepperInput
                       id="custom-consistency-window-days"
