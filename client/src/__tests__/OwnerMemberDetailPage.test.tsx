@@ -140,10 +140,14 @@ describe('OwnerMemberDetailPage', () => {
 
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2?view=today' });
 
+    let activeCard: HTMLElement | null = null;
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /marked today$/i })).toHaveAttribute('href', '/members?view=today');
-      expect(screen.getByText('This member has no subsciption active for today')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /add/i })).toHaveAttribute('href', '/members/2/subscriptions/new?view=today');
+      expect(screen.getByText('This member has no subscription active for today')).toBeInTheDocument();
+      activeCard = screen.getByText('ACTIVE SUBSCRIPTION').closest('.glass-panel');
+      expect(activeCard).not.toBeNull();
+      expect(within(activeCard as HTMLElement).getByRole('button', { name: /add subscription/i })).toBeInTheDocument();
+      expect(within(activeCard as HTMLElement).getByRole('link')).toHaveAttribute('href', '/members/2/subscriptions/new?view=today');
     });
   });
 
@@ -166,10 +170,13 @@ describe('OwnerMemberDetailPage', () => {
 
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
+    let activeCard: HTMLElement | null = null;
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /archived members$/i })).toHaveAttribute('href', '/members?view=archived');
-      expect(screen.getByRole('button', { name: /unarchive to add/i })).toBeDisabled();
-      expect(screen.queryByRole('link', { name: /add/i })).not.toBeInTheDocument();
+      activeCard = screen.getByText('ACTIVE SUBSCRIPTION').closest('.glass-panel');
+      expect(activeCard).not.toBeNull();
+      expect(within(activeCard as HTMLElement).getByRole('button', { name: /unarchive to add subscription/i })).toBeDisabled();
+      expect(within(activeCard as HTMLElement).queryByRole('link')).not.toBeInTheDocument();
     });
   });
 

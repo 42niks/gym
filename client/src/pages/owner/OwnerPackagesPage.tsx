@@ -84,19 +84,40 @@ function buildTabs(packages: ManagedPackage[]): PackageTab[] {
 }
 
 function formatPrice(price: number) {
+  if (!Number.isFinite(price)) {
+    return '--';
+  }
   return `₹${price.toLocaleString('en-IN')}`;
 }
 
 function formatDuration(months: number) {
+  if (!Number.isFinite(months) || months <= 0) {
+    return '--';
+  }
   return `${months} ${months === 1 ? 'month' : 'months'}`;
 }
 
 function formatConsistency(pkg: Pick<ManagedPackage, 'consistency_min_days' | 'consistency_window_days'>) {
+  if (
+    !Number.isFinite(pkg.consistency_min_days)
+    || !Number.isFinite(pkg.consistency_window_days)
+    || pkg.consistency_min_days <= 0
+    || pkg.consistency_window_days <= 0
+  ) {
+    return 'Consistency unavailable';
+  }
   return `${pkg.consistency_min_days} in ${pkg.consistency_window_days} days`;
 }
 
 function getSubscribedCount(pkg: ManagedPackage) {
-  return pkg.active_subscription_count + pkg.upcoming_subscription_count;
+  const activeCount = Number.isFinite(pkg.active_subscription_count)
+    ? Math.max(0, Math.trunc(pkg.active_subscription_count))
+    : 0;
+  const upcomingCount = Number.isFinite(pkg.upcoming_subscription_count)
+    ? Math.max(0, Math.trunc(pkg.upcoming_subscription_count))
+    : 0;
+
+  return activeCount + upcomingCount;
 }
 
 function BottomPackageTabs({
@@ -198,10 +219,19 @@ export default function OwnerPackagesPage() {
   const [archivingId, setArchivingId] = useState<number | null>(null);
   const [archiveError, setArchiveError] = useState('');
 
-  const { data: packages = [], isLoading } = useQuery<ManagedPackage[]>({
+  const { data: packageData = [], isLoading } = useQuery<ManagedPackage[]>({
     queryKey: ['owner-packages'],
     queryFn: () => api.get('/api/packages'),
   });
+
+  const packages = Array.isArray(packageData)
+    ? packageData.filter((pkg): pkg is ManagedPackage =>
+      pkg !== null
+      && typeof pkg === 'object'
+      && typeof pkg.service_type === 'string'
+      && pkg.service_type.trim().length > 0,
+    ).map((pkg) => ({ ...pkg, service_type: pkg.service_type.trim() }))
+    : [];
 
   const tabs = buildTabs(packages);
   const requestedType = searchParams.get('type');
@@ -300,7 +330,7 @@ export default function OwnerPackagesPage() {
             ) : null}
 
             {selectedTab.packages.length === 0 ? (
-              <div className="empty-state px-4 py-10">
+              <div className="px-6 py-10 text-center text-sm text-black dark:text-white">
                 No archived packages
               </div>
             ) : (

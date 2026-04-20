@@ -136,6 +136,7 @@ interface AttendanceCalendarProps {
   isDateInteractive?: (date: string, attended: boolean) => boolean;
   onSelectDate?: (date: string, attended: boolean) => void;
   pendingDate?: string | null;
+  interactiveAppearance?: 'default' | 'member-like';
 }
 
 export default function AttendanceCalendar({
@@ -144,6 +145,7 @@ export default function AttendanceCalendar({
   isDateInteractive,
   onSelectDate,
   pendingDate = null,
+  interactiveAppearance = 'default',
 }: AttendanceCalendarProps) {
   const titleId = 'attendance-calendar';
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -506,6 +508,39 @@ export default function AttendanceCalendar({
     const label = cell.attended
       ? `Remove attendance for ${formatFullDate(cell.date)}`
       : `Add attendance for ${formatFullDate(cell.date)}`;
+
+    if (interactiveAppearance === 'member-like') {
+      return (
+        <div className="relative z-10 flex aspect-square w-full items-center justify-center" role="gridcell">
+          <button
+            type="button"
+            aria-label={label}
+            disabled={!interactive || pendingDate !== null}
+            onClick={() => {
+              if (!interactive || !onSelectDate) return;
+              onSelectDate(cell.date, cell.attended);
+            }}
+            className={`relative z-10 flex aspect-square w-full items-center justify-center text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white ${
+              cell.attended ? '' : interactive ? 'hover:opacity-75' : 'cursor-default'
+            } ${isPending ? 'animate-pulse opacity-70' : ''}`}
+            style={{
+              color:
+                'color-mix(in srgb, currentColor calc(20% + var(--focus-alpha) * 80%), rgb(148 163 184))',
+            }}
+          >
+            {cell.attended ? (
+              <div className="relative z-10 flex h-[95%] w-[95%] items-center justify-center rounded-full border border-black bg-surface-card shadow-panel [contain:paint] [isolation:isolate] [transform:translateZ(0)] [backface-visibility:hidden] dark:border-white dark:bg-surface-dark">
+                <span className="attendance-pill-surface flex h-full w-full items-center justify-center overflow-hidden rounded-full [transform:translateZ(0)] [backface-visibility:hidden]">
+                  {formatDayNumber(cell.date)}
+                </span>
+              </div>
+            ) : (
+              <span>{formatDayNumber(cell.date)}</span>
+            )}
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="relative z-10 flex aspect-square w-full items-center justify-center" role="gridcell">

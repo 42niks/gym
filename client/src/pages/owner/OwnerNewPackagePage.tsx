@@ -28,6 +28,7 @@ const emptyForm: PackageFormData = {
 };
 
 const CUSTOM_SERVICE_TYPE = '__custom__';
+const PACKAGE_FIELD_LABEL_CLASS = 'pl-4 not-italic';
 const serviceTypeOptions = [
   '1:1 Personal Training',
   'Group Personal Training',
@@ -128,7 +129,7 @@ function StepperInput({
     <div>
       <label
         htmlFor={id}
-        className="field-label"
+        className={`field-label ${PACKAGE_FIELD_LABEL_CLASS}`}
       >
         {label}
       </label>
@@ -379,7 +380,7 @@ export default function OwnerNewPackagePage() {
           <div>
             <label
               htmlFor="service-type"
-              className="field-label"
+              className={`field-label ${PACKAGE_FIELD_LABEL_CLASS}`}
             >
               Service type
             </label>
@@ -412,7 +413,7 @@ export default function OwnerNewPackagePage() {
             <div>
               <label
                 htmlFor="custom-service-type"
-                className="field-label flex items-center gap-2"
+                className={`field-label ${PACKAGE_FIELD_LABEL_CLASS} flex items-center gap-2`}
               >
                 <span className="material-symbols-outlined text-base">bolt</span>
                 New service type
@@ -454,13 +455,13 @@ export default function OwnerNewPackagePage() {
             />
             <Input
               label="Price (₹)"
+              labelClassName={PACKAGE_FIELD_LABEL_CLASS}
               type="text"
               inputMode="numeric"
               pattern="[0-9]*"
               required
               value={form.price}
               onChange={handlePriceChange}
-              className="mx-auto block w-3/4"
             />
             <StepperInput
               id="consistency-window-days"

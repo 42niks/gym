@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerNewSubscriptionPage from '../pages/owner/OwnerNewSubscriptionPage.js';
 import { renderWithProviders } from './test-utils.js';
@@ -40,58 +40,72 @@ function configurePageData({
   });
 }
 
+async function selectFirstExistingPackage(user: ReturnType<typeof userEvent.setup>) {
+  const table = await screen.findByRole('table');
+  const selectButtons = within(table).getAllByRole('button', { name: /select/i });
+  await user.click(selectButtons[0]);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   configurePageData();
 });
 
 describe('OwnerNewSubscriptionPage', () => {
-  it('renders heading, member copy, and back link', async () => {
+  it('renders the heading, mode tabs, and member back link', async () => {
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
     await waitFor(() => {
       expect(screen.getByText('New subscription')).toBeInTheDocument();
-      expect(screen.getByText(/Create a plan for Alex Kumar/i)).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /arrow_back Member$/ })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /member profile/i })).toHaveAttribute('href', '/members/2');
+      expect(screen.getByRole('button', { name: /existing package/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /custom package/i })).toBeInTheDocument();
     });
   });
 
-  it('renders package options grouped by type and hides inactive packages', async () => {
+  it('renders package tabs grouped by type and hides inactive packages', async () => {
     configurePageData({ packages: mockManagedPackages });
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
     await waitFor(() => {
-      expect(screen.getByText('1:1 Personal Training')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /1:1\s*2/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^group/i })).not.toBeInTheDocument();
     });
 
-    expect(screen.queryByText('Group Personal Training')).not.toBeInTheDocument();
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('12')).toBeInTheDocument();
+    expect(within(table).getByText('24')).toBeInTheDocument();
+  });
+
+  it('requires selecting a shared package before the existing-package submit is enabled', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
+
+    const createButton = await screen.findByRole('button', { name: /create subscription/i });
+    expect(createButton).toBeDisabled();
+
+    await selectFirstExistingPackage(user);
+    expect(screen.getByRole('button', { name: /create subscription/i })).toBeEnabled();
   });
 
   it('shows start date, amount, and suggested end date in existing package mode', async () => {
     const user = userEvent.setup();
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
-    await waitFor(() => {
-      expect(screen.getAllByText('12 sessions')[0]).toBeInTheDocument();
-    });
+    await selectFirstExistingPackage(user);
+    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2026-04-07' } });
 
-    await user.click(screen.getAllByText('12 sessions')[0]);
-    await user.clear(screen.getByLabelText(/start date/i));
-    await user.type(screen.getByLabelText(/start date/i), '2026-04-07');
-
-    expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^start date$/i)).toHaveValue('2026-04-07');
     expect(screen.getByLabelText(/amount/i)).toHaveValue('29500');
     expect(screen.getByLabelText(/^end date$/i)).toHaveValue('2026-05-06');
+    expect(screen.getByText(/suggested end date is 6 may 2026/i)).toBeInTheDocument();
   });
 
   it('sanitizes amount input to digits only', async () => {
     const user = userEvent.setup();
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
-    await waitFor(() => {
-      expect(screen.getAllByText('12 sessions')[0]).toBeInTheDocument();
-    });
-    await user.click(screen.getAllByText('12 sessions')[0]);
+    await selectFirstExistingPackage(user);
 
     const amountInput = screen.getByLabelText(/amount/i);
     await user.clear(amountInput);
@@ -105,19 +119,18 @@ describe('OwnerNewSubscriptionPage', () => {
     mockApiPost.mockResolvedValue({ id: 10 });
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
-    await waitFor(() => {
-      expect(screen.getAllByText('12 sessions')[0]).toBeInTheDocument();
-    });
-    await user.click(screen.getAllByText('12 sessions')[0]);
+    await selectFirstExistingPackage(user);
+    const currentStartDate = (screen.getByLabelText(/^start date$/i) as HTMLInputElement).value;
+    const currentEndDate = (screen.getByLabelText(/^end date$/i) as HTMLInputElement).value;
     await user.click(screen.getByRole('button', { name: /create subscription/i }));
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/subscriptions', expect.objectContaining({
+      expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/subscriptions', {
         package_id: 1,
+        start_date: currentStartDate,
+        end_date: currentEndDate,
         amount: 29500,
-        start_date: expect.any(String),
-        end_date: expect.any(String),
-      }));
+      });
       expect(mockNavigate).toHaveBeenCalledWith('/members/2');
     });
   });
@@ -127,10 +140,7 @@ describe('OwnerNewSubscriptionPage', () => {
     mockApiPost.mockResolvedValue({ id: 11 });
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
-    await waitFor(() => {
-      expect(screen.getAllByText('12 sessions')[0]).toBeInTheDocument();
-    });
-    await user.click(screen.getAllByText('12 sessions')[0]);
+    await selectFirstExistingPackage(user);
     fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '2026-05-10' } });
     await user.click(screen.getByRole('button', { name: /create subscription/i }));
 
@@ -147,25 +157,29 @@ describe('OwnerNewSubscriptionPage', () => {
     mockApiPost.mockResolvedValue({ id: 20 });
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /custom package/i })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /custom package/i }));
-    await user.type(screen.getByLabelText(/package name/i), 'Special Plan');
-    await user.type(screen.getByLabelText(/number of sessions/i), '15');
-    await user.clear(screen.getByLabelText(/start date/i));
-    await user.type(screen.getByLabelText(/start date/i), '2026-06-01');
-    await user.clear(screen.getByLabelText(/amount/i));
-    await user.type(screen.getByLabelText(/amount/i), '21000');
-    await user.type(screen.getByLabelText(/^end date$/i), '2026-06-30');
-    await user.click(screen.getByRole('button', { name: /create subscription/i }));
+    await user.click(await screen.findByRole('button', { name: /custom package/i }));
+    await user.selectOptions(screen.getByLabelText(/^service type$/i), '__custom__');
+    await user.type(screen.getByLabelText(/new service type/i), 'Special Plan');
+    await user.clear(screen.getByLabelText(/^sessions$/i));
+    await user.type(screen.getByLabelText(/^sessions$/i), '15');
+    fireEvent.change(screen.getByLabelText(/^start date$/i), { target: { value: '2026-06-01' } });
+    fireEvent.change(screen.getByLabelText(/^end date$/i), { target: { value: '2026-06-30' } });
+    await user.clear(screen.getByLabelText(/price/i));
+    await user.type(screen.getByLabelText(/price/i), '21000');
+    await user.click(screen.getByRole('button', { name: /add subscription/i }));
 
     await waitFor(() => {
-      expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/subscriptions', expect.objectContaining({
-        custom_package: expect.objectContaining({
+      expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/subscriptions', {
+        custom_package: {
           service_type: 'Special Plan',
           sessions: 15,
+          start_date: '2026-06-01',
+          end_date: '2026-06-30',
           amount: 21000,
-        }),
-      }));
+          consistency_window_days: 7,
+          consistency_min_days: 1,
+        },
+      });
     });
   });
 
@@ -187,33 +201,25 @@ describe('OwnerNewSubscriptionPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Unarchive this member before creating a new subscription/i)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /back to member profile/i })).toHaveAttribute('href', '/members/2');
     });
 
     expect(screen.queryByRole('button', { name: /create subscription/i })).not.toBeInTheDocument();
   });
 
-  it('shows validation when a custom rule is impossible', async () => {
+  it('clamps minimum attendance days below the consistency window', async () => {
     const user = userEvent.setup();
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /custom package/i })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /custom package/i }));
-    await user.type(screen.getByLabelText(/package name/i), 'Bad Rule');
-    await user.type(screen.getByLabelText(/number of sessions/i), '10');
-    await user.clear(screen.getByLabelText(/start date/i));
-    await user.type(screen.getByLabelText(/start date/i), '2026-05-01');
-    await user.clear(screen.getByLabelText(/amount/i));
-    await user.type(screen.getByLabelText(/amount/i), '10000');
-    await user.type(screen.getByLabelText(/^end date$/i), '2026-05-30');
-    await user.clear(screen.getByLabelText(/consistency window/i));
-    await user.type(screen.getByLabelText(/consistency window/i), '7');
-    await user.clear(screen.getByLabelText(/minimum attendance days/i));
-    await user.type(screen.getByLabelText(/minimum attendance days/i), '7');
-    await user.click(screen.getByRole('button', { name: /create subscription/i }));
+    await user.click(await screen.findByRole('button', { name: /custom package/i }));
+    const consistencyWindowInput = screen.getByLabelText(/^consistency window \(days\)$/i, { selector: 'input' });
+    const minDaysInput = screen.getByLabelText(/^min days in window$/i, { selector: 'input' });
+    await user.clear(consistencyWindowInput);
+    await user.type(consistencyWindowInput, '7');
+    await user.clear(minDaysInput);
+    await user.type(minDaysInput, '7');
 
-    await waitFor(() => {
-      expect(screen.getByText('Minimum attendance days must be less than the consistency window.')).toBeInTheDocument();
-    });
+    expect(minDaysInput).toHaveValue('6');
   });
 
   it('shows API errors inline', async () => {
@@ -222,10 +228,7 @@ describe('OwnerNewSubscriptionPage', () => {
     mockApiPost.mockRejectedValue(new ApiError(400, 'Overlapping subscription'));
     renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
 
-    await waitFor(() => {
-      expect(screen.getAllByText('12 sessions')[0]).toBeInTheDocument();
-    });
-    await user.click(screen.getAllByText('12 sessions')[0]);
+    await selectFirstExistingPackage(user);
     await user.click(screen.getByRole('button', { name: /create subscription/i }));
 
     await waitFor(() => {

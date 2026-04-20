@@ -262,7 +262,7 @@ describe('Subscriptions', () => {
         body: JSON.stringify({ package_id: 1, start_date: tomorrow, end_date: addDays(tomorrow, -1) }),
       });
       expect(res.status).toBe(400);
-      expect((await res.json()).error).toBe('end_date cannot be before start_date');
+      expect((await res.json()).error).toBe('end_date must be after start_date');
     });
 
     it('should reject non-existent package_id', async () => {

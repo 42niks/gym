@@ -209,24 +209,33 @@ function computePillRows(widths: number[], availableWidth: number) {
 function CompactPillCard({
   label,
   pills,
+  action,
 }: {
   label: string;
   pills: PillSpec[];
+  action?: {
+    to: string;
+    label: string;
+    icon: string;
+  };
 }) {
   const pillsWrapRef = useRef<HTMLDivElement | null>(null);
-  const pillRefs = useRef<Array<HTMLSpanElement | null>>([]);
-  pillRefs.current.length = pills.length;
+  const itemRefs = useRef<Array<HTMLElement | null>>([]);
+  itemRefs.current.length = pills.length + (action ? 1 : 0);
   const [innerMinHeight, setInnerMinHeight] = useState(PILL_CARD_SINGLE_ROW_MIN_HEIGHT_PX);
-  const pillSignature = pills.map((pill) => `${pill.key}:${pill.icon ?? ''}:${pill.label}`).join('|');
+  const pillSignature = [
+    ...pills.map((pill) => `${pill.key}:${pill.icon ?? ''}:${pill.label}`),
+    action ? `action:${action.label}:${action.icon}:${action.to}` : '',
+  ].join('|');
 
   useLayoutEffect(() => {
     function updateLayout() {
       const availableWidth = pillsWrapRef.current?.clientWidth ?? 0;
-      const widths = pillRefs.current
-        .map((pill) => pill ? Math.ceil(pill.getBoundingClientRect().width) : 0)
+      const widths = itemRefs.current
+        .map((item) => item ? Math.ceil(item.getBoundingClientRect().width) : 0)
         .filter((value) => value > 0);
-      const heights = pillRefs.current
-        .map((pill) => pill ? Math.ceil(pill.getBoundingClientRect().height) : 0)
+      const heights = itemRefs.current
+        .map((item) => item ? Math.ceil(item.getBoundingClientRect().height) : 0)
         .filter((value) => value > 0);
 
       if (widths.length === 0 || availableWidth <= 0) {
@@ -257,8 +266,8 @@ function CompactPillCard({
     if (pillsWrapRef.current) {
       observer.observe(pillsWrapRef.current);
     }
-    pillRefs.current.forEach((pill) => {
-      if (pill) observer.observe(pill);
+    itemRefs.current.forEach((item) => {
+      if (item) observer.observe(item);
     });
 
     return () => {
@@ -277,7 +286,7 @@ function CompactPillCard({
             <MemberStatusPill
               key={pill.key}
               ref={(node) => {
-                pillRefs.current[index] = node;
+                itemRefs.current[index] = node;
               }}
               pill={pill}
               className="whitespace-nowrap"
@@ -285,6 +294,25 @@ function CompactPillCard({
               iconClassName="text-[0.85rem]"
             />
           ))}
+          {action ? (
+            <Link
+              to={action.to}
+              ref={(node) => {
+                itemRefs.current[pills.length] = node;
+              }}
+              className="owner-packages-cta-frame relative inline-flex shrink-0 items-center justify-center rounded-full border border-black font-label text-[0.67rem] font-bold italic uppercase tracking-[0.16em] text-black shadow-panel transition-all hover:shadow-glow-brand dark:border-white dark:text-white"
+            >
+              <span
+                aria-hidden="true"
+                className="owner-packages-cta-surface brand-duotone-button-sm"
+                style={{ backgroundSize: '78% 185%, 108% 235%, 100% 100%' }}
+              />
+              <span className="relative z-10 inline-flex items-center justify-center gap-1.5 rounded-[calc(9999px-1px)] px-2.5 py-1">
+                <Icon name={action.icon} className="text-[0.85rem]" />
+                <span>{action.label}</span>
+              </span>
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>
@@ -563,11 +591,20 @@ function SubscriptionCard({
   const daysSinceEnd = getSubscriptionDaysSinceEnd(sub);
   const hasCompletionAction = Boolean(sub.can_mark_complete);
   const { total, attended, remaining } = normalizeSessionCounts(sub);
+  const isActiveCard = sub.lifecycle_state === 'active';
 
-  return (
-    <Card className="space-y-5 p-5">
+  const content = (
+    <>
       {sectionLabel ? (
-        <p className="section-eyebrow not-italic">{sectionLabel}</p>
+        <p
+          className={
+            isActiveCard
+              ? 'inline-flex w-fit items-center rounded-full border border-black/12 bg-white/60 px-3 py-1 font-label text-[0.64rem] font-bold uppercase tracking-[0.18em] text-black shadow-sm shadow-black/5 dark:border-white/12 dark:bg-white/[0.08] dark:text-white'
+              : 'section-eyebrow not-italic'
+          }
+        >
+          {sectionLabel}
+        </p>
       ) : null}
       <div className="space-y-1.5">
         <div className="flex items-start justify-between gap-3">
@@ -628,6 +665,20 @@ function SubscriptionCard({
           </Button>
         </Link>
       </div>
+    </>
+  );
+
+  return isActiveCard ? (
+    <Card className="active-subscription-card-frame p-0">
+      <div className="active-subscription-card-surface">
+        <div className="active-subscription-card-content space-y-5 p-5 sm:p-6">
+          {content}
+        </div>
+      </div>
+    </Card>
+  ) : (
+    <Card className="space-y-5 p-5">
+      {content}
     </Card>
   );
 }
@@ -647,7 +698,7 @@ function EmptyActiveSubscriptionCard({
       disabled={!canAddSubscription}
       className="min-w-[11.5rem]"
     >
-      {canAddSubscription ? 'Add' : 'Unarchive to add'}
+      {canAddSubscription ? 'Add subscription' : 'Unarchive to add subscription'}
     </Button>
   );
 
@@ -657,7 +708,7 @@ function EmptyActiveSubscriptionCard({
       <div className="flex min-h-[7.5rem] items-center justify-center rounded-[1.25rem] border border-dashed border-black/12 bg-white/35 px-4 py-5 dark:border-white/12 dark:bg-white/[0.03]">
         <div className="flex flex-col items-center gap-2 text-center">
           <p className="text-xs font-medium text-black/60 dark:text-white/70">
-            This member has no subsciption active for today
+            This member has no subscription active for today
           </p>
           {canAddSubscription ? (
             <Link to={`/members/${memberId}/subscriptions/new${viewQuery}`}>
@@ -927,7 +978,15 @@ export default function OwnerMemberDetailPage() {
                   OVERVIEW
                 </p>
               </div>
-              <CompactPillCard label="Subscription" pills={buildSubscriptionPills(detail)} />
+              <CompactPillCard
+                label="Subscription"
+                pills={buildSubscriptionPills(detail)}
+                action={
+                  detail.can_add_subscription
+                    ? { to: `/members/${id}/subscriptions/new${viewQuery}`, label: 'New', icon: 'add' }
+                    : undefined
+                }
+              />
               <CompactPillCard label="Consistency" pills={buildConsistencyPills(detail)} />
             </div>
           </div>
@@ -992,7 +1051,7 @@ export default function OwnerMemberDetailPage() {
           </div>
         </div>
 
-        <Card className="space-y-4 border border-red-200 bg-red-50/55 p-5 shadow-sm shadow-black/5 dark:border-red-900/60 dark:bg-red-950/15">
+        <Card className="destructive-card-glow space-y-4 border border-red-200 bg-red-50/55 p-5 dark:border-red-900/60 dark:bg-red-950/15">
           <SectionHeading
             eyebrow="Destructive actions"
             title={detail.archive_action.kind === 'archive' ? 'Archive member' : 'Unarchive member'}

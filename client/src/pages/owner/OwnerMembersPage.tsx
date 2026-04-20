@@ -412,7 +412,7 @@ export default function OwnerMembersPage() {
             <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-black bg-white/80 shadow-sm shadow-black/5 dark:border-white dark:bg-white/[0.05]">
               <Icon name={currentMeta.icon} className="text-[1.25rem] text-black/80 dark:text-white/85" />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="min-w-0 flex-1 font-headline text-[2rem] font-black italic leading-[0.92] tracking-[-0.04em] text-black dark:text-white sm:text-[2.3rem]">
                   {currentMeta.label}

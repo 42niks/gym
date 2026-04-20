@@ -521,6 +521,9 @@ export async function archiveMemberById(db: AppDatabase, id: number): Promise<{ 
   if (member.status === 'archived') return { error: 'Member is already archived' };
 
   const today = getIstDate();
+  if (today < member.join_date) {
+    return { error: 'Cannot archive member before their join date' };
+  }
   const subs = await listSubscriptionsForMember(db, member.id);
   const hasActiveOrUpcoming = subs.some(s => {
     const state = deriveLifecycleState(s, today);

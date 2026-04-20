@@ -41,7 +41,7 @@ describe('OwnerSubscriptionAttendancePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Attendance dates')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /arrow_back Member/i })).toHaveAttribute('href', '/members/2?view=today');
+      expect(screen.getByRole('link', { name: /member profile/i })).toHaveAttribute('href', '/members/2?view=today');
       expect(screen.getByRole('button', { name: /mark complete/i })).toBeInTheDocument();
     });
   });
@@ -74,13 +74,45 @@ describe('OwnerSubscriptionAttendancePage', () => {
     expect(mockApiDelete).toHaveBeenCalledWith('/api/members/2/subscriptions/1/attendance/2026-04-03');
   });
 
-  it('keeps an audit list of marked dates below the calendar', async () => {
+  it('renders the subscription summary above the calendar', async () => {
     renderWithProviders(<OwnerSubscriptionAttendancePage />, { route: '/members/2/subscriptions/1/attendance' });
 
     await waitFor(() => {
-      expect(screen.getByText('Audit trail')).toBeInTheDocument();
-      expect(screen.getByText('3 Apr 2026')).toBeInTheDocument();
-      expect(screen.getByText('14 Apr 2026')).toBeInTheDocument();
+      expect(screen.getByText('1:1 Personal Training')).toBeInTheDocument();
+      expect(screen.getByText('3 out of 7 days')).toBeInTheDocument();
+      expect(screen.getByText('5 / 12')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /remove attendance for 3 apr 2026/i })).toBeInTheDocument();
+    });
+  });
+
+  it('shows a graceful fallback when the subscription dates are invalid', async () => {
+    mockApiGet.mockResolvedValue({
+      ...mockMemberSubscriptionAttendance,
+      subscription: {
+        ...mockMemberSubscriptionAttendance.subscription,
+        service_type: '',
+        start_date: 'bad-date',
+        end_date: 'also-bad',
+        lifecycle_state: 'broken',
+        attended_sessions: Number.NaN,
+        total_sessions: Number.NaN,
+      },
+      consistency_rule: {
+        min_days: Number.NaN,
+        window_days: Number.NaN,
+      },
+      attended_dates: null,
+    });
+
+    renderWithProviders(<OwnerSubscriptionAttendancePage />, { route: '/members/2/subscriptions/1/attendance' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Attendance calendar dates are invalid for this subscription.')).toBeInTheDocument();
+      expect(screen.getByText('Subscription')).toBeInTheDocument();
+      expect(screen.getByText('Unavailable - Unavailable')).toBeInTheDocument();
+      expect(screen.getByText('Unknown')).toBeInTheDocument();
+      expect(screen.getByText('Unavailable')).toBeInTheDocument();
+      expect(screen.getByText('0 / 0')).toBeInTheDocument();
     });
   });
 });

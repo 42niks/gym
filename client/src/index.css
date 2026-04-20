@@ -224,6 +224,20 @@
     border-color: rgb(var(--line-soft));
   }
 
+  .destructive-card-glow {
+    box-shadow:
+      inset 0 0 0 1px rgb(248 113 113 / 0.12),
+      inset 0 0 34px rgb(248 113 113 / 0.16),
+      0 8px 24px rgb(0 0 0 / 0.05);
+  }
+
+  .dark .destructive-card-glow {
+    box-shadow:
+      inset 0 0 0 1px rgb(248 113 113 / 0.14),
+      inset 0 0 40px rgb(127 29 29 / 0.32),
+      0 10px 28px rgb(0 0 0 / 0.24);
+  }
+
   .form-error-flash {
     animation: form-error-flash 520ms ease-out;
     will-change: transform, opacity;
@@ -554,6 +568,20 @@
     @apply py-2;
   }
 
+  .existing-package-row-selected {
+    background:
+      radial-gradient(circle at 0% 0%, rgb(var(--color-accent-500) / 0.16), transparent 34%),
+      radial-gradient(circle at 100% 100%, rgb(var(--color-brand-400) / 0.18), transparent 42%),
+      linear-gradient(180deg, rgb(var(--color-brand-50) / 0.96) 0%, rgb(255 255 255 / 0.94) 100%);
+  }
+
+  .dark .existing-package-row-selected {
+    background:
+      radial-gradient(circle at 0% 0%, rgb(var(--color-accent-500) / 0.2), transparent 34%),
+      radial-gradient(circle at 100% 100%, rgb(var(--color-brand-400) / 0.22), transparent 42%),
+      linear-gradient(180deg, rgb(var(--surface-raised) / 0.88) 0%, rgb(var(--surface-dark) / 0.92) 100%);
+  }
+
   .empty-state {
     @apply glass-panel px-6 py-10 text-center text-sm text-black dark:text-white;
   }
@@ -610,6 +638,64 @@
   .dark .members-view-tab-inactive {
     background: linear-gradient(180deg, rgb(255 255 255 / 0.07) 0%, rgb(255 255 255 / 0.04) 100%);
     box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset;
+  }
+
+  .glass-panel.active-subscription-card-frame {
+    position: relative;
+    isolation: isolate;
+    contain: paint;
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    background: rgb(255 255 255 / 0.18);
+    box-shadow:
+      0 18px 42px rgb(var(--color-brand-500) / 0.12),
+      0 10px 24px rgb(0 0 0 / 0.08);
+  }
+
+  .dark .glass-panel.active-subscription-card-frame {
+    background: rgb(var(--surface-dark) / 0.16);
+    box-shadow:
+      0 20px 46px rgb(0 0 0 / 0.46),
+      0 0 0 1px rgb(255 255 255 / 0.04);
+  }
+
+  .active-subscription-card-surface {
+    position: relative;
+    border-radius: calc(1.5rem - 1px);
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    backdrop-filter: blur(14px) saturate(1.08);
+    -webkit-backdrop-filter: blur(14px) saturate(1.08);
+    background:
+      radial-gradient(ellipse 40% 78% at 104% 14%, rgb(var(--color-accent-400) / 0.18) 0%, transparent 66%),
+      radial-gradient(ellipse 94% 54% at 72% 112%, rgb(var(--color-brand-400) / 0.2) 0%, transparent 74%),
+      radial-gradient(ellipse 42% 62% at -12% 46%, rgb(var(--color-energy-300) / 0.16) 0%, transparent 70%),
+      linear-gradient(126deg, rgb(255 255 255 / 0.42) 0%, rgb(255 255 255 / 0.26) 46%, rgb(248 248 248 / 0.18) 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+  }
+
+  .active-subscription-card-surface::before {
+    content: none;
+  }
+
+  .active-subscription-card-surface::after {
+    content: none;
+  }
+
+  .dark .active-subscription-card-surface {
+    background:
+      radial-gradient(ellipse 42% 80% at 104% 14%, rgb(var(--color-accent-400) / 0.15) 0%, transparent 68%),
+      radial-gradient(ellipse 96% 56% at 74% 112%, rgb(var(--color-brand-400) / 0.24) 0%, transparent 76%),
+      radial-gradient(ellipse 44% 64% at -14% 46%, rgb(var(--color-energy-300) / 0.16) 0%, transparent 72%),
+      linear-gradient(126deg, rgb(var(--surface-dark) / 0.44) 0%, rgb(var(--surface-card) / 0.24) 46%, rgb(10 10 12 / 0.2) 100%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+
+  .active-subscription-card-content {
+    position: relative;
+    z-index: 1;
   }
 
   .consistency-panel-frame {

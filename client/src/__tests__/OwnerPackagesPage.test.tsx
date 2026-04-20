@@ -96,24 +96,17 @@ describe('OwnerPackagesPage', () => {
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
-    let selectedCard: HTMLElement | null = null;
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Group Personal Training' })).toBeInTheDocument();
-      selectedCard = screen.getByRole('heading', { name: 'Group Personal Training' }).closest('.glass-panel');
-      expect(selectedCard).not.toBeNull();
-      expect(within(selectedCard as HTMLElement).getByText('16')).toBeInTheDocument();
-      expect(within(selectedCard as HTMLElement).getByText('2 months')).toBeInTheDocument();
-      expect(within(selectedCard as HTMLElement).getByText('₹18,000')).toBeInTheDocument();
-      expect(within(selectedCard as HTMLElement).getByRole('button', { name: /archive/i })).toBeInTheDocument();
+      expect(screen.getByRole('table')).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText((content, element) => (
-        element?.tagName === 'SPAN'
-        && element.className.includes('font-headline')
-        && content.trim() === '1'
-      )),
-    ).toBeInTheDocument();
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('16')).toBeInTheDocument();
+    expect(within(table).getByText('2 months')).toBeInTheDocument();
+    expect(within(table).getByText('₹18,000')).toBeInTheDocument();
+    expect(within(table).getByText('3 live · 0 upcoming')).toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: /archive/i })).toBeInTheDocument();
   });
 
   it('archives an active package from the table', async () => {
@@ -123,12 +116,9 @@ describe('OwnerPackagesPage', () => {
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
-    const selectedCard = await screen.findByRole('heading', { name: 'Group Personal Training' });
-    const card = selectedCard.closest('.glass-panel');
-    expect(card).not.toBeNull();
-
-    await waitFor(() => expect(within(card as HTMLElement).getByRole('button', { name: /archive/i })).toBeInTheDocument());
-    await user.click(within(card as HTMLElement).getByRole('button', { name: /archive/i }));
+    const table = await screen.findByRole('table');
+    await waitFor(() => expect(within(table).getByRole('button', { name: /archive/i })).toBeInTheDocument());
+    await user.click(within(table).getByRole('button', { name: /archive/i }));
 
     await waitFor(() => {
       expect(mockConfirm).toHaveBeenCalled();
@@ -144,12 +134,9 @@ describe('OwnerPackagesPage', () => {
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=Group%20Personal%20Training' });
 
-    const selectedCard = await screen.findByRole('heading', { name: 'Group Personal Training' });
-    const card = selectedCard.closest('.glass-panel');
-    expect(card).not.toBeNull();
-
-    await waitFor(() => expect(within(card as HTMLElement).getByRole('button', { name: /archive/i })).toBeInTheDocument());
-    await user.click(within(card as HTMLElement).getByRole('button', { name: /archive/i }));
+    const table = await screen.findByRole('table');
+    await waitFor(() => expect(within(table).getByRole('button', { name: /archive/i })).toBeInTheDocument());
+    await user.click(within(table).getByRole('button', { name: /archive/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Archive failed')).toBeInTheDocument();
@@ -161,14 +148,14 @@ describe('OwnerPackagesPage', () => {
 
     renderWithProviders(<OwnerPackagesPage />, { route: '/packages?type=MMA%2FKickboxing%20Personal%20Training' });
 
-    let archivedCard: HTMLElement | null = null;
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Archived Packages' })).toBeInTheDocument();
-      archivedCard = screen.getByRole('heading', { name: 'Archived Packages' }).closest('.glass-panel');
-      expect(archivedCard).not.toBeNull();
-      expect(within(archivedCard as HTMLElement).getByText('MMA/Kickboxing Personal Training')).toBeInTheDocument();
-      expect(within(archivedCard as HTMLElement).getByText(/^Archived$/i)).toBeInTheDocument();
-      expect(within(archivedCard as HTMLElement).queryByRole('button', { name: /archive/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('table')).toBeInTheDocument();
     });
+
+    const table = screen.getByRole('table');
+    expect(within(table).getByText('MMA/Kickboxing Personal Training')).toBeInTheDocument();
+    expect(within(table).getByText(/^Archived$/i)).toBeInTheDocument();
+    expect(within(table).queryByRole('button', { name: /archive/i })).not.toBeInTheDocument();
   });
 });

@@ -61,7 +61,7 @@ export async function createNewSubscription(db: AppDatabase, input: CreateSubscr
     if (!custom.service_type?.trim()) return { error: 'custom_package.service_type is required', status: 400 as const };
     if (custom.service_type.trim().length > 120) return { error: 'custom_package.service_type exceeds 120 characters', status: 400 as const };
     if (!isValidYmdDate(custom.end_date)) return { error: 'Invalid end_date format', status: 400 as const };
-    if (custom.end_date < custom.start_date) return { error: 'end_date cannot be before start_date', status: 400 as const };
+    if (custom.end_date <= custom.start_date) return { error: 'end_date must be after start_date', status: 400 as const };
     if (!Number.isInteger(custom.sessions) || custom.sessions <= 0) return { error: 'custom_package.sessions must be a positive integer', status: 400 as const };
     if (!Number.isInteger(custom.amount) || custom.amount <= 0) return { error: 'custom_package.amount must be a positive integer', status: 400 as const };
     if (!Number.isInteger(custom.consistency_window_days) || custom.consistency_window_days < 5) return { error: 'custom_package.consistency_window_days must be at least 5', status: 400 as const };
@@ -81,8 +81,8 @@ export async function createNewSubscription(db: AppDatabase, input: CreateSubscr
     if (!overlapPkg) return { error: 'Package not found', status: 404 as const };
     const suggestedEndDate = computeEndDate(startDate, overlapPkg.duration_months);
     overlapEndDate = endDate ?? suggestedEndDate;
-    if (overlapEndDate < startDate) {
-      return { error: 'end_date cannot be before start_date', status: 400 as const };
+    if (overlapEndDate <= startDate) {
+      return { error: 'end_date must be after start_date', status: 400 as const };
     }
   }
 
@@ -134,8 +134,8 @@ export async function createNewSubscription(db: AppDatabase, input: CreateSubscr
     finalAmount = input.amount && Number.isInteger(input.amount) && input.amount > 0 ? input.amount : pkg.price;
     const suggestedEndDate = computeEndDate(startDate, pkg.duration_months);
     resolvedEndDate = endDate ?? suggestedEndDate;
-    if (resolvedEndDate < startDate) {
-      return { error: 'end_date cannot be before start_date', status: 400 as const };
+    if (resolvedEndDate <= startDate) {
+      return { error: 'end_date must be after start_date', status: 400 as const };
     }
   }
 

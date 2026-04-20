@@ -15,6 +15,57 @@ import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
 import { ownerLinks } from './ownerLinks.js';
 
+function parseDateParts(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    Number.isNaN(candidate.getTime())
+    || candidate.getUTCFullYear() !== year
+    || candidate.getUTCMonth() !== month - 1
+    || candidate.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function isValidYmdDate(value: string) {
+  return parseDateParts(value) !== null;
+}
+
+function formatSafeFullDate(value: string) {
+  return isValidYmdDate(value) ? formatFullDate(value) : 'Unavailable';
+}
+
+function formatSafeConsistencyRule(minDays: number, windowDays: number) {
+  if (!Number.isFinite(minDays) || !Number.isFinite(windowDays) || minDays <= 0 || windowDays <= 0) {
+    return 'Unavailable';
+  }
+
+  return formatConsistencyRule(minDays, windowDays);
+}
+
+function formatSafeStatus(value: string) {
+  if (value === 'active' || value === 'upcoming' || value === 'completed') {
+    return formatStatusLabel(value);
+  }
+
+  return 'Unknown';
+}
+
+function formatSafeSessionSummary(attendedSessions: number, totalSessions: number) {
+  const total = Number.isFinite(totalSessions) ? Math.max(0, Math.trunc(totalSessions)) : 0;
+  const attended = Number.isFinite(attendedSessions) ? Math.max(0, Math.trunc(attendedSessions)) : 0;
+  return `${Math.min(attended, total)} / ${total}`;
+}
+
 function SummaryField({
   label,
   value,
@@ -104,7 +155,7 @@ export default function OwnerSubscriptionAttendancePage() {
         <div className="page-stack max-w-5xl">
           <Link to={`/members/${id}${viewQuery}`} className="back-link">
             <span className="material-symbols-outlined text-base">arrow_back</span>
-            Member
+            Member Profile
           </Link>
           <div className="flex justify-center py-16">
             <Spinner />
@@ -120,7 +171,7 @@ export default function OwnerSubscriptionAttendancePage() {
         <div className="page-stack max-w-5xl">
           <Link to={`/members/${id}${viewQuery}`} className="back-link">
             <span className="material-symbols-outlined text-base">arrow_back</span>
-            Member
+            Member Profile
           </Link>
           <div className="empty-state">Could not load attendance dates.</div>
         </div>
@@ -128,11 +179,20 @@ export default function OwnerSubscriptionAttendancePage() {
     );
   }
 
+  const attendedDates = Array.isArray(data.attended_dates)
+    ? data.attended_dates.filter((date): date is string => typeof date === 'string')
+    : [];
   const weeks = buildCalendarWeeks(
     data.subscription.start_date,
     data.subscription.end_date,
-    data.attended_dates,
+    attendedDates,
   );
+  const subscriptionName = typeof data.subscription.service_type === 'string' && data.subscription.service_type.trim()
+    ? data.subscription.service_type.trim()
+    : 'Subscription';
+  const periodValue = weeks
+    ? `${formatFullDate(data.subscription.start_date)} - ${formatFullDate(data.subscription.end_date)}`
+    : `${formatSafeFullDate(data.subscription.start_date)} - ${formatSafeFullDate(data.subscription.end_date)}`;
 
   const isDateInteractive = (date: string) => (
     data.can_edit_dates
@@ -145,60 +205,34 @@ export default function OwnerSubscriptionAttendancePage() {
       <div className="page-stack max-w-5xl">
         <Link to={`/members/${id}${viewQuery}`} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
-          Member
+          Member Profile
         </Link>
 
-        <div className="space-y-3">
-          <p className="section-eyebrow">Subscription workspace</p>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="page-title">Attendance dates</h2>
-              <p className="mt-2 max-w-2xl text-sm text-black/60 dark:text-white/70">
-                Tap any day inside the subscription period to add or remove that exact attendance date.
-              </p>
-            </div>
-            {data.can_mark_complete ? (
-              <Button
-                variant="danger"
-                onClick={handleComplete}
-                disabled={completing}
-                icon={completing ? 'progress_activity' : 'task_alt'}
-              >
-                {completing ? 'Completing…' : 'Mark complete'}
-              </Button>
-            ) : null}
-          </div>
+        <div>
+          <h2 className="page-title">Attendance dates</h2>
         </div>
 
         <Card className="max-w-4xl overflow-hidden py-1">
           <dl className="divide-y divide-black/10 dark:divide-white/10">
-            <SummaryField label="Name" value={data.subscription.service_type} />
+            <SummaryField label="Name" value={subscriptionName} />
             <SummaryField
               label="Period"
-              value={`${formatFullDate(data.subscription.start_date)} - ${formatFullDate(data.subscription.end_date)}`}
+              value={periodValue}
             />
-            <SummaryField label="Status" value={formatStatusLabel(data.subscription.lifecycle_state)} />
+            <SummaryField label="Status" value={formatSafeStatus(data.subscription.lifecycle_state)} />
             <SummaryField
               label="Consistency rule"
-              value={formatConsistencyRule(
+              value={formatSafeConsistencyRule(
                 data.consistency_rule.min_days,
                 data.consistency_rule.window_days,
               )}
             />
             <SummaryField
               label="Sessions"
-              value={`${data.subscription.attended_sessions} / ${data.subscription.total_sessions}`}
-            />
-            <SummaryField
-              label="Editable range"
-              value={`${formatFullDate(data.editable_start_date)} - ${formatFullDate(data.editable_end_date)}`}
+              value={formatSafeSessionSummary(data.subscription.attended_sessions, data.subscription.total_sessions)}
             />
           </dl>
         </Card>
-
-        <Alert variant="info">
-          Future dates inside the subscription period are allowed here. Attendance is still limited to one entry per member per calendar date.
-        </Alert>
 
         {error ? <Alert variant="error">{error}</Alert> : null}
 
@@ -209,47 +243,24 @@ export default function OwnerSubscriptionAttendancePage() {
             isDateInteractive={(date) => isDateInteractive(date)}
             onSelectDate={(date, attended) => toggleMutation.mutate({ date, attended })}
             pendingDate={pendingDate}
+            interactiveAppearance="member-like"
           />
         ) : (
           <div className="empty-state">Attendance calendar dates are invalid for this subscription.</div>
         )}
 
-        <Card className="overflow-hidden">
-          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-4 dark:border-white/10 sm:px-5">
-            <div>
-              <p className="section-eyebrow">Audit trail</p>
-              <h3 className="mt-1 text-lg font-bold text-black dark:text-white">Marked dates</h3>
-            </div>
-            <p className="text-sm font-semibold text-black/70 dark:text-white/75">
-              {data.attended_dates.length} total
-            </p>
+        {data.can_mark_complete ? (
+          <div className="flex justify-start">
+            <Button
+              variant="danger"
+              onClick={handleComplete}
+              disabled={completing}
+              icon={completing ? 'progress_activity' : 'task_alt'}
+            >
+              {completing ? 'Completing…' : 'Mark complete'}
+            </Button>
           </div>
-          {data.attended_dates.length === 0 ? (
-            <div className="px-4 py-5 text-sm text-black/65 dark:text-white/70 sm:px-5">
-              No attendance dates are marked yet for this subscription.
-            </div>
-          ) : (
-            <div className="divide-y divide-black/10 dark:divide-white/10">
-              {data.attended_dates.map((value) => (
-                <div key={value} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
-                  <div>
-                    <p className="text-sm font-semibold text-black dark:text-white">{formatFullDate(value)}</p>
-                    <p className="text-xs text-black/60 dark:text-white/70">{value}</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    className="py-0 text-xs"
-                    icon="delete"
-                    disabled={toggleMutation.isPending}
-                    onClick={() => toggleMutation.mutate({ date: value, attended: true })}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+        ) : null}
       </div>
     </AppShell>
   );
