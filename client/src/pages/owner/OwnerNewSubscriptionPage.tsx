@@ -11,6 +11,7 @@ import Input from '../../components/Input.js';
 import Spinner from '../../components/Spinner.js';
 import { formatFullDate } from '../../components/attendance/AttendanceCalendar.js';
 import { ownerLinks } from './ownerLinks.js';
+import { formatYmdForInput, parseInputDateToYmd } from '../../lib/dateInput.js';
 
 function parseDateParts(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -87,15 +88,6 @@ function formatConsistency(pkg: Pick<ManagedPackage, 'consistency_min_days' | 'c
 
 function isValidYmdDate(value: string) {
   return parseDateParts(value) !== null;
-}
-
-function addDaysToYmd(value: string, days: number) {
-  const date = toUtcDate(value);
-  if (!date) {
-    return '';
-  }
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
 }
 
 interface PackageFormData {
@@ -318,10 +310,13 @@ export default function OwnerNewSubscriptionPage() {
   const [selectedPackageType, setSelectedPackageType] = useState<string | null>(null);
   const [mode, setMode] = useState<'existing' | 'custom'>('existing');
   const [startDate, setStartDate] = useState(getIstTodayDateString());
+  const [startDateInput, setStartDateInput] = useState(formatYmdForInput(getIstTodayDateString()));
   const [existingEndDate, setExistingEndDate] = useState('');
+  const [existingEndDateInput, setExistingEndDateInput] = useState('');
   const [existingEndDateTouched, setExistingEndDateTouched] = useState(false);
   const [amount, setAmount] = useState('');
   const [customForm, setCustomForm] = useState<PackageFormData>(emptyCustomPackageForm);
+  const [customEndDateInput, setCustomEndDateInput] = useState('');
   const [serviceTypeChoice, setServiceTypeChoice] = useState('');
   const [customServiceType, setCustomServiceType] = useState('');
   const [error, setError] = useState('');
@@ -342,7 +337,11 @@ export default function OwnerNewSubscriptionPage() {
 
   useEffect(() => {
     if (!memberDetail || !isValidYmdDate(memberDetail.join_date)) return;
-    setStartDate((current) => (current < memberDetail.join_date ? memberDetail.join_date : current));
+    setStartDate((current) => {
+      const nextValue = current < memberDetail.join_date ? memberDetail.join_date : current;
+      setStartDateInput(formatYmdForInput(nextValue));
+      return nextValue;
+    });
   }, [memberDetail]);
 
   useEffect(() => {
@@ -377,13 +376,11 @@ export default function OwnerNewSubscriptionPage() {
     : firstExistingPackageTabKey;
   const activeExistingPackageTab = existingPackageTabs.find((tab) => tab.key === activeExistingPackageTabKey) ?? null;
 
+  const parsedStartDate = parseInputDateToYmd(startDateInput);
+  const resolvedStartDate = parsedStartDate ?? startDate;
   const derivedEndDate = mode === 'existing' && selectedPackage
-    ? computeEndDate(startDate, selectedPackage.duration_months)
+    ? computeEndDate(resolvedStartDate, selectedPackage.duration_months)
     : null;
-  const minEndDate = addDaysToYmd(startDate, 1);
-  const minStartDate = memberDetail && isValidYmdDate(memberDetail.join_date)
-    ? memberDetail.join_date
-    : undefined;
   const hasVisiblePackages = visiblePackages.length > 0;
   const canSubmitExisting = !!selectedPackage && hasVisiblePackages && !loading;
 
@@ -424,11 +421,13 @@ export default function OwnerNewSubscriptionPage() {
     if (mode !== 'existing') return;
     if (!derivedEndDate) {
       setExistingEndDate('');
+      setExistingEndDateInput('');
       setExistingEndDateTouched(false);
       return;
     }
     if (!existingEndDateTouched || !existingEndDate) {
       setExistingEndDate(derivedEndDate);
+      setExistingEndDateInput(formatYmdForInput(derivedEndDate));
     }
   }, [derivedEndDate, existingEndDate, existingEndDateTouched, mode]);
 
@@ -566,27 +565,29 @@ export default function OwnerNewSubscriptionPage() {
     if (!id) return 'Could not determine which member to update.';
     if (!memberDetail) return 'Could not load member details.';
     if (!memberDetail.can_add_subscription) return 'Unarchive this member before adding a subscription.';
-    if (!startDate) return 'Start date is required.';
-    if (!isValidYmdDate(startDate)) return 'Start date must be a valid date.';
-    if (startDate < memberDetail.join_date) {
+    if (!startDateInput.trim()) return 'Start date is required.';
+    if (!parsedStartDate) return 'Start date must be in dd-mm-yyyy format.';
+    if (parsedStartDate < memberDetail.join_date) {
       return `Start date cannot be before ${formatFullDate(memberDetail.join_date)}.`;
     }
 
     if (mode === 'existing') {
       if (!hasVisiblePackages) return 'No active packages are available. Switch to a custom package or create a new shared package first.';
       if (!selectedPackage) return 'Select an existing package.';
-      if (!existingEndDate) return 'End date is required.';
-      if (!isValidYmdDate(existingEndDate)) return 'End date must be a valid date.';
-      if (existingEndDate <= startDate) return 'End date must be after start date.';
+      const parsedExistingEndDate = parseInputDateToYmd(existingEndDateInput);
+      if (!existingEndDateInput.trim()) return 'End date is required.';
+      if (!parsedExistingEndDate) return 'End date must be in dd-mm-yyyy format.';
+      if (parsedExistingEndDate <= parsedStartDate) return 'End date must be after start date.';
       if (!amount || Number.parseInt(amount, 10) <= 0) return 'Amount must be greater than 0.';
       return null;
     }
 
     if (!customForm.service_type.trim()) return 'Service type is required.';
     if (!customForm.sessions || Number.parseInt(customForm.sessions, 10) <= 0) return 'Number of sessions must be greater than 0.';
-    if (!customForm.end_date) return 'End date is required.';
-    if (!isValidYmdDate(customForm.end_date)) return 'End date must be a valid date.';
-    if (customForm.end_date <= startDate) return 'End date must be after start date.';
+    const parsedCustomEndDate = parseInputDateToYmd(customEndDateInput);
+    if (!customEndDateInput.trim()) return 'End date is required.';
+    if (!parsedCustomEndDate) return 'End date must be in dd-mm-yyyy format.';
+    if (parsedCustomEndDate <= parsedStartDate) return 'End date must be after start date.';
     if (!customForm.price || Number.parseInt(customForm.price, 10) <= 0) return 'Amount must be greater than 0.';
     if (!customForm.consistency_window_days || Number.parseInt(customForm.consistency_window_days, 10) < 5) return 'Consistency window must be at least 5 days.';
     if (!customForm.consistency_min_days || Number.parseInt(customForm.consistency_min_days, 10) <= 0) return 'Minimum attendance days must be greater than 0.';
@@ -605,14 +606,30 @@ export default function OwnerNewSubscriptionPage() {
       return;
     }
 
+    const startDateYmd = parseInputDateToYmd(startDateInput);
+    const existingEndDateYmd = parseInputDateToYmd(existingEndDateInput);
+    const customEndDateYmd = parseInputDateToYmd(customEndDateInput);
+    if (!startDateYmd) {
+      setError('Start date must be in dd-mm-yyyy format.');
+      return;
+    }
+    if (mode === 'existing' && !existingEndDateYmd) {
+      setError('End date must be in dd-mm-yyyy format.');
+      return;
+    }
+    if (mode === 'custom' && !customEndDateYmd) {
+      setError('End date must be in dd-mm-yyyy format.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       if (mode === 'existing' && selectedPackage) {
         await api.post<Subscription>(`/api/members/${id}/subscriptions`, {
           package_id: selectedPackage.id,
-          start_date: startDate,
-          end_date: existingEndDate,
+          start_date: startDateYmd,
+          end_date: existingEndDateYmd,
           amount: Number(amount),
         });
       } else {
@@ -620,8 +637,8 @@ export default function OwnerNewSubscriptionPage() {
           custom_package: {
             service_type: customForm.service_type.trim(),
             sessions: Number(customForm.sessions),
-            start_date: startDate,
-            end_date: customForm.end_date,
+            start_date: startDateYmd,
+            end_date: customEndDateYmd,
             amount: Number(customForm.price),
             consistency_window_days: Number(customForm.consistency_window_days),
             consistency_min_days: Number(customForm.consistency_min_days),
@@ -729,7 +746,7 @@ export default function OwnerNewSubscriptionPage() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} noValidate className="space-y-6">
               {mode === 'existing' ? (
                 <div className="space-y-4">
                   <div className="-mx-1 px-1">
@@ -867,22 +884,38 @@ export default function OwnerNewSubscriptionPage() {
                     <Input
                       label="Start date"
                       labelClassName="ml-4 not-italic"
-                      type="date"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
+                      placeholder="dd-mm-yyyy"
                       required
-                      min={minStartDate}
-                      value={startDate}
-                      onChange={(event) => setStartDate(event.target.value)}
+                      value={startDateInput}
+                      onChange={(event) => setStartDateInput(event.target.value)}
+                      onBlur={() => {
+                        const parsed = parseInputDateToYmd(startDateInput);
+                        if (!parsed) return;
+                        setStartDate(parsed);
+                        setStartDateInput(formatYmdForInput(parsed));
+                      }}
                     />
                     <Input
                       label="End date"
                       labelClassName="ml-4 not-italic"
-                      type="date"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
+                      placeholder="dd-mm-yyyy"
                       required
-                      min={minEndDate}
-                      value={existingEndDate}
+                      value={existingEndDateInput}
                       onChange={(event) => {
-                        setExistingEndDate(event.target.value);
+                        setExistingEndDateInput(event.target.value);
                         setExistingEndDateTouched(true);
+                      }}
+                      onBlur={() => {
+                        const parsed = parseInputDateToYmd(existingEndDateInput);
+                        if (!parsed) return;
+                        setExistingEndDate(parsed);
+                        setExistingEndDateInput(formatYmdForInput(parsed));
                       }}
                     />
                   </div>
@@ -919,20 +952,36 @@ export default function OwnerNewSubscriptionPage() {
                     <Input
                       label="Start date"
                       labelClassName={CUSTOM_PACKAGE_LABEL_CLASS}
-                      type="date"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
+                      placeholder="dd-mm-yyyy"
                       required
-                      min={minStartDate}
-                      value={startDate}
-                      onChange={(event) => setStartDate(event.target.value)}
+                      value={startDateInput}
+                      onChange={(event) => setStartDateInput(event.target.value)}
+                      onBlur={() => {
+                        const parsed = parseInputDateToYmd(startDateInput);
+                        if (!parsed) return;
+                        setStartDate(parsed);
+                        setStartDateInput(formatYmdForInput(parsed));
+                      }}
                     />
                     <Input
                       label="End date"
                       labelClassName={CUSTOM_PACKAGE_LABEL_CLASS}
-                      type="date"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]{2}-[0-9]{2}-[0-9]{4}"
+                      placeholder="dd-mm-yyyy"
                       required
-                      min={minEndDate}
-                      value={customForm.end_date}
-                      onChange={(event) => setCustomForm((current) => ({ ...current, end_date: event.target.value }))}
+                      value={customEndDateInput}
+                      onChange={(event) => setCustomEndDateInput(event.target.value)}
+                      onBlur={(event) => {
+                        const parsed = parseInputDateToYmd(event.target.value);
+                        if (!parsed) return;
+                        setCustomForm((current) => ({ ...current, end_date: parsed }));
+                        setCustomEndDateInput(formatYmdForInput(parsed));
+                      }}
                     />
                   </div>
 

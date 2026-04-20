@@ -50,6 +50,8 @@ describe('OwnerNewMemberPage', () => {
     await user.type(screen.getByLabelText(/full name/i), 'Jane Doe');
     await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
     await user.type(screen.getByLabelText(/phone/i), '9876543210');
+    await user.clear(screen.getByLabelText(/join date/i));
+    await user.type(screen.getByLabelText(/join date/i), '07-04-2026');
     await user.click(screen.getByRole('button', { name: /create member/i }));
 
     await waitFor(() => {
@@ -57,6 +59,7 @@ describe('OwnerNewMemberPage', () => {
         full_name: 'Jane Doe',
         email: 'jane@example.com',
         phone: '9876543210',
+        join_date: '2026-04-07',
       }));
       expect(mockNavigate).toHaveBeenCalledWith('/members/5');
     });
@@ -84,5 +87,22 @@ describe('OwnerNewMemberPage', () => {
     await user.type(phoneInput, '98a7-65x43210999');
 
     expect(phoneInput).toHaveValue('9876543210');
+  });
+
+  it('shows an inline error when join date is not dd-mm-yyyy', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
+
+    await user.type(screen.getByLabelText(/full name/i), 'Jane Doe');
+    await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
+    await user.type(screen.getByLabelText(/phone/i), '9876543210');
+    await user.clear(screen.getByLabelText(/join date/i));
+    await user.type(screen.getByLabelText(/join date/i), '2026-04-07');
+    await user.click(screen.getByRole('button', { name: /create member/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Join date must be in dd-mm-yyyy format')).toBeInTheDocument();
+      expect(mockApiPost).not.toHaveBeenCalled();
+    });
   });
 });

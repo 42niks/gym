@@ -7,13 +7,14 @@ import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
 import { ownerLinks } from './ownerLinks.js';
 import { getFirstFormErrorMessage } from '../../lib/formValidation.js';
+import { formatYmdForInput, parseInputDateToYmd } from '../../lib/dateInput.js';
 
 export default function OwnerNewMemberPage() {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [joinDate, setJoinDate] = useState(new Date().toISOString().slice(0, 10));
+  const [joinDateInput, setJoinDateInput] = useState(formatYmdForInput(new Date().toISOString().slice(0, 10)));
   const [error, setError] = useState('');
   const [errorPulse, setErrorPulse] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -34,6 +35,11 @@ export default function OwnerNewMemberPage() {
     const validationError = getFirstFormErrorMessage(e.currentTarget);
     if (validationError) {
       showError(validationError);
+      return;
+    }
+    const joinDate = parseInputDateToYmd(joinDateInput);
+    if (!joinDate) {
+      showError('Join date must be in dd-mm-yyyy format');
       return;
     }
     setLoading(true);
@@ -65,7 +71,16 @@ export default function OwnerNewMemberPage() {
           <Input label="Full name" labelClassName="ml-3 not-italic" type="text" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Doe" />
           <Input label="Email" labelClassName="ml-3 not-italic" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
           <Input label="Phone" labelClassName="ml-3 not-italic" type="text" inputMode="numeric" pattern="[0-9]{10}" minLength={10} maxLength={10} required value={phone} onChange={handlePhoneChange} placeholder="9876543210" />
-          <Input label="Join date" labelClassName="ml-3 not-italic" type="date" required value={joinDate} onChange={e => setJoinDate(e.target.value)} />
+          <Input
+            label="Join date"
+            labelClassName="ml-3 not-italic"
+            type="text"
+            inputMode="numeric"
+            required
+            value={joinDateInput}
+            onChange={e => setJoinDateInput(e.target.value)}
+            placeholder="dd-mm-yyyy"
+          />
 
           {error && (
             <div key={errorPulse} className="form-error-flash">
