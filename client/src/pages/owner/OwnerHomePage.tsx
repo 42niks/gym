@@ -107,7 +107,7 @@ function StatRow({
       : { key: 'not-consistent', label, icon: 'block', tone: 'neutral' };
 
   return (
-    <div className="owner-home-pipeline-row-frame rounded-xl border border-black/10 dark:border-white/10">
+    <div className="owner-home-pipeline-row-frame rounded-xl border border-black dark:border-white">
       <div className={`owner-home-pipeline-row-surface owner-home-pipeline-row-surface-${tone} flex items-center justify-between gap-3 px-3 py-2.5`}>
         <MemberStatusPill pill={pipelinePill} />
         <div className="flex items-center gap-2.5">
@@ -135,7 +135,7 @@ function SummaryCard({
   label: string;
 }) {
   return (
-    <Card className="owner-home-metric-frame border border-black/20 dark:border-white/15">
+    <Card className="owner-home-metric-frame border border-black dark:border-white">
       <div className="owner-home-metric-surface px-5 py-5 sm:px-6 sm:py-6">
         <div className="flex items-start justify-between gap-3">
           <p className="section-eyebrow not-italic">{title}</p>
@@ -177,7 +177,7 @@ export default function OwnerHomePage() {
               delta={data.attendance_summary.delta}
               openTo="/members?view=today"
             />
-            <Card className="owner-home-metric-frame border border-black/20 dark:border-white/15">
+            <Card className="owner-home-metric-frame border border-black dark:border-white">
               <div className="owner-home-metric-surface space-y-3 px-4 py-4 sm:px-5 sm:py-5">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -193,7 +193,7 @@ export default function OwnerHomePage() {
               </div>
             </Card>
 
-            <Card className="owner-home-metric-frame border border-black/20 dark:border-white/15">
+            <Card className="owner-home-metric-frame border border-black dark:border-white">
               <div className="owner-home-metric-surface px-5 py-5 sm:px-6 sm:py-6">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3">
                   <p className="section-eyebrow not-italic">At Risk Today</p>
