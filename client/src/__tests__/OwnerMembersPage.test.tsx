@@ -64,6 +64,11 @@ function configureMemberListResponses(
         consistency_risk_today: { streak_days: 6, message: 'Attend today to keep the streak alive.' },
         owner_consistency_state: { stage: 'building', days: 6, at_risk: true },
       }),
+      createMember('Ira Mehta', {
+        consistency: { status: 'consistent', days: 12, message: 'Consistent for 12 days' },
+        consistency_risk_today: { streak_days: 12, message: 'Attend today to protect the 12-day streak.' },
+        owner_consistency_state: { stage: 'consistent', days: 12, at_risk: true },
+      }),
     ],
     '/api/members?view=not-consistent': [
       createMember('Naina Paul', {
@@ -206,6 +211,25 @@ describe('OwnerMembersPage', () => {
     });
 
     expect(screen.getByText('In Today')).toBeInTheDocument();
+  });
+
+  it('renders at-risk members from both building and consistent owner states', async () => {
+    const user = userEvent.setup();
+    configureMemberListResponses();
+
+    renderWithProviders(<OwnerMembersPage />, { route: '/members' });
+
+    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith('/api/members'));
+    await user.click(screen.getByRole('button', { name: /at risk/i }));
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=at-risk');
+      expect(screen.getByRole('heading', { level: 3, name: 'Consistency At Risk' })).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Diya Arora')).toBeInTheDocument();
+    expect(screen.getByText('Ira Mehta')).toBeInTheDocument();
+    expect(screen.getAllByText('At Risk').length).toBeGreaterThan(0);
   });
 
   it('shows counts in the active view header and the dock tabs', async () => {

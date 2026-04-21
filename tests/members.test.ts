@@ -146,6 +146,22 @@ async function seedNotConsistentMemberFixture() {
   });
 }
 
+async function seedBuildingAtRiskMemberFixture() {
+  const today = getIstDate();
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'At Risk Asha',
+    email: 'asha-risk@test.com',
+    phone: '9999999997',
+    package_id: 2,
+    start_date: addDays(today, -20),
+    end_date: computeEndDate(addDays(today, -20), 1),
+    total_sessions: 12,
+    amount: 29500,
+    attendance_dates: [addDays(today, -6)],
+  });
+}
+
 describe('Member Management', () => {
   let ownerCookie: string;
 
@@ -362,21 +378,62 @@ describe('Member Management', () => {
 
     it('lists the at risk view', async () => {
       await seedMembersViewFixtures();
+      await seedBuildingAtRiskMemberFixture();
 
       const res = await api('/api/members?view=at-risk', { headers: { Cookie: ownerCookie } });
       expect(res.status).toBe(200);
 
       const body = await res.json() as any[];
-      expect(body.map((member) => member.full_name)).toEqual(['Consistent Cora', 'Risky Riya']);
-      expect(body[0].consistency?.status).toBe('consistent');
-      expect(body[0].consistency_risk_today).toMatchObject({
-        streak_days: expect.any(Number),
-        message: expect.stringContaining('Attend today'),
+      expect(body.map((member) => member.full_name)).toEqual(['At Risk Asha', 'Consistent Cora']);
+      const buildingAtRiskMember = body.find((member) => member.full_name === 'At Risk Asha');
+      expect(buildingAtRiskMember.owner_consistency_state).toMatchObject({
+        stage: 'building',
+        at_risk: true,
       });
-      expect(body[1].consistency_risk_today).toMatchObject({
-        streak_days: expect.any(Number),
-        message: expect.stringContaining('Attend today'),
+      expect(buildingAtRiskMember.consistency_risk_today).toEqual({
+        streak_days: 1,
+        message: 'Attend today to avoid dropping into not consistent tomorrow.',
       });
+      for (const member of body) {
+        expect(member.owner_consistency_state?.at_risk).toBe(true);
+        expect(member.consistency_risk_today).not.toBeNull();
+        expect(member.owner_consistency_state?.at_risk === (member.consistency_risk_today !== null)).toBe(true);
+        expect(member.consistency_risk_today).toMatchObject({
+          streak_days: expect.any(Number),
+          message: expect.stringContaining('Attend today'),
+        });
+      }
+    });
+
+    it('excludes members who already attended today from at risk even if they are otherwise building/consistent', async () => {
+      await seedMembersViewFixtures();
+
+      const atRiskRes = await api('/api/members?view=at-risk', { headers: { Cookie: ownerCookie } });
+      const todayRes = await api('/api/members?view=today', { headers: { Cookie: ownerCookie } });
+      expect(atRiskRes.status).toBe(200);
+      expect(todayRes.status).toBe(200);
+
+      const atRiskBody = await atRiskRes.json() as any[];
+      const todayBody = await todayRes.json() as any[];
+      expect(todayBody.map((member) => member.full_name)).toContain('Today Theo');
+      expect(atRiskBody.map((member) => member.full_name)).not.toContain('Today Theo');
+    });
+
+    it('keeps no-plan members out of at risk, including members with only upcoming plans', async () => {
+      await seedMembersViewFixtures();
+
+      const atRiskRes = await api('/api/members?view=at-risk', { headers: { Cookie: ownerCookie } });
+      const noPlanRes = await api('/api/members?view=no-plan', { headers: { Cookie: ownerCookie } });
+      expect(atRiskRes.status).toBe(200);
+      expect(noPlanRes.status).toBe(200);
+
+      const atRiskBody = await atRiskRes.json() as any[];
+      const noPlanBody = await noPlanRes.json() as any[];
+      const noPlanNames = noPlanBody.map((member) => member.full_name);
+      expect(noPlanNames).toEqual(['No Plan Nina', 'Upcoming Uma']);
+      for (const name of noPlanNames) {
+        expect(atRiskBody.map((member) => member.full_name)).not.toContain(name);
+      }
     });
 
     it('lists the not consistent view separately from the building view', async () => {
@@ -400,6 +457,40 @@ describe('Member Management', () => {
       });
       expect(notConsistentBody[0].consistency_risk_today).toBeNull();
       expect(buildingBody.map((member) => member.full_name)).not.toContain('Not Consistent Nora');
+    });
+
+    it('keeps a stable owner-state view matrix for at-risk/building/not-consistent/consistent', async () => {
+      await seedMembersViewFixtures();
+      await seedNotConsistentMemberFixture();
+      await seedBuildingAtRiskMemberFixture();
+
+      const [atRiskRes, buildingRes, notConsistentRes, consistentRes] = await Promise.all([
+        api('/api/members?view=at-risk', { headers: { Cookie: ownerCookie } }),
+        api('/api/members?view=building', { headers: { Cookie: ownerCookie } }),
+        api('/api/members?view=not-consistent', { headers: { Cookie: ownerCookie } }),
+        api('/api/members?view=consistent', { headers: { Cookie: ownerCookie } }),
+      ]);
+
+      expect(atRiskRes.status).toBe(200);
+      expect(buildingRes.status).toBe(200);
+      expect(notConsistentRes.status).toBe(200);
+      expect(consistentRes.status).toBe(200);
+
+      const atRiskBody = await atRiskRes.json() as any[];
+      const buildingBody = await buildingRes.json() as any[];
+      const notConsistentBody = await notConsistentRes.json() as any[];
+      const consistentBody = await consistentRes.json() as any[];
+
+      expect(atRiskBody.map((member) => member.full_name)).toEqual(['At Risk Asha', 'Consistent Cora']);
+      expect(buildingBody.map((member) => member.full_name)).toEqual([
+        'At Risk Asha',
+        'Builder Ben',
+        'Renewal Ruby',
+        'Risky Riya',
+        'Today Theo',
+      ]);
+      expect(notConsistentBody.map((member) => member.full_name)).toEqual(['Not Consistent Nora']);
+      expect(consistentBody.map((member) => member.full_name)).toEqual(['Consistent Cora']);
     });
 
     it('lists the building view', async () => {

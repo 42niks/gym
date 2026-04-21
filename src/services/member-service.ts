@@ -55,6 +55,11 @@ interface OwnerConsistencyState {
   at_risk: boolean;
 }
 
+interface OwnerConsistencyStage {
+  stage: OwnerConsistencyState['stage'];
+  days: number | null;
+}
+
 export interface OwnerStatusHighlight {
   key:
     | 'no_active_subscription'
@@ -278,75 +283,148 @@ function countTrailingWindowAttendance(attendanceDates: string[], today: string,
   return count;
 }
 
-function buildOwnerConsistencyState(input: {
+function classifyOwnerConsistencyStage(input: {
   activeSubscription: ReturnType<typeof formatSubscription> | null;
-  consistency: ReturnType<typeof computeConsistency>;
-  consistencyRiskToday: ConsistencyRiskToday | null;
   attendanceDates: string[];
   earliestSubscriptionStart: string | null;
-  today: string;
+  anchorDate: string;
   windowDays: number | null;
-}): OwnerConsistencyState | null {
+  minDays: number | null;
+}): OwnerConsistencyStage | null {
   const {
     activeSubscription,
-    consistency,
-    consistencyRiskToday,
     attendanceDates,
     earliestSubscriptionStart,
-    today,
+    anchorDate,
     windowDays,
+    minDays,
   } = input;
 
-  if (activeSubscription === null || earliestSubscriptionStart === null || windowDays === null) {
+  if (
+    activeSubscription === null
+    || earliestSubscriptionStart === null
+    || windowDays === null
+    || minDays === null
+  ) {
     return null;
   }
+
+  const consistency = computeConsistency({
+    hasActiveSubscription: true,
+    windowDays,
+    minDays,
+    earliestSubscriptionStart,
+    attendanceDates,
+    today: anchorDate,
+  });
 
   if (consistency?.status === 'consistent') {
     return {
       stage: 'consistent',
       days: consistency.days ?? null,
-      at_risk: consistencyRiskToday !== null,
     };
   }
 
-  if (diffDays(today, earliestSubscriptionStart) < windowDays) {
+  if (diffDays(anchorDate, earliestSubscriptionStart) < windowDays) {
     return {
       stage: 'building',
       days: null,
-      at_risk: false,
     };
   }
 
-  if (countTrailingWindowAttendance(attendanceDates, today, windowDays) === 0) {
+  if (countTrailingWindowAttendance(attendanceDates, anchorDate, windowDays) === 0) {
     return {
       stage: 'not_consistent',
       days: null,
-      at_risk: false,
     };
   }
 
   return {
     stage: 'building',
     days: null,
-    at_risk: consistencyRiskToday !== null,
   };
 }
 
-function getConsistencyRiskToday(input: {
-  consistency: ReturnType<typeof computeConsistency>;
-  consistencyWindow: ReturnType<typeof computeConsistencyWindow>;
+function computeAtRiskBySkippingToday(input: {
   markedToday: boolean;
+  currentStage: OwnerConsistencyStage | null;
+  activeSubscription: ReturnType<typeof formatSubscription> | null;
+  attendanceDates: string[];
+  earliestSubscriptionStart: string | null;
   today: string;
-}): ConsistencyRiskToday | null {
-  const { consistency, consistencyWindow, markedToday, today } = input;
+  windowDays: number | null;
+  minDays: number | null;
+}) {
+  const {
+    markedToday,
+    currentStage,
+    activeSubscription,
+    attendanceDates,
+    earliestSubscriptionStart,
+    today,
+    windowDays,
+    minDays,
+  } = input;
 
-  if (markedToday) return null;
-  if (!consistencyWindow?.streak_days) return null;
-  if (consistencyWindow.end_date === today) return null;
+  if (markedToday) return false;
+  if (!currentStage) return false;
+  if (currentStage.stage !== 'consistent' && currentStage.stage !== 'building') return false;
+
+  const simulatedAttendanceDates = attendanceDates.filter((date) => date !== today);
+  const nextStageIfSkipToday = classifyOwnerConsistencyStage({
+    activeSubscription,
+    attendanceDates: simulatedAttendanceDates,
+    earliestSubscriptionStart,
+    anchorDate: addDays(today, 1),
+    windowDays,
+    minDays,
+  });
+
+  if (!nextStageIfSkipToday) return false;
+
+  if (currentStage.stage === 'consistent' && nextStageIfSkipToday.stage === 'building') return true;
+  if (currentStage.stage === 'building' && nextStageIfSkipToday.stage === 'not_consistent') return true;
+  return false;
+}
+
+function buildOwnerConsistencyState(input: {
+  ownerStage: OwnerConsistencyStage | null;
+  atRisk: boolean;
+}): OwnerConsistencyState | null {
+  if (input.ownerStage === null) {
+    return null;
+  }
 
   return {
-    streak_days: consistencyWindow.streak_days,
-    message: `Attend today to protect the ${consistencyWindow.streak_days}-day streak.`,
+    stage: input.ownerStage.stage,
+    days: input.ownerStage.days,
+    at_risk: input.atRisk,
+  };
+}
+
+function buildConsistencyRiskToday(input: {
+  atRisk: boolean;
+  ownerStage: OwnerConsistencyStage | null;
+  consistencyWindow: ReturnType<typeof computeConsistencyWindow>;
+  attendanceDates: string[];
+  windowDays: number | null;
+  today: string;
+}): ConsistencyRiskToday | null {
+  const { atRisk, ownerStage, consistencyWindow, attendanceDates, windowDays, today } = input;
+  if (!atRisk || ownerStage === null) return null;
+
+  const fallbackStreakDays = windowDays === null
+    ? 1
+    : Math.max(1, countTrailingWindowAttendance(attendanceDates, today, windowDays));
+  const streakDays = ownerStage.stage === 'consistent'
+    ? (consistencyWindow?.streak_days ?? fallbackStreakDays)
+    : fallbackStreakDays;
+  const message = ownerStage.stage === 'consistent'
+    ? `Attend today to protect the ${streakDays}-day streak.`
+    : 'Attend today to avoid dropping into not consistent tomorrow.';
+  return {
+    streak_days: streakDays,
+    message,
   };
 }
 
@@ -361,11 +439,13 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
   let consistency = null;
   let consistencyWindow = null;
   let consistencyWindowDays: number | null = null;
+  let consistencyMinDays: number | null = null;
   let earliestSubscriptionStart: string | null = null;
   if (activeSub) {
     const pkg = await findPackageById(db, activeSub.package_id, { includePrivate: true });
     if (pkg) {
       consistencyWindowDays = pkg.consistency_window_days;
+      consistencyMinDays = pkg.consistency_min_days;
       earliestSubscriptionStart = (await getEarliestSubscriptionStart(db, memberId)) ?? null;
       const consistencyInput = {
         hasActiveSubscription: true,
@@ -390,22 +470,36 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
     today,
   });
 
-  const consistencyRiskToday = getConsistencyRiskToday({
-    consistency,
-    consistencyWindow,
-    markedToday,
-    today,
-  });
-
   const activeSubscription = activeSub ? formatSubscription(activeSub, today) : null;
-  const ownerConsistencyState = buildOwnerConsistencyState({
+  const ownerStage = classifyOwnerConsistencyStage({
     activeSubscription,
-    consistency,
-    consistencyRiskToday,
+    attendanceDates,
+    earliestSubscriptionStart,
+    anchorDate: today,
+    windowDays: consistencyWindowDays,
+    minDays: consistencyMinDays,
+  });
+  const atRisk = computeAtRiskBySkippingToday({
+    markedToday,
+    currentStage: ownerStage,
+    activeSubscription,
     attendanceDates,
     earliestSubscriptionStart,
     today,
     windowDays: consistencyWindowDays,
+    minDays: consistencyMinDays,
+  });
+  const consistencyRiskToday = buildConsistencyRiskToday({
+    atRisk,
+    ownerStage,
+    consistencyWindow,
+    attendanceDates,
+    windowDays: consistencyWindowDays,
+    today,
+  });
+  const ownerConsistencyState = buildOwnerConsistencyState({
+    ownerStage,
+    atRisk,
   });
 
   return {
@@ -443,7 +537,7 @@ function matchesMemberView(member: ActiveMemberListItem, view: Exclude<MemberLis
     case 'renewal':
       return member.renewal?.kind === 'ends_soon';
     case 'at-risk':
-      return member.consistency_risk_today !== null;
+      return member.owner_consistency_state?.at_risk === true;
     case 'not-consistent':
       return member.owner_consistency_state?.stage === 'not_consistent';
     case 'building':

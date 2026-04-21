@@ -38,6 +38,22 @@ async function seedMemberWithSubscriptionAndAttendance(input: {
   return { memberId, subscriptionId };
 }
 
+async function seedBuildingAtRiskMemberFixture() {
+  const today = getIstDate();
+
+  await seedMemberWithSubscriptionAndAttendance({
+    full_name: 'At Risk Asha',
+    email: 'asha-risk@test.com',
+    phone: '9999999997',
+    package_id: 2,
+    start_date: addDays(today, -20),
+    end_date: computeEndDate(addDays(today, -20), 1),
+    total_sessions: 12,
+    amount: 29500,
+    attendance_dates: [addDays(today, -6)],
+  });
+}
+
 describe('Owner Home', () => {
   let ownerCookie: string;
 
@@ -185,6 +201,7 @@ describe('Owner Home', () => {
         amount: 29500,
         attendance_dates: [-15, -13, -12].map((offset) => addDays(today, offset)),
       });
+      await seedBuildingAtRiskMemberFixture();
 
       await seedMember({
         full_name: 'No Plan Nina',
@@ -211,7 +228,7 @@ describe('Owner Home', () => {
 
       expect(body.consistency_pipeline).toEqual({
         not_consistent: 1,
-        building: 4,
+        building: 5,
         consistent: 1,
       });
       expect(body.at_risk).toEqual({
@@ -238,6 +255,26 @@ describe('Owner Home', () => {
         kind: 'starts_on',
         upcoming_start_date: addDays(today, 4),
       });
+
+      const attendedTodayMember = body.active_members.find((member: any) => member.full_name === 'Today Theo');
+      expect(attendedTodayMember.marked_attendance_today).toBe(true);
+      expect(attendedTodayMember.owner_consistency_state?.at_risk).toBe(false);
+      expect(attendedTodayMember.consistency_risk_today).toBeNull();
+
+      const buildingAtRiskMember = body.active_members.find((member: any) => member.full_name === 'At Risk Asha');
+      expect(buildingAtRiskMember.owner_consistency_state).toMatchObject({
+        stage: 'building',
+        at_risk: true,
+      });
+      expect(buildingAtRiskMember.consistency_risk_today).toEqual({
+        streak_days: 1,
+        message: 'Attend today to avoid dropping into not consistent tomorrow.',
+      });
+
+      for (const member of body.active_members) {
+        const atRisk = member.owner_consistency_state?.at_risk ?? false;
+        expect(atRisk === (member.consistency_risk_today !== null)).toBe(true);
+      }
     });
 
     it('should show archived members', async () => {
