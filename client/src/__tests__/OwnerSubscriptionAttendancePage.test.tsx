@@ -42,7 +42,7 @@ describe('OwnerSubscriptionAttendancePage', () => {
     await waitFor(() => {
       expect(screen.getByText('Attendance dates')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /member profile/i })).toHaveAttribute('href', '/members/2?view=today');
-      expect(screen.getByRole('button', { name: /mark complete/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /terminate subscription/i })).toBeInTheDocument();
     });
   });
 

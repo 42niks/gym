@@ -223,12 +223,33 @@
   }
 
   .field-control {
-    @apply w-full rounded-2xl border bg-white/90 px-4 py-3.5 text-sm font-medium text-black shadow-sm shadow-black/5 transition-all focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-surface-dark/80 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent-400/25;
+    @apply w-full rounded-2xl border bg-white/90 px-4 py-3.5 text-base font-medium text-black shadow-sm shadow-black/5 transition-all focus:border-brand-300 focus:outline-none focus:ring-4 focus:ring-brand-300/25 dark:bg-surface-dark/80 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent-400/25;
     border-color: rgb(var(--line-soft));
+    min-width: 0;
+    max-width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
   .field-control::placeholder {
     color: rgb(var(--ink) / 0.45);
+  }
+
+  .field-control[type='date'] {
+    display: block;
+    min-height: 3rem;
+    line-height: 1.25rem;
+  }
+
+  .field-control[type='date']::-webkit-date-and-time-value {
+    display: block;
+    min-height: 1.25rem;
+    line-height: 1.25rem;
+    color: currentColor;
+  }
+
+  .field-control[type='date']::-webkit-calendar-picker-indicator {
+    min-height: 1.25rem;
   }
 
   .glass-panel {

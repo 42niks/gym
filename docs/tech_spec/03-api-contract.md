@@ -468,7 +468,7 @@ Failures:
   "archive_action": {
     "kind": "archive",
     "allowed": false,
-    "reason": "Complete active or upcoming subscriptions before archiving this member.",
+    "reason": "Terminate active or upcoming subscriptions before archiving this member.",
     "blocked_by": [
       {
         "subscription_id": 7,

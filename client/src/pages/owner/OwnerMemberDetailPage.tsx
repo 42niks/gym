@@ -648,11 +648,11 @@ function SubscriptionCard({
         {sub.can_mark_complete ? (
           <Button
             variant="danger"
-            icon="task_alt"
+            icon="cancel"
             className={subscriptionActionBtn}
             onClick={() => onComplete(sub)}
           >
-            Complete
+            Terminate
           </Button>
         ) : null}
         <Link className={hasCompletionAction ? 'min-w-0' : ''} to={`/members/${memberId}/subscriptions/${sub.id}/attendance${viewQuery}`}>
@@ -1073,17 +1073,17 @@ export default function OwnerMemberDetailPage() {
               {detail.archive_action.blocked_by.map((blocker) => (
                 <div
                   key={blocker.subscription_id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-black/10 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"
+                  className="grid gap-3 rounded-[1.2rem] border border-black/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-black dark:text-white">{blocker.service_type}</p>
                     <p className="text-xs text-black/60 dark:text-white/70">
                       {formatStatusLabel(blocker.lifecycle_state)} • {formatFullDate(blocker.start_date)} - {formatFullDate(blocker.end_date)}
                     </p>
                   </div>
-                  <Link to={`/members/${id}/subscriptions/${blocker.subscription_id}/attendance${viewQuery}`}>
-                    <Button variant="secondary" icon="calendar_month">
-                      Review & complete
+                  <Link className="w-full sm:w-auto" to={`/members/${id}/subscriptions/${blocker.subscription_id}/attendance${viewQuery}`}>
+                    <Button variant="secondary" icon="calendar_month" className="w-full whitespace-nowrap sm:w-auto">
+                      Review & Terminate
                     </Button>
                   </Link>
                 </div>
@@ -1097,6 +1097,7 @@ export default function OwnerMemberDetailPage() {
               onClick={handleArchiveAction}
               disabled={archiving || (detail.archive_action.kind === 'archive' && !detail.archive_action.allowed)}
               icon={archiving ? 'progress_activity' : detail.archive_action.kind === 'archive' ? 'archive' : 'unarchive'}
+              className="w-full justify-center text-center"
             >
               {archiving
                 ? (detail.archive_action.kind === 'archive' ? 'Archiving…' : 'Unarchiving…')

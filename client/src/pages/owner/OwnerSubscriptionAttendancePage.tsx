@@ -250,16 +250,29 @@ export default function OwnerSubscriptionAttendancePage() {
         )}
 
         {data.can_mark_complete ? (
-          <div className="flex justify-start">
-            <Button
-              variant="danger"
-              onClick={handleComplete}
-              disabled={completing}
-              icon={completing ? 'progress_activity' : 'task_alt'}
-            >
-              {completing ? 'Completing…' : 'Mark complete'}
-            </Button>
-          </div>
+          <Card className="max-w-4xl p-5">
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <h3 className="member-detail-subheading ml-0 pt-0 text-black dark:text-white">
+                  Terminate this subscription
+                </h3>
+                <p className="text-sm text-black/70 dark:text-white/70">
+                  Terminate this subscription for the member by marking it as completed. This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex justify-start">
+                <Button
+                  variant="danger"
+                  onClick={handleComplete}
+                  disabled={completing}
+                  icon={completing ? 'progress_activity' : 'cancel'}
+                  className="w-full justify-center text-center"
+                >
+                  {completing ? 'Completing…' : 'TERMINATE SUBSCRIPTION'}
+                </Button>
+              </div>
+            </div>
+          </Card>
         ) : null}
       </div>
     </AppShell>

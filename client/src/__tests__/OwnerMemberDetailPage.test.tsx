@@ -94,16 +94,16 @@ describe('OwnerMemberDetailPage', () => {
     expect(consistentDaysSurface?.parentElement).toHaveClass('member-status-pill-consistent-frame');
   });
 
-  it('keeps complete before attendance in the active subscription card', async () => {
+  it('keeps terminate before attendance in the active subscription card', async () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
     const activeSection = await screen.findByText('ACTIVE SUBSCRIPTION');
     const activeCard = activeSection.closest('.glass-panel');
     expect(activeCard).not.toBeNull();
 
-    const completeButton = within(activeCard as HTMLElement).getByRole('button', { name: /complete/i });
+    const terminateButton = within(activeCard as HTMLElement).getByRole('button', { name: /terminate/i });
     const attendanceButton = within(activeCard as HTMLElement).getByRole('button', { name: /attendance/i });
-    expectBefore(completeButton, attendanceButton);
+    expectBefore(terminateButton, attendanceButton);
   });
 
   it('shows inline validation errors inside the edited bio rows', async () => {
