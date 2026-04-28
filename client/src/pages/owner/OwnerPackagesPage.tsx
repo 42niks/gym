@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ManagedPackage, ApiError } from '../../lib/api.js';
@@ -132,40 +132,51 @@ function BottomPackageTabs({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const tabRefMap = useRef<Record<string, HTMLButtonElement | null>>({});
   const didInitScroll = useRef(false);
+  const previousScrollKey = useRef<string | null>(null);
+  const tabKeysSignature = tabs.map((tab) => tab.key).join('|');
 
-  useEffect(() => {
-    const scrollEl = scrollRef.current;
-    const activeTab = selectedKey ? tabRefMap.current[selectedKey] : null;
-    if (!scrollEl || !activeTab) return;
+  useLayoutEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const scrollEl = scrollRef.current;
+      const activeTab = selectedKey ? tabRefMap.current[selectedKey] : null;
+      if (!scrollEl || !activeTab) return;
 
-    const maxScrollLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
-    if (maxScrollLeft <= 0) return;
+      const maxScrollLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+      if (maxScrollLeft <= 0) return;
 
-    const activeIndex = tabs.findIndex((tab) => tab.key === selectedKey);
-    const isFirst = activeIndex === 0;
-    const isLast = activeIndex === tabs.length - 1;
+      const activeIndex = tabs.findIndex((tab) => tab.key === selectedKey);
+      const isFirst = activeIndex === 0;
+      const isLast = activeIndex === tabs.length - 1;
 
-    let targetScrollLeft: number;
-    if (isFirst) {
-      targetScrollLeft = 0;
-    } else if (isLast) {
-      targetScrollLeft = maxScrollLeft;
-    } else {
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const tabRect = activeTab.getBoundingClientRect();
-      const tabCenterInScroll = scrollEl.scrollLeft + (tabRect.left - scrollRect.left) + (tabRect.width / 2);
-      targetScrollLeft = tabCenterInScroll - (scrollEl.clientWidth / 2);
-    }
+      let targetScrollLeft: number;
+      if (isFirst) {
+        targetScrollLeft = 0;
+      } else if (isLast) {
+        targetScrollLeft = maxScrollLeft;
+      } else {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+        const tabCenterInScroll = scrollEl.scrollLeft + (tabRect.left - scrollRect.left) + (tabRect.width / 2);
+        targetScrollLeft = tabCenterInScroll - (scrollEl.clientWidth / 2);
+      }
 
-    const clamped = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
-    if (!didInitScroll.current) {
-      scrollEl.scrollLeft = clamped;
-      didInitScroll.current = true;
-      return;
-    }
+      const clamped = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+      const previousKey = previousScrollKey.current;
+      const selectedKeyChanged = previousKey !== null && previousKey !== selectedKey;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      previousScrollKey.current = selectedKey;
 
-    scrollEl.scrollTo({ left: clamped, behavior: 'smooth' });
-  }, [selectedKey, tabs]);
+      if (!didInitScroll.current || !selectedKeyChanged || reduceMotion) {
+        scrollEl.scrollLeft = clamped;
+        didInitScroll.current = true;
+        return;
+      }
+
+      scrollEl.scrollTo({ left: clamped, behavior: 'smooth' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedKey, tabKeysSignature]);
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
@@ -200,7 +211,7 @@ function BottomPackageTabs({
                     >
                       <Icon name={tab.icon} className="text-[0.95rem]" />
                       {tab.label}
-                      <span className="text-[0.68rem] tracking-[0.12em] opacity-70">{tab.count}</span>
+                      <span className="inline-block min-w-[3.75ch] text-right text-[0.68rem] tabular-nums tracking-[0.12em] opacity-70">{tab.count}</span>
                     </button>
                   </div>
                 );

@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { api, type MemberListItem, type OwnerMemberListView } from '../../lib/api.js';
+import { api, type MemberListItem, type OwnerMemberListView, type OwnerMemberOverview } from '../../lib/api.js';
 import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
@@ -101,7 +101,7 @@ const PACKAGE_ICON_META = [
   { match: 'boxing', icon: 'sports_mma' },
 ] as const;
 
-const MEMBER_CARD_CLASS = 'rounded-2xl border border-zinc-300 bg-white/55 px-4 py-4 shadow-sm shadow-black/5 backdrop-blur-sm transition-all hover:border-zinc-400 hover:bg-white/72 dark:border-zinc-600 dark:bg-black/20 dark:hover:border-zinc-500 dark:hover:bg-black/28';
+const MEMBER_CARD_CLASS = 'rounded-2xl border border-zinc-300 bg-white/55 px-4 py-4 shadow-sm shadow-black/5 backdrop-blur-sm transition-all hover:border-zinc-400 hover:bg-white/72 active:translate-y-px active:scale-[0.99] dark:border-zinc-600 dark:bg-black/20 dark:hover:border-zinc-500 dark:hover:bg-black/28';
 
 type MemberPill = MemberStatusPillSpec;
 
@@ -176,10 +176,10 @@ function getMemberHref(memberId: number, view: OwnerMemberListView) {
   return view === 'all' ? `/members/${memberId}` : `/members/${memberId}?view=${encodeURIComponent(view)}`;
 }
 
-function getMembersEndpoint(view: OwnerMemberListView) {
+function getMembersOverviewEndpoint(view: OwnerMemberListView) {
   return view === 'all'
-    ? '/api/members'
-    : `/api/members?view=${encodeURIComponent(view)}`;
+    ? '/api/members/overview'
+    : `/api/members/overview?view=${encodeURIComponent(view)}`;
 }
 
 function getPackageIcon(serviceType: string | null | undefined) {
@@ -270,39 +270,49 @@ function BottomViewTabs({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const tabRefMap = useRef<Partial<Record<OwnerMemberListView, HTMLButtonElement | null>>>({});
   const didInitScroll = useRef(false);
+  const previousScrollView = useRef<OwnerMemberListView | null>(null);
 
-  useEffect(() => {
-    const scrollEl = scrollRef.current;
-    const activeTab = tabRefMap.current[currentView];
-    if (!scrollEl || !activeTab) return;
+  useLayoutEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const scrollEl = scrollRef.current;
+      const activeTab = tabRefMap.current[currentView];
+      if (!scrollEl || !activeTab) return;
 
-    const maxScrollLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
-    if (maxScrollLeft <= 0) return;
+      const maxScrollLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+      if (maxScrollLeft <= 0) return;
 
-    const activeIndex = ALL_VIEWS.indexOf(currentView);
-    const isFirst = activeIndex === 0;
-    const isLast = activeIndex === ALL_VIEWS.length - 1;
+      const activeIndex = ALL_VIEWS.indexOf(currentView);
+      const isFirst = activeIndex === 0;
+      const isLast = activeIndex === ALL_VIEWS.length - 1;
 
-    let targetScrollLeft: number;
-    if (isFirst) {
-      targetScrollLeft = 0;
-    } else if (isLast) {
-      targetScrollLeft = maxScrollLeft;
-    } else {
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const tabRect = activeTab.getBoundingClientRect();
-      const tabCenterInScroll = scrollEl.scrollLeft + (tabRect.left - scrollRect.left) + (tabRect.width / 2);
-      targetScrollLeft = tabCenterInScroll - (scrollEl.clientWidth / 2);
-    }
+      let targetScrollLeft: number;
+      if (isFirst) {
+        targetScrollLeft = 0;
+      } else if (isLast) {
+        targetScrollLeft = maxScrollLeft;
+      } else {
+        const scrollRect = scrollEl.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+        const tabCenterInScroll = scrollEl.scrollLeft + (tabRect.left - scrollRect.left) + (tabRect.width / 2);
+        targetScrollLeft = tabCenterInScroll - (scrollEl.clientWidth / 2);
+      }
 
-    const clamped = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
-    if (!didInitScroll.current) {
-      scrollEl.scrollLeft = clamped;
-      didInitScroll.current = true;
-      return;
-    }
+      const clamped = Math.max(0, Math.min(maxScrollLeft, targetScrollLeft));
+      const previousView = previousScrollView.current;
+      const viewChanged = previousView !== null && previousView !== currentView;
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+      previousScrollView.current = currentView;
 
-    scrollEl.scrollTo({ left: clamped, behavior: 'smooth' });
+      if (!didInitScroll.current || !viewChanged || reduceMotion) {
+        scrollEl.scrollLeft = clamped;
+        didInitScroll.current = true;
+        return;
+      }
+
+      scrollEl.scrollTo({ left: clamped, behavior: 'smooth' });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [currentView]);
 
   return (
@@ -338,11 +348,14 @@ function BottomViewTabs({
                     >
                       <Icon name={meta.icon} className="text-[0.95rem]" />
                       {meta.tabLabel}
-                      {typeof count === 'number' ? (
-                        <span className="text-[0.68rem] tracking-[0.12em] opacity-70">
-                          {count}
-                        </span>
-                      ) : null}
+                      <span
+                        aria-hidden={typeof count !== 'number'}
+                        className={`inline-block min-w-[3.75ch] text-right text-[0.68rem] tabular-nums tracking-[0.12em] opacity-70 ${
+                          typeof count === 'number' ? '' : 'invisible'
+                        }`}
+                      >
+                        {typeof count === 'number' ? count : ''}
+                      </span>
                     </button>
                   </div>
                 );
@@ -360,31 +373,13 @@ export default function OwnerMembersPage() {
   const currentView = resolveCurrentView(searchParams);
   const currentMeta = VIEW_META[currentView];
 
-  const { data: members = [], isLoading } = useQuery<MemberListItem[]>({
-    queryKey: ['owner-members', currentView],
-    queryFn: () => api.get(getMembersEndpoint(currentView)),
+  const { data: overview, isLoading } = useQuery<OwnerMemberOverview>({
+    queryKey: ['owner-members-overview', currentView],
+    queryFn: () => api.get(getMembersOverviewEndpoint(currentView)),
   });
 
-  const { data: memberCounts = {} } = useQuery<Record<OwnerMemberListView, number>>({
-    queryKey: ['owner-member-counts'],
-    queryFn: async () => {
-      const results = await Promise.allSettled(
-        ALL_VIEWS.map(async (view) => {
-          const items = await api.get<MemberListItem[]>(getMembersEndpoint(view));
-          return [view, items.length] as const;
-        }),
-      );
-
-      return results.reduce<Partial<Record<OwnerMemberListView, number>>>((acc, result) => {
-        if (result.status === 'fulfilled') {
-          const [view, count] = result.value;
-          acc[view] = count;
-        }
-        return acc;
-      }, {}) as Record<OwnerMemberListView, number>;
-    },
-  });
-
+  const members = overview?.members ?? [];
+  const memberCounts = overview?.counts ?? {};
   const resolvedMemberCounts = isLoading
     ? memberCounts
     : { ...memberCounts, [currentView]: members.length };

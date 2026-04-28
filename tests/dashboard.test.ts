@@ -78,6 +78,24 @@ describe('Owner Home', () => {
       expect(body).toHaveProperty('archived_members');
     });
 
+    it('should return lightweight metrics sections for progressive owner home loading', async () => {
+      await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
+
+      const attendance = await (await api('/api/owner/home/metrics?sections=attendance', { headers: { Cookie: ownerCookie } })).json();
+      expect(attendance).toHaveProperty('attendance_summary');
+      expect(attendance).not.toHaveProperty('active_members');
+
+      const consistency = await (await api('/api/owner/home/metrics?sections=consistency', { headers: { Cookie: ownerCookie } })).json();
+      expect(consistency).toHaveProperty('consistency_pipeline');
+      expect(consistency).toHaveProperty('at_risk');
+      expect(consistency).not.toHaveProperty('renewal_due_count');
+
+      const renewals = await (await api('/api/owner/home/metrics?sections=renewals', { headers: { Cookie: ownerCookie } })).json();
+      expect(renewals).toHaveProperty('renewal_due_count');
+      expect(renewals).toHaveProperty('no_active_plan_count');
+      expect(renewals).not.toHaveProperty('attendance_summary');
+    });
+
     it('should show member with no subscription in renewal_no_active', async () => {
       await seedMember({ email: 'a@test.com', full_name: 'Alpha', phone: '1111111111' });
 

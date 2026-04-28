@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import OwnerHomePage from '../pages/owner/OwnerHomePage.js';
 import { renderWithProviders } from './test-utils.js';
 import { mockDashboard } from './mocks.js';
+import { clearAdaptiveLoadingMemory, rememberSlowNetwork } from '../lib/adaptiveLoading.js';
 
 const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }));
 
@@ -16,7 +17,33 @@ vi.mock('../lib/api.js', async () => {
   return { ...actual, api: { get: mockApiGet, post: vi.fn(), patch: vi.fn() } };
 });
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  clearAdaptiveLoadingMemory();
+  vi.useRealTimers();
+});
+
+function mockSectionedMetrics() {
+  mockApiGet.mockImplementation((url: string) => {
+    if (url === '/api/owner/home/metrics') return Promise.resolve(mockDashboard);
+    if (url === '/api/owner/home/metrics?sections=attendance') {
+      return Promise.resolve({ attendance_summary: mockDashboard.attendance_summary });
+    }
+    if (url === '/api/owner/home/metrics?sections=consistency') {
+      return Promise.resolve({
+        consistency_pipeline: mockDashboard.consistency_pipeline,
+        at_risk: mockDashboard.at_risk,
+      });
+    }
+    if (url === '/api/owner/home/metrics?sections=renewals') {
+      return Promise.resolve({
+        renewal_due_count: mockDashboard.renewal_due_count,
+        no_active_plan_count: mockDashboard.no_active_plan_count,
+      });
+    }
+    return Promise.reject(new Error(`Unexpected GET ${url}`));
+  });
+}
 
 describe('OwnerHomePage', () => {
   it('renders home heading', () => {
@@ -83,5 +110,64 @@ describe('OwnerHomePage', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
     renderWithProviders(<OwnerHomePage />, { route: '/home' });
     expect(screen.getByText('Members')).toBeInTheDocument();
+  });
+
+  it('switches to progressive panel requests when the primary metrics request is slow', async () => {
+    vi.useFakeTimers();
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/owner/home/metrics') return new Promise(() => {});
+      if (url === '/api/owner/home/metrics?sections=attendance') {
+        return Promise.resolve({ attendance_summary: mockDashboard.attendance_summary });
+      }
+      if (url === '/api/owner/home/metrics?sections=consistency') {
+        return Promise.resolve({
+          consistency_pipeline: mockDashboard.consistency_pipeline,
+          at_risk: mockDashboard.at_risk,
+        });
+      }
+      if (url === '/api/owner/home/metrics?sections=renewals') {
+        return Promise.resolve({
+          renewal_due_count: mockDashboard.renewal_due_count,
+          no_active_plan_count: mockDashboard.no_active_plan_count,
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    renderWithProviders(<OwnerHomePage />, { route: '/home' });
+    expect(mockApiGet).toHaveBeenCalledWith('/api/owner/home/metrics');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(701);
+      await Promise.resolve();
+    });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/api/owner/home/metrics?sections=attendance');
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+      await Promise.resolve();
+    });
+    expect(mockApiGet).toHaveBeenCalledWith('/api/owner/home/metrics?sections=consistency');
+
+    await act(async () => {
+      await vi.runOnlyPendingTimersAsync();
+      await Promise.resolve();
+    });
+    expect(mockApiGet).toHaveBeenCalledWith('/api/owner/home/metrics?sections=renewals');
+  });
+
+  it('starts progressive immediately after recent observed slowness', async () => {
+    rememberSlowNetwork(1000);
+    mockSectionedMetrics();
+
+    renderWithProviders(<OwnerHomePage />, { route: '/home' });
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/api/owner/home/metrics?sections=attendance');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/owner/home/metrics?sections=consistency');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/owner/home/metrics?sections=renewals');
+    });
+    expect(mockApiGet).not.toHaveBeenCalledWith('/api/owner/home/metrics');
   });
 });

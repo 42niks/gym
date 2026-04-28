@@ -528,6 +528,242 @@ export async function computeMemberEnrichment(db: AppDatabase, memberId: number,
 
 type ActiveMemberListItem = MemberProfile & Awaited<ReturnType<typeof computeMemberEnrichment>>;
 
+type OwnerSnapshotSubscription = SubscriptionWithType & {
+  consistency_window_days: number;
+  consistency_min_days: number;
+};
+
+type OwnerSnapshotAttendance = {
+  member_id: number;
+  date: string;
+  created_at: string;
+};
+
+export interface OwnerMemberSnapshot {
+  today: string;
+  activeMembers: ActiveMemberListItem[];
+  archivedMembers: Array<MemberProfile & { marked_attendance_today: boolean }>;
+  attendanceRows: OwnerSnapshotAttendance[];
+}
+
+export interface OwnerMemberOverview {
+  view: MemberListView;
+  counts: Record<MemberListView, number>;
+  members: Array<ActiveMemberListItem | MemberProfile>;
+}
+
+function groupByMemberId<T extends { member_id: number }>(rows: T[]) {
+  const grouped = new Map<number, T[]>();
+  for (const row of rows) {
+    const existing = grouped.get(row.member_id);
+    if (existing) {
+      existing.push(row);
+    } else {
+      grouped.set(row.member_id, [row]);
+    }
+  }
+  return grouped;
+}
+
+async function listOwnerSubscriptionsWithConsistency(db: AppDatabase): Promise<OwnerSnapshotSubscription[]> {
+  return db.all(
+    `SELECT
+        s.id,
+        s.member_id,
+        s.package_id,
+        s.start_date,
+        s.end_date,
+        s.total_sessions,
+        s.attended_sessions,
+        s.amount,
+        s.owner_completed,
+        s.created_at,
+        p.service_type,
+        p.consistency_window_days,
+        p.consistency_min_days
+     FROM subscriptions s
+     JOIN packages p ON p.id = s.package_id
+     JOIN members m ON m.id = s.member_id
+     WHERE m.role = 'member'
+     ORDER BY s.member_id ASC, s.start_date DESC, s.id DESC`,
+  );
+}
+
+async function listOwnerAttendanceRows(db: AppDatabase): Promise<OwnerSnapshotAttendance[]> {
+  return db.all(
+    `SELECT s.member_id, s.date, s.created_at
+     FROM sessions s
+     JOIN members m ON m.id = s.member_id
+     WHERE m.role = 'member'
+     ORDER BY s.member_id ASC, s.date ASC, s.id ASC`,
+  );
+}
+
+function computeMemberEnrichmentFromSnapshot(input: {
+  member: MemberRow;
+  subs: OwnerSnapshotSubscription[];
+  attendanceDates: string[];
+  markedToday: boolean;
+  today: string;
+}) {
+  const { member, subs, attendanceDates, markedToday, today } = input;
+  const activeSub = getActiveSub(subs, today) as OwnerSnapshotSubscription | null;
+  const upcomingSubs = getUpcomingSubs(subs, today);
+  const archiveBlockers = getArchiveBlockers(subs, today);
+
+  let consistency = null;
+  let consistencyWindow = null;
+  let consistencyWindowDays: number | null = null;
+  let consistencyMinDays: number | null = null;
+  let earliestSubscriptionStart: string | null = null;
+
+  if (activeSub) {
+    consistencyWindowDays = activeSub.consistency_window_days;
+    consistencyMinDays = activeSub.consistency_min_days;
+    earliestSubscriptionStart = subs.reduce<string | null>((earliest, sub) => {
+      if (earliest === null || sub.start_date < earliest) return sub.start_date;
+      return earliest;
+    }, null);
+
+    if (earliestSubscriptionStart !== null) {
+      const consistencyInput = {
+        hasActiveSubscription: true,
+        windowDays: activeSub.consistency_window_days,
+        minDays: activeSub.consistency_min_days,
+        earliestSubscriptionStart,
+        attendanceDates,
+        today,
+      };
+      consistency = computeConsistency(consistencyInput);
+      consistencyWindow = computeConsistencyWindow(consistencyInput);
+    }
+  }
+
+  const renewal = computeRenewal({
+    active: activeSub ? {
+      end_date: activeSub.end_date,
+      total_sessions: activeSub.total_sessions,
+      attended_sessions: activeSub.attended_sessions,
+    } : null,
+    upcomingStartDate: upcomingSubs[0]?.start_date ?? null,
+    today,
+  });
+
+  const activeSubscription = activeSub ? formatSubscription(activeSub, today) : null;
+  const ownerStage = classifyOwnerConsistencyStage({
+    activeSubscription,
+    attendanceDates,
+    earliestSubscriptionStart,
+    anchorDate: today,
+    windowDays: consistencyWindowDays,
+    minDays: consistencyMinDays,
+  });
+  const atRisk = computeAtRiskBySkippingToday({
+    markedToday,
+    currentStage: ownerStage,
+    activeSubscription,
+    attendanceDates,
+    earliestSubscriptionStart,
+    today,
+    windowDays: consistencyWindowDays,
+    minDays: consistencyMinDays,
+  });
+  const consistencyRiskToday = buildConsistencyRiskToday({
+    atRisk,
+    ownerStage,
+    consistencyWindow,
+    attendanceDates,
+    windowDays: consistencyWindowDays,
+    today,
+  });
+  const ownerConsistencyState = buildOwnerConsistencyState({
+    ownerStage,
+    atRisk,
+  });
+
+  return {
+    ...toProfile(member),
+    active_subscription: activeSubscription,
+    consistency,
+    consistency_window: consistencyWindow,
+    consistency_risk_today: consistencyRiskToday,
+    renewal,
+    marked_attendance_today: markedToday,
+    recent_attendance: activeSub ? buildRecentAttendance(attendanceDates, today, 7) : [],
+    owner_consistency_state: ownerConsistencyState,
+    status_highlights: buildStatusHighlights({
+      activeSubscription,
+      renewal,
+      consistency,
+      consistencyRiskToday,
+    }),
+    archive_action: buildArchiveAction({
+      memberStatus: member.status,
+      blockers: archiveBlockers,
+    }),
+    can_add_subscription: member.status === 'active',
+    can_edit_profile: true,
+  };
+}
+
+export async function loadOwnerMemberSnapshot(db: AppDatabase, today = getIstDate()): Promise<OwnerMemberSnapshot> {
+  const [activeRows, archivedRows, subscriptions, attendanceRows] = await Promise.all([
+    listMembersByStatus(db, 'active'),
+    listMembersByStatus(db, 'archived'),
+    listOwnerSubscriptionsWithConsistency(db),
+    listOwnerAttendanceRows(db),
+  ]);
+
+  const subscriptionsByMember = groupByMemberId(subscriptions);
+  const attendanceByMember = groupByMemberId(attendanceRows);
+
+  const activeMembers = activeRows.map((member) => {
+    const memberAttendance = attendanceByMember.get(member.id) ?? [];
+    return computeMemberEnrichmentFromSnapshot({
+      member,
+      subs: subscriptionsByMember.get(member.id) ?? [],
+      attendanceDates: memberAttendance.map((row) => row.date),
+      markedToday: memberAttendance.some((row) => row.date === today),
+      today,
+    });
+  });
+
+  const archivedMembers = archivedRows.map((member) => {
+    const memberAttendance = attendanceByMember.get(member.id) ?? [];
+    return {
+      ...toProfile(member),
+      marked_attendance_today: memberAttendance.some((row) => row.date === today),
+    };
+  });
+
+  return {
+    today,
+    activeMembers,
+    archivedMembers,
+    attendanceRows,
+  };
+}
+
+export function buildOwnerMemberViewCounts(snapshot: OwnerMemberSnapshot): Record<MemberListView, number> {
+  const counts = {} as Record<MemberListView, number>;
+  for (const view of MEMBER_LIST_VIEWS) {
+    counts[view] = view === 'archived'
+      ? snapshot.archivedMembers.length
+      : snapshot.activeMembers.filter((member) => matchesMemberView(member, view)).length;
+  }
+  return counts;
+}
+
+export async function getOwnerMemberOverview(db: AppDatabase, view: MemberListView): Promise<OwnerMemberOverview> {
+  const snapshot = await loadOwnerMemberSnapshot(db);
+  const counts = buildOwnerMemberViewCounts(snapshot);
+  const members = view === 'archived'
+    ? sortMembersLexically(snapshot.archivedMembers.map(({ marked_attendance_today: _markedToday, ...profile }) => profile))
+    : sortMembersLexically(snapshot.activeMembers.filter((member) => matchesMemberView(member, view)));
+
+  return { view, counts, members };
+}
+
 function matchesMemberView(member: ActiveMemberListItem, view: Exclude<MemberListView, 'archived'>) {
   switch (view) {
     case 'all':
@@ -588,20 +824,8 @@ export async function getMemberDetail(db: AppDatabase, id: number) {
 }
 
 export async function listMembers(db: AppDatabase, view: MemberListView) {
-  const status = view === 'archived' ? 'archived' : 'active';
-  const members = await listMembersByStatus(db, status);
-  const today = getIstDate();
-
-  if (view === 'archived') {
-    return sortMembersLexically(members.map(m => toProfile(m)));
-  }
-
-  const enrichedMembers = await Promise.all(members.map(async (m) => {
-    const enrichment = await computeMemberEnrichment(db, m.id, today);
-    return { ...toProfile(m), ...enrichment };
-  }));
-
-  return sortMembersLexically(enrichedMembers.filter(member => matchesMemberView(member, view)));
+  const overview = await getOwnerMemberOverview(db, view);
+  return overview.members;
 }
 
 export async function createNewMember(db: AppDatabase, data: { full_name: string; email: string; phone: string; join_date: string }) {
@@ -649,10 +873,22 @@ export async function unarchiveMemberById(db: AppDatabase, id: number): Promise<
   return {};
 }
 
-export async function listFormattedSubscriptions(db: AppDatabase, memberId: number) {
+export type SubscriptionListScope = 'active-upcoming' | 'past' | 'all';
+
+export async function listFormattedSubscriptions(
+  db: AppDatabase,
+  memberId: number,
+  scope: SubscriptionListScope = 'all',
+) {
   const subs = await listSubscriptionsForMember(db, memberId);
   const today = getIstDate();
-  return subs.map(sub => formatOwnerSubscription(sub, today));
+  return subs
+    .map(sub => formatOwnerSubscription(sub, today))
+    .filter((sub) => {
+      if (scope === 'active-upcoming') return sub.lifecycle_state === 'active' || sub.lifecycle_state === 'upcoming';
+      if (scope === 'past') return sub.lifecycle_state === 'completed';
+      return true;
+    });
 }
 
 export async function getFormattedSubscriptionAttendance(

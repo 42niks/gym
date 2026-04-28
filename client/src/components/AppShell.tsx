@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
 import ThemeToggle from './ThemeToggle.js';
 import Icon from './Icon.js';
+import { preloadOwnerShellRoutes, preloadRoute } from '../lib/routePreload.js';
 
 interface AppShellLink {
   to: string;
@@ -21,12 +22,44 @@ export default function AppShell({ links, children }: AppShellProps) {
   const { theme, preference } = useTheme();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [navPending, setNavPending] = useState(false);
   const homeHref = links[0]?.to ?? '/';
   const themeLabel = preference[0].toUpperCase() + preference.slice(1);
 
   useEffect(() => {
     setDrawerOpen(false);
+    setNavPending(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const preload = () => preloadOwnerShellRoutes();
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(preload, { timeout: 1800 })
+      : window.setTimeout(preload, 900);
+
+    return () => {
+      if ('cancelIdleCallback' in window && typeof idleId === 'number') {
+        window.cancelIdleCallback(idleId);
+      } else {
+        window.clearTimeout(idleId as number);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    function handlePopState() {
+      setNavPending(true);
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (!navPending) return;
+    const timeout = window.setTimeout(() => setNavPending(false), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [navPending]);
 
   useEffect(() => {
     document.body.classList.toggle('drawer-open', drawerOpen);
@@ -44,8 +77,50 @@ export default function AppShell({ links, children }: AppShellProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  function getInternalAnchor(target: EventTarget | null) {
+    if (!(target instanceof Element)) return null;
+    const anchor = target.closest('a[href]');
+    if (!(anchor instanceof HTMLAnchorElement)) return null;
+    if (anchor.target && anchor.target !== '_self') return null;
+    if (anchor.hasAttribute('download')) return null;
+    const url = new URL(anchor.href, window.location.href);
+    if (url.origin !== window.location.origin) return null;
+    return { anchor, url };
+  }
+
+  function handleNavigationIntent(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    const internal = getInternalAnchor(event.target);
+    if (!internal) return;
+    const currentPath = `${location.pathname}${location.search}`;
+    const nextPath = `${internal.url.pathname}${internal.url.search}`;
+    if (nextPath !== currentPath) {
+      setNavPending(true);
+      internal.anchor.dataset.navPending = 'true';
+    }
+  }
+
+  function handlePreloadIntent(event: React.SyntheticEvent<HTMLDivElement>) {
+    const internal = getInternalAnchor(event.target);
+    if (!internal) return;
+    void preloadRoute(internal.url.pathname);
+  }
+
   return (
-    <div className="relative min-h-screen">
+    <div
+      className="relative min-h-screen"
+      onClickCapture={handleNavigationIntent}
+      onPointerOverCapture={handlePreloadIntent}
+      onFocusCapture={handlePreloadIntent}
+    >
+      <div
+        aria-hidden="true"
+        className={`navigation-progress fixed inset-x-0 top-0 z-[70] h-1 origin-left bg-brand-500 shadow-glow-brand transition-opacity duration-150 dark:bg-accent-400 ${
+          navPending ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
       <div
         aria-hidden="true"
         className="brand-duotone-page pointer-events-none fixed inset-0"
@@ -76,12 +151,12 @@ export default function AppShell({ links, children }: AppShellProps) {
                 aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
                 aria-expanded={drawerOpen}
                 onClick={() => setDrawerOpen(open => !open)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-black text-black transition-all hover:bg-black/[0.05] hover:text-black dark:border-white dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-black text-black transition-all hover:bg-black/[0.05] hover:text-black active:translate-y-px active:scale-[0.98] dark:border-white dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white"
               >
                 <Icon name={drawerOpen ? 'close' : 'menu'} className="text-[1.35rem]" />
               </button>
 
-              <Link to={homeHref} className="flex min-w-0 items-center gap-3">
+              <Link to={homeHref} className="flex min-w-0 items-center gap-3 transition-all active:translate-y-px active:opacity-75">
                 <img
                   src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
                   alt="BASE"
@@ -123,7 +198,7 @@ export default function AppShell({ links, children }: AppShellProps) {
                   <Link
                     key={link.to}
                     to={link.to}
-                    className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 font-label text-[0.74rem] font-bold uppercase tracking-[0.16em] transition-all ${
+                    className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 font-label text-[0.74rem] font-bold uppercase tracking-[0.16em] transition-all active:translate-y-px active:scale-[0.99] ${
                       active
                         ? 'bg-brand-500 text-white shadow-panel dark:bg-accent-500 dark:text-black'
                         : 'text-black hover:bg-black/[0.04] hover:text-black dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white'
@@ -150,7 +225,7 @@ export default function AppShell({ links, children }: AppShellProps) {
               <button
                 type="button"
                 onClick={logout}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-4 py-3 font-label text-[0.74rem] font-bold uppercase tracking-[0.16em] text-black transition-all hover:bg-black/[0.08] hover:text-black dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-black bg-black/[0.04] px-4 py-3 font-label text-[0.74rem] font-bold uppercase tracking-[0.16em] text-black transition-all hover:bg-black/[0.08] hover:text-black active:translate-y-px active:scale-[0.99] dark:border-white dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] dark:hover:text-white"
               >
                 <Icon name="logout" className="text-[1.1rem]" />
                 Sign out

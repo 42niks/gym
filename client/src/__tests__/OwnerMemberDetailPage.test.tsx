@@ -44,7 +44,25 @@ function configurePageData({
   subscriptions?: any[];
 } = {}) {
   mockApiGet.mockImplementation((url: string) => {
-    if (url === '/api/members/2') return Promise.resolve(detail);
+    if (url === '/api/members/2/summary') {
+      return Promise.resolve({
+        id: detail.id,
+        full_name: detail.full_name,
+        email: detail.email,
+        phone: detail.phone,
+        join_date: detail.join_date,
+        status: detail.status,
+        archived_at: detail.archived_at,
+        can_edit_profile: detail.can_edit_profile,
+      });
+    }
+    if (url === '/api/members/2/overview' || url === '/api/members/2') return Promise.resolve(detail);
+    if (url === '/api/members/2/subscriptions?scope=active-upcoming') {
+      return Promise.resolve(subscriptions.filter((sub) => sub.lifecycle_state === 'active' || sub.lifecycle_state === 'upcoming'));
+    }
+    if (url === '/api/members/2/subscriptions?scope=past') {
+      return Promise.resolve(subscriptions.filter((sub) => sub.lifecycle_state === 'completed'));
+    }
     if (url === '/api/members/2/subscriptions') return Promise.resolve(subscriptions);
     return Promise.reject(new Error(`Unexpected GET ${url}`));
   });
@@ -69,12 +87,12 @@ describe('OwnerMemberDetailPage', () => {
       expect(screen.getByText('BILLING')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Alex Kumar')).toBeInTheDocument();
+    expect(await screen.findByText('Alex Kumar')).toBeInTheDocument();
     expect(screen.getByText('ACTIVE SUBSCRIPTION')).toBeInTheDocument();
     expect(screen.getByText('Upcoming subscriptions')).toBeInTheDocument();
-    expect(screen.getByText('Past subscriptions')).toBeInTheDocument();
     expect(screen.getByText(/^Starts in \d+d$/i)).toBeInTheDocument();
-    expect(screen.getByText(/^Ended \d+d ago$/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^Ended \d+d ago$/i)).toBeInTheDocument();
+    expect(screen.getByText('Past subscriptions')).toBeInTheDocument();
     expect(screen.getByText(/^\d+d left$/i)).toBeInTheDocument();
     expect(screen.getByText('7 left')).toBeInTheDocument();
 
@@ -104,6 +122,23 @@ describe('OwnerMemberDetailPage', () => {
     const terminateButton = within(activeCard as HTMLElement).getByRole('button', { name: /terminate/i });
     const attendanceButton = within(activeCard as HTMLElement).getByRole('button', { name: /attendance/i });
     expectBefore(terminateButton, attendanceButton);
+  });
+
+  it('shows immediate pending feedback when terminating a subscription', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockApiPost.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    const activeSection = await screen.findByText('ACTIVE SUBSCRIPTION');
+    const activeCard = activeSection.closest('.glass-panel');
+    expect(activeCard).not.toBeNull();
+
+    await user.click(within(activeCard as HTMLElement).getByRole('button', { name: /terminate/i }));
+
+    expect(within(activeCard as HTMLElement).getByRole('button', { name: /terminating/i })).toBeDisabled();
+    confirmSpy.mockRestore();
   });
 
   it('shows inline validation errors inside the edited bio rows', async () => {
@@ -195,8 +230,8 @@ describe('OwnerMemberDetailPage', () => {
 
     const alphaUpcoming = await screen.findByText('Alpha Upcoming');
     const zuluUpcoming = screen.getByText('Zulu Upcoming');
-    const recentPast = screen.getByText('Recent Past');
-    const olderPast = screen.getByText('Older Past');
+    const recentPast = await screen.findByText('Recent Past');
+    const olderPast = await screen.findByText('Older Past');
 
     expectBefore(alphaUpcoming, zuluUpcoming);
     expectBefore(recentPast, olderPast);

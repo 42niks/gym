@@ -107,7 +107,23 @@ function configureMemberListResponses(
     ...overrides,
   };
 
+  const endpointForView = (view: string) => view === 'all' ? '/api/members' : `/api/members?view=${view}`;
+  const overviewEndpointForView = (view: string) => view === 'all' ? '/api/members/overview' : `/api/members/overview?view=${view}`;
+  const counts = Object.fromEntries(
+    ['all', 'no-plan', 'renewal', 'at-risk', 'not-consistent', 'building', 'consistent', 'today', 'archived']
+      .map((view) => [view, responses[endpointForView(view)]?.length ?? 0]),
+  );
+
   mockApiGet.mockImplementation((url: string) => {
+    for (const view of Object.keys(counts)) {
+      if (url === overviewEndpointForView(view)) {
+        return Promise.resolve({
+          view,
+          counts,
+          members: responses[endpointForView(view)] ?? [],
+        });
+      }
+    }
     if (url in responses) return Promise.resolve(responses[url]);
     return Promise.reject(new Error(`Unexpected GET ${url}`));
   });
@@ -145,7 +161,7 @@ describe('OwnerMembersPage', () => {
     renderWithProviders(<OwnerMembersPage />, { route: '/members' });
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/api/members');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview');
       expect(screen.getByRole('heading', { level: 3, name: 'All Active' })).toBeInTheDocument();
     });
 
@@ -166,7 +182,7 @@ describe('OwnerMembersPage', () => {
     renderWithProviders(<OwnerMembersPage />, { route: '/members?view=no-plan' });
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=no-plan');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview?view=no-plan');
       expect(screen.getByRole('heading', { level: 3, name: 'No Active Plan' })).toBeInTheDocument();
     });
 
@@ -185,7 +201,7 @@ describe('OwnerMembersPage', () => {
     renderWithProviders(<OwnerMembersPage />, { route: '/members?view=not-consistent' });
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=not-consistent');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview?view=not-consistent');
       expect(screen.getByRole('heading', { level: 3, name: 'Not Consistent' })).toBeInTheDocument();
     });
 
@@ -202,11 +218,11 @@ describe('OwnerMembersPage', () => {
 
     renderWithProviders(<OwnerMembersPage />, { route: '/members' });
 
-    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith('/api/members'));
+    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview'));
     await user.click(screen.getByRole('button', { name: /today/i }));
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=today');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview?view=today');
       expect(screen.getByRole('heading', { level: 3, name: 'Marked Today' })).toBeInTheDocument();
     });
 
@@ -219,11 +235,11 @@ describe('OwnerMembersPage', () => {
 
     renderWithProviders(<OwnerMembersPage />, { route: '/members' });
 
-    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith('/api/members'));
+    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview'));
     await user.click(screen.getByRole('button', { name: /at risk/i }));
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=at-risk');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview?view=at-risk');
       expect(screen.getByRole('heading', { level: 3, name: 'Consistency At Risk' })).toBeInTheDocument();
     });
 
@@ -267,15 +283,8 @@ describe('OwnerMembersPage', () => {
     expect(within(headingRow as HTMLElement).getByText('3')).toBeInTheDocument();
   });
 
-  it('fails soft when one tab count request errors', async () => {
-    const responses = configureMemberListResponses();
-    mockApiGet.mockImplementation((url: string) => {
-      if (url === '/api/members?view=renewal') {
-        return Promise.reject(new Error('boom'));
-      }
-      if (url in responses) return Promise.resolve(responses[url]);
-      return Promise.reject(new Error(`Unexpected GET ${url}`));
-    });
+  it('renders counts from the single overview response', async () => {
+    configureMemberListResponses();
 
     const { container } = renderWithProviders(<OwnerMembersPage />, { route: '/members' });
 
@@ -284,7 +293,7 @@ describe('OwnerMembersPage', () => {
       expect(dockButtonLabels(container)).toContain('All 1');
     });
 
-    expect(dockButtonLabels(container)).toContain('Renewal');
+    expect(dockButtonLabels(container)).toContain('Renewal 1');
   });
 
   it('renders archived members from the archived view', async () => {
@@ -293,7 +302,7 @@ describe('OwnerMembersPage', () => {
     renderWithProviders(<OwnerMembersPage />, { route: '/members?view=archived' });
 
     await waitFor(() => {
-      expect(mockApiGet).toHaveBeenCalledWith('/api/members?view=archived');
+      expect(mockApiGet).toHaveBeenCalledWith('/api/members/overview?view=archived');
       expect(screen.getByRole('heading', { level: 3, name: 'Archived' })).toBeInTheDocument();
       expect(screen.getByText('Hari Iyer')).toBeInTheDocument();
       expect(screen.getByText('Archived 10 Apr 2026')).toBeInTheDocument();

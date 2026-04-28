@@ -56,51 +56,51 @@ beforeEach(() => {
 });
 
 describe('App routes', () => {
-  it('opens owner home at /home', () => {
+  it('opens owner home at /home', async () => {
     authState.user = { id: 1, role: 'owner', full_name: 'Sam', email: 'owner@thebase.fit' };
     renderApp('/home');
-    expect(screen.getByText('Owner Home Page')).toBeInTheDocument();
+    expect(await screen.findByText('Owner Home Page')).toBeInTheDocument();
   });
 
-  it('opens members at /members for owners', () => {
+  it('opens members at /members for owners', async () => {
     authState.user = { id: 1, role: 'owner', full_name: 'Sam', email: 'owner@thebase.fit' };
     renderApp('/members');
-    expect(screen.getByText('Owner Members Page')).toBeInTheDocument();
+    expect(await screen.findByText('Owner Members Page')).toBeInTheDocument();
   });
 
-  it('opens packages at /packages for owners', () => {
+  it('opens packages at /packages for owners', async () => {
     authState.user = { id: 1, role: 'owner', full_name: 'Sam', email: 'owner@thebase.fit' };
     renderApp('/packages');
-    expect(screen.getByText('Owner Packages Page')).toBeInTheDocument();
+    expect(await screen.findByText('Owner Packages Page')).toBeInTheDocument();
   });
 
-  it('opens new package at /packages/new for owners', () => {
+  it('opens new package at /packages/new for owners', async () => {
     authState.user = { id: 1, role: 'owner', full_name: 'Sam', email: 'owner@thebase.fit' };
     renderApp('/packages/new');
-    expect(screen.getByText('Owner New Package Page')).toBeInTheDocument();
+    expect(await screen.findByText('Owner New Package Page')).toBeInTheDocument();
   });
 
-  it('shows 404 for members who visit /members', () => {
+  it('shows 404 for members who visit /members', async () => {
     authState.user = { id: 2, role: 'member', full_name: 'Alex', email: 'member@thebase.fit' };
     renderApp('/members');
-    expect(screen.getByText('Not Found Page')).toBeInTheDocument();
+    expect(await screen.findByText('Not Found Page')).toBeInTheDocument();
   });
 
-  it('opens subscription at /subscription for members', () => {
+  it('opens subscription at /subscription for members', async () => {
     authState.user = { id: 2, role: 'member', full_name: 'Alex', email: 'member@thebase.fit' };
     renderApp('/subscription');
-    expect(screen.getByText('Member Billing Page')).toBeInTheDocument();
+    expect(await screen.findByText('Member Billing Page')).toBeInTheDocument();
   });
 
-  it('opens subscription attendance at /subscription/:id/attendance for members', () => {
+  it('opens subscription attendance at /subscription/:id/attendance for members', async () => {
     authState.user = { id: 2, role: 'member', full_name: 'Alex', email: 'member@thebase.fit' };
     renderApp('/subscription/1/attendance');
-    expect(screen.getByText('Member Subscription Attendance Page')).toBeInTheDocument();
+    expect(await screen.findByText('Member Subscription Attendance Page')).toBeInTheDocument();
   });
 
-  it('does not keep /owner as a valid owner route', () => {
+  it('does not keep /owner as a valid owner route', async () => {
     authState.user = { id: 1, role: 'owner', full_name: 'Sam', email: 'owner@thebase.fit' };
     renderApp('/owner');
-    expect(screen.getByText('Not Found Page')).toBeInTheDocument();
+    expect(await screen.findByText('Not Found Page')).toBeInTheDocument();
   });
 });

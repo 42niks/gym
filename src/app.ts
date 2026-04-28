@@ -10,10 +10,17 @@ import {
   getMemberDetail, listMembers, createNewMember, updateExistingMember,
   archiveMemberById, unarchiveMemberById, listFormattedSubscriptions, getFormattedSubscriptionAttendance, toProfile, computeMemberEnrichment,
   normalizeMemberListView, MEMBER_LIST_VIEWS,
+  getOwnerMemberOverview,
+  type SubscriptionListScope,
 } from './services/member-service.js';
 import { createNewSubscription, completeSubscription } from './services/subscription-service.js';
 import { addAttendanceDate, markAttendance, removeAttendanceDate } from './services/attendance-service.js';
-import { getDashboard } from './services/dashboard-service.js';
+import {
+  getDashboard,
+  getDashboardMetrics,
+  OWNER_HOME_METRIC_SECTIONS,
+  type OwnerHomeMetricSection,
+} from './services/dashboard-service.js';
 import { getIstDate } from './lib/date.js';
 import { isValidYmdDate } from './lib/date.js';
 import {
@@ -60,6 +67,22 @@ function isJsonObject(value: unknown): value is Record<string, any> {
 function getUnsupportedFields(body: Record<string, any>, supportedFields: readonly string[]) {
   const supported = new Set(supportedFields);
   return Object.keys(body).filter((key) => !supported.has(key));
+}
+
+function parseOwnerHomeMetricSections(value: string | undefined): OwnerHomeMetricSection[] {
+  if (!value) return OWNER_HOME_METRIC_SECTIONS;
+  const requested = value
+    .split(',')
+    .map((section) => section.trim())
+    .filter((section): section is OwnerHomeMetricSection =>
+      OWNER_HOME_METRIC_SECTIONS.includes(section as OwnerHomeMetricSection),
+    );
+  return requested.length > 0 ? requested : OWNER_HOME_METRIC_SECTIONS;
+}
+
+function parseSubscriptionListScope(value: string | undefined): SubscriptionListScope {
+  if (value === 'active-upcoming' || value === 'past' || value === 'all') return value;
+  return 'all';
 }
 
 export function createApp(
@@ -241,6 +264,11 @@ export function createApp(
     return c.json(await listMembers(db, legacyStatus === 'archived' ? 'archived' : 'all'));
   });
 
+  app.get('/api/members/overview', authMiddleware, requireOwner, async (c) => {
+    const normalizedView = normalizeMemberListView(c.req.query('view')) ?? 'all';
+    return c.json(await getOwnerMemberOverview(db, normalizedView));
+  });
+
   app.post('/api/members', authMiddleware, requireOwner, async (c) => {
     let body: any;
     try {
@@ -276,6 +304,25 @@ export function createApp(
       }
       throw e;
     }
+  });
+
+  app.get('/api/members/:id/summary', authMiddleware, requireOwner, async (c) => {
+    const id = parseInt(c.req.param('id') ?? '', 10);
+    if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
+    const member = await findMemberById(db, id);
+    if (!member) return c.json({ error: 'Member not found' }, 404);
+    return c.json({
+      ...toProfile(member),
+      can_edit_profile: true,
+    });
+  });
+
+  app.get('/api/members/:id/overview', authMiddleware, requireOwner, async (c) => {
+    const id = parseInt(c.req.param('id') ?? '', 10);
+    if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
+    const detail = await getMemberDetail(db, id);
+    if (!detail) return c.json({ error: 'Member not found' }, 404);
+    return c.json(detail);
   });
 
   app.get('/api/members/:id', authMiddleware, requireOwner, async (c) => {
@@ -363,7 +410,7 @@ export function createApp(
     if (isNaN(id) || id <= 0) return c.json({ error: 'Invalid member id' }, 400);
     const member = await findMemberById(db, id);
     if (!member) return c.json({ error: 'Member not found' }, 404);
-    return c.json(await listFormattedSubscriptions(db, id));
+    return c.json(await listFormattedSubscriptions(db, id, parseSubscriptionListScope(c.req.query('scope'))));
   });
 
   app.post('/api/members/:id/subscriptions', authMiddleware, requireOwner, async (c) => {
@@ -536,6 +583,10 @@ export function createApp(
   });
 
   // ─── Owner: Dashboard ───
+
+  app.get('/api/owner/home/metrics', authMiddleware, requireOwner, async (c) => {
+    return c.json(await getDashboardMetrics(db, parseOwnerHomeMetricSections(c.req.query('sections'))));
+  });
 
   app.get('/api/owner/home', authMiddleware, requireOwner, async (c) => {
     return c.json(await getDashboard(db));

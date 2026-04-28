@@ -1,3 +1,5 @@
+import { rememberSlowNetwork } from './adaptiveLoading.js';
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -5,10 +7,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
-    ...options,
-  });
+  const startedAt = performance.now();
+  let res!: Response;
+
+  try {
+    res = await fetch(path, {
+      headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+      ...options,
+    });
+  } finally {
+    rememberSlowNetwork(performance.now() - startedAt);
+  }
 
   if (res.status === 401) {
     // Only redirect if not already on the login page (avoids infinite reload loop)
@@ -245,4 +254,22 @@ export interface Dashboard {
   checked_in_today: DashboardItem[];
   active_members: DashboardItem[];
   archived_members: DashboardItem[];
+}
+
+export interface OwnerHomeMetrics {
+  attendance_summary?: AttendanceSummary;
+  consistency_pipeline?: Dashboard['consistency_pipeline'];
+  at_risk?: Dashboard['at_risk'];
+  renewal_due_count?: number;
+  no_active_plan_count?: number;
+}
+
+export interface OwnerMemberOverview {
+  view: OwnerMemberListView;
+  counts: Record<OwnerMemberListView, number>;
+  members: MemberListItem[];
+}
+
+export interface MemberSummary extends MemberProfile {
+  can_edit_profile: boolean;
 }

@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -8,7 +9,15 @@ import {
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { api, ApiError, type MemberDetail, type OwnerMemberListView, type Subscription } from '../../lib/api.js';
+import {
+  api,
+  ApiError,
+  type MemberDetail,
+  type MemberSummary,
+  type OwnerMemberListView,
+  type OwnerMemberOverview,
+  type Subscription,
+} from '../../lib/api.js';
 import Alert from '../../components/Alert.js';
 import AppShell from '../../components/AppShell.js';
 import Button from '../../components/Button.js';
@@ -16,7 +25,6 @@ import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
 import MemberStatusPill, { type MemberStatusPillSpec } from '../../components/MemberStatusPill.js';
 import ProfileFieldRow from '../../components/ProfileFieldRow.js';
-import Spinner from '../../components/Spinner.js';
 import { formatFullDate, formatStatusLabel } from '../../components/attendance/AttendanceCalendar.js';
 import { ownerLinks } from './ownerLinks.js';
 
@@ -418,7 +426,7 @@ function sortSubscriptions(subs: Subscription[]) {
 
 const PROFILE_EDIT_ROW_H = 'h-[3.25rem]';
 
-const profileEditIconBtn = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-white/80 text-black shadow-sm shadow-black/5 transition-colors hover:bg-white disabled:opacity-45 sm:h-[3.25rem] sm:w-[3.25rem] dark:border-white/15 dark:bg-surface-dark/75 dark:text-white dark:hover:bg-surface-raised/80';
+const profileEditIconBtn = 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-white/80 text-black shadow-sm shadow-black/5 transition-all hover:bg-white active:translate-y-px active:scale-[0.98] disabled:opacity-45 sm:h-[3.25rem] sm:w-[3.25rem] dark:border-white/15 dark:bg-surface-dark/75 dark:text-white dark:hover:bg-surface-raised/80';
 const subscriptionActionBtn =
   'w-full min-w-0 justify-center whitespace-nowrap px-3 py-3 font-label text-[0.72rem] font-bold uppercase tracking-[0.12em] not-italic';
 
@@ -578,12 +586,14 @@ function SubscriptionCard({
   viewQuery,
   onComplete,
   sectionLabel,
+  completing = false,
 }: {
   memberId: string;
   sub: Subscription;
   viewQuery: string;
   onComplete: (subscription: Subscription) => void;
   sectionLabel?: string;
+  completing?: boolean;
 }) {
   const dateProgress = getSubscriptionDateProgress(sub);
   const sessionProgress = getSubscriptionSessionProgress(sub);
@@ -648,11 +658,12 @@ function SubscriptionCard({
         {sub.can_mark_complete ? (
           <Button
             variant="danger"
-            icon="cancel"
+            icon={completing ? 'progress_activity' : 'cancel'}
             className={subscriptionActionBtn}
+            disabled={completing}
             onClick={() => onComplete(sub)}
           >
-            Terminate
+            {completing ? 'Terminating...' : 'Terminate'}
           </Button>
         ) : null}
         <Link className={hasCompletionAction ? 'min-w-0' : ''} to={`/members/${memberId}/subscriptions/${sub.id}/attendance${viewQuery}`}>
@@ -723,6 +734,74 @@ function EmptyActiveSubscriptionCard({
   );
 }
 
+function DetailSkeleton({ className = '' }: { className?: string }) {
+  return <span aria-hidden="true" className={`block animate-pulse rounded-xl bg-black/10 dark:bg-white/10 ${className}`} />;
+}
+
+function CompactPillCardSkeleton({ label }: { label: string }) {
+  return (
+    <div className="surface-inset surface-inset--owner-compact">
+      <div className="flex min-h-[52px] items-center justify-between gap-3">
+        <span className="shrink-0 font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white">
+          {label}
+        </span>
+        <div className="ml-auto flex min-w-0 flex-1 justify-end gap-2">
+          <DetailSkeleton className="h-7 w-24 rounded-full" />
+          <DetailSkeleton className="h-7 w-20 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionCardSkeleton() {
+  return (
+    <Card className="space-y-5 p-5">
+      <DetailSkeleton className="h-6 w-40" />
+      <DetailSkeleton className="h-8 w-4/5" />
+      <div className="space-y-4">
+        <DetailSkeleton className="h-12 w-full" />
+        <DetailSkeleton className="h-12 w-full" />
+      </div>
+      <DetailSkeleton className="h-11 w-full" />
+    </Card>
+  );
+}
+
+function DestructiveActionSkeleton() {
+  return (
+    <Card className="destructive-card-glow space-y-4 border border-red-200 bg-red-50/55 p-5 dark:border-red-900/60 dark:bg-red-950/15">
+      <DetailSkeleton className="h-4 w-36" />
+      <DetailSkeleton className="h-7 w-44" />
+      <DetailSkeleton className="h-11 w-full" />
+    </Card>
+  );
+}
+
+function findCachedMemberSummary(
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string | undefined,
+): MemberSummary | undefined {
+  if (!id) return undefined;
+  const cachedOverviews = queryClient.getQueriesData<OwnerMemberOverview>({ queryKey: ['owner-members-overview'] });
+  for (const [, overview] of cachedOverviews) {
+    const member = overview?.members.find((item) => String(item.id) === id);
+    if (member) {
+      return {
+        id: member.id,
+        full_name: member.full_name,
+        email: member.email,
+        phone: member.phone,
+        join_date: member.join_date,
+        status: member.status,
+        archived_at: member.archived_at,
+        can_edit_profile: true,
+      };
+    }
+  }
+  return undefined;
+}
+
 export default function OwnerMemberDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -730,6 +809,7 @@ export default function OwnerMemberDetailPage() {
   const [archiving, setArchiving] = useState(false);
   const [archiveErr, setArchiveErr] = useState('');
   const [completionError, setCompletionError] = useState('');
+  const [completingSubscriptionId, setCompletingSubscriptionId] = useState<number | null>(null);
   const [inlineField, setInlineField] = useState<null | 'name' | 'phone'>(null);
   const [inlineDraft, setInlineDraft] = useState('');
   const [inlineSaving, setInlineSaving] = useState(false);
@@ -737,24 +817,50 @@ export default function OwnerMemberDetailPage() {
   const [showMoreBio, setShowMoreBio] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  const cachedSummary = findCachedMemberSummary(queryClient, id);
 
-  const { data: detail, isLoading } = useQuery<MemberDetail>({
-    queryKey: ['member-detail', id],
-    queryFn: () => api.get(`/api/members/${id}`),
+  const { data: summary } = useQuery<MemberSummary>({
+    queryKey: ['member-summary', id],
+    queryFn: () => api.get(`/api/members/${id}/summary`),
+    enabled: !!id,
+    initialData: cachedSummary,
   });
 
-  const { data: subs = [] } = useQuery<Subscription[]>({
-    queryKey: ['member-subs', id],
-    queryFn: () => api.get(`/api/members/${id}/subscriptions`),
+  const { data: detail, isLoading: overviewLoading } = useQuery<MemberDetail>({
+    queryKey: ['member-detail', id],
+    queryFn: () => api.get(`/api/members/${id}/overview`),
     enabled: !!id,
+  });
+
+  const { data: activeUpcomingSubs = [], isLoading: activeUpcomingLoading } = useQuery<Subscription[]>({
+    queryKey: ['member-subs', id, 'active-upcoming'],
+    queryFn: () => api.get(`/api/members/${id}/subscriptions?scope=active-upcoming`),
+    enabled: !!id,
+  });
+
+  const [loadPastSubscriptions, setLoadPastSubscriptions] = useState(false);
+  useEffect(() => {
+    if (!id) return;
+    setLoadPastSubscriptions(false);
+    const load = () => setLoadPastSubscriptions(true);
+    const timer = window.setTimeout(load, 350);
+    return () => window.clearTimeout(timer);
+  }, [id]);
+
+  const { data: pastSubs = [], isFetching: pastSubsLoading } = useQuery<Subscription[]>({
+    queryKey: ['member-subs', id, 'past'],
+    queryFn: () => api.get(`/api/members/${id}/subscriptions?scope=past`),
+    enabled: !!id && loadPastSubscriptions,
   });
 
   async function invalidateMemberQueries() {
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['member-summary', id] }),
       queryClient.invalidateQueries({ queryKey: ['member-detail', id] }),
       queryClient.invalidateQueries({ queryKey: ['member-subs', id] }),
-      queryClient.invalidateQueries({ queryKey: ['owner-members'] }),
+      queryClient.invalidateQueries({ queryKey: ['owner-members-overview'] }),
       queryClient.invalidateQueries({ queryKey: ['owner-home'] }),
+      queryClient.invalidateQueries({ queryKey: ['owner-home-metrics'] }),
     ]);
   }
 
@@ -832,39 +938,32 @@ export default function OwnerMemberDetailPage() {
     if (!confirm(`Mark ${subscription.service_type} complete? This cannot be undone.`)) return;
 
     setCompletionError('');
+    setCompletingSubscriptionId(subscription.id);
     try {
       await api.post(`/api/subscriptions/${subscription.id}/complete`);
       await invalidateMemberQueries();
     } catch (error) {
       setCompletionError(error instanceof ApiError ? error.message : 'Could not mark subscription complete');
+    } finally {
+      setCompletingSubscriptionId(null);
     }
   }
 
-  if (isLoading) {
-    return (
-      <AppShell links={ownerLinks}>
-        <div className="page-stack">
-          <div className="flex justify-center py-16">
-            <Spinner />
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
+  if (!id) return null;
 
-  if (!detail || !id) return null;
+  const profile = summary ?? detail ?? null;
 
   const requestedView = searchParams.get('view');
   const preservedView = normalizeOwnerMemberListView(requestedView)
     ? normalizeOwnerMemberListView(requestedView)!
-    : detail.status === 'archived'
+    : profile?.status === 'archived'
       ? 'archived'
       : 'all';
   const viewQuery = preservedView === 'all' ? '' : `?view=${encodeURIComponent(preservedView)}`;
   const backLink = `/members${viewQuery}`;
   const backLabel = preservedView === 'all' ? 'All Active' : MEMBER_VIEW_BACK_LABELS[preservedView];
 
-  const orderedSubs = sortSubscriptions(subs);
+  const orderedSubs = sortSubscriptions([...activeUpcomingSubs, ...pastSubs]);
   const groupedSubs = {
     active: orderedSubs.filter((sub) => sub.lifecycle_state === 'active'),
     upcoming: orderedSubs.filter((sub) => sub.lifecycle_state === 'upcoming'),
@@ -889,58 +988,67 @@ export default function OwnerMemberDetailPage() {
 
             <div className="grid w-full gap-2">
               <div className="surface-inset surface-inset--owner-compact">
-                <OwnerInlineProfileRow
-                  label="Name"
-                  displayValue={detail.full_name}
-                  field="name"
-                  activeField={inlineField}
-                  draft={inlineDraft}
-                  onDraftChange={setInlineDraft}
-                  onRequestEdit={() => {
-                    setInlineError('');
-                    setInlineDraft(detail.full_name);
-                    setInlineField('name');
-                  }}
-                  onCancel={() => {
-                    setInlineField(null);
-                    setInlineError('');
-                  }}
-                  onConfirm={confirmInlineProfileEdit}
-                  saving={inlineSaving}
-                  canEdit={detail.can_edit_profile}
-                  wrapDisplayWords
-                  inputRef={nameInputRef}
-                  maxLength={120}
-                  errorMessage={inlineField === 'name' ? inlineError : ''}
-                />
-                <div className="mt-1 flex justify-start">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 font-label text-[0.62rem] font-bold uppercase tracking-[0.18em] text-black dark:text-white"
-                    aria-expanded={showMoreBio}
-                    aria-controls="member-bio-more"
-                    onClick={() => setShowMoreBio((current) => !current)}
-                  >
-                    <span>More</span>
-                    <span className="material-symbols-outlined text-[1rem] text-black dark:text-white">
-                      {showMoreBio ? 'expand_less' : 'expand_more'}
-                    </span>
-                  </button>
-                </div>
-                {showMoreBio ? (
+                {profile ? (
+                  <OwnerInlineProfileRow
+                    label="Name"
+                    displayValue={profile.full_name}
+                    field="name"
+                    activeField={inlineField}
+                    draft={inlineDraft}
+                    onDraftChange={setInlineDraft}
+                    onRequestEdit={() => {
+                      setInlineError('');
+                      setInlineDraft(profile.full_name);
+                      setInlineField('name');
+                    }}
+                    onCancel={() => {
+                      setInlineField(null);
+                      setInlineError('');
+                    }}
+                    onConfirm={confirmInlineProfileEdit}
+                    saving={inlineSaving}
+                    canEdit={profile.can_edit_profile}
+                    wrapDisplayWords
+                    inputRef={nameInputRef}
+                    maxLength={120}
+                    errorMessage={inlineField === 'name' ? inlineError : ''}
+                  />
+                ) : (
+                  <div className="flex min-h-[3.25rem] items-center justify-between gap-3">
+                    <span className="font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white">Name</span>
+                    <DetailSkeleton className="h-7 w-44" />
+                  </div>
+                )}
+                {profile ? (
+                  <div className="mt-1 flex justify-start">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 font-label text-[0.62rem] font-bold uppercase tracking-[0.18em] text-black transition-all active:translate-y-px dark:text-white"
+                      aria-expanded={showMoreBio}
+                      aria-controls="member-bio-more"
+                      onClick={() => setShowMoreBio((current) => !current)}
+                    >
+                      <span>More</span>
+                      <span className="material-symbols-outlined text-[1rem] text-black dark:text-white">
+                        {showMoreBio ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </button>
+                  </div>
+                ) : null}
+                {profile && showMoreBio ? (
                   <div id="member-bio-more" className="mt-2 border-t border-black/10 pt-2 dark:border-white/10">
-                    <ProfileFieldRow compact label="Email" value={detail.email} />
+                    <ProfileFieldRow compact label="Email" value={profile.email} />
                     <div className="border-t border-black/10 dark:border-white/10">
                       <OwnerInlineProfileRow
                         label="Mobile"
-                        displayValue={detail.phone}
+                        displayValue={profile.phone}
                         field="phone"
                         activeField={inlineField}
                         draft={inlineDraft}
                         onDraftChange={setInlineDraft}
                         onRequestEdit={() => {
                           setInlineError('');
-                          setInlineDraft(detail.phone.replace(/\D+/g, '').slice(0, 10));
+                          setInlineDraft(profile.phone.replace(/\D+/g, '').slice(0, 10));
                           setInlineField('phone');
                         }}
                         onCancel={() => {
@@ -949,7 +1057,7 @@ export default function OwnerMemberDetailPage() {
                         }}
                         onConfirm={confirmInlineProfileEdit}
                         saving={inlineSaving}
-                        canEdit={detail.can_edit_profile}
+                        canEdit={profile.can_edit_profile}
                         wrapDisplayWords={false}
                         inputRef={phoneInputRef}
                         inputMode="numeric"
@@ -963,9 +1071,9 @@ export default function OwnerMemberDetailPage() {
                           Member since
                         </span>
                         <div className="min-w-0 flex-1 text-right">
-                          <p className="text-base font-semibold text-black dark:text-white">{formatJoinDate(detail.join_date)}</p>
+                          <p className="text-base font-semibold text-black dark:text-white">{formatJoinDate(profile.join_date)}</p>
                           <p className="mt-0.5 text-xs font-medium text-black/55 dark:text-white/60">
-                            {formatMembershipAge(detail.join_date)}
+                            {formatMembershipAge(profile.join_date)}
                           </p>
                         </div>
                       </div>
@@ -978,16 +1086,25 @@ export default function OwnerMemberDetailPage() {
                   OVERVIEW
                 </p>
               </div>
-              <CompactPillCard
-                label="Subscription"
-                pills={buildSubscriptionPills(detail)}
-                action={
-                  detail.can_add_subscription
-                    ? { to: `/members/${id}/subscriptions/new${viewQuery}`, label: 'New', icon: 'add' }
-                    : undefined
-                }
-              />
-              <CompactPillCard label="Consistency" pills={buildConsistencyPills(detail)} />
+              {detail ? (
+                <>
+                  <CompactPillCard
+                    label="Subscription"
+                    pills={buildSubscriptionPills(detail)}
+                    action={
+                      detail.can_add_subscription
+                        ? { to: `/members/${id}/subscriptions/new${viewQuery}`, label: 'New', icon: 'add' }
+                        : undefined
+                    }
+                  />
+                  <CompactPillCard label="Consistency" pills={buildConsistencyPills(detail)} />
+                </>
+              ) : (
+                <>
+                  <CompactPillCardSkeleton label="Subscription" />
+                  <CompactPillCardSkeleton label="Consistency" />
+                </>
+              )}
             </div>
           </div>
           <div className="space-y-4 border-t border-black pt-4 dark:border-white">
@@ -998,7 +1115,9 @@ export default function OwnerMemberDetailPage() {
             <div className="space-y-6">
               <div className="space-y-3">
                 <div className="space-y-3">
-                  {groupedSubs.active.length > 0 ? (
+                  {activeUpcomingLoading ? (
+                    <SubscriptionCardSkeleton />
+                  ) : groupedSubs.active.length > 0 ? (
                     groupedSubs.active.map((sub) => (
                       <SubscriptionCard
                         key={sub.id}
@@ -1007,13 +1126,14 @@ export default function OwnerMemberDetailPage() {
                         viewQuery={viewQuery}
                         onComplete={handleComplete}
                         sectionLabel="ACTIVE SUBSCRIPTION"
+                        completing={completingSubscriptionId === sub.id}
                       />
                     ))
                   ) : (
                     <EmptyActiveSubscriptionCard
                       memberId={id}
                       viewQuery={viewQuery}
-                      canAddSubscription={detail.can_add_subscription}
+                      canAddSubscription={detail?.can_add_subscription ?? false}
                     />
                   )}
                 </div>
@@ -1041,74 +1161,87 @@ export default function OwnerMemberDetailPage() {
                           sub={sub}
                           viewQuery={viewQuery}
                           onComplete={handleComplete}
+                          completing={completingSubscriptionId === sub.id}
                         />
                       ))}
                     </div>
                   </div>
                 ) : null
               ))}
+              {loadPastSubscriptions && pastSubsLoading ? (
+                <div className="space-y-3">
+                  <div className="member-detail-subheading flex items-center justify-between gap-3">
+                    <span>Past subscriptions</span>
+                  </div>
+                  <SubscriptionCardSkeleton />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
 
-        <Card className="destructive-card-glow space-y-4 border border-red-200 bg-red-50/55 p-5 dark:border-red-900/60 dark:bg-red-950/15">
-          <SectionHeading
-            eyebrow="Destructive actions"
-            title={detail.archive_action.kind === 'archive' ? 'Archive member' : 'Unarchive member'}
-            description={
-              detail.archive_action.kind === 'archive'
-                ? 'Archiving signs the member out and removes them from the active roster.'
-                : 'Unarchiving restores the member to the active roster.'
-            }
-          />
+        {detail ? (
+          <Card className="destructive-card-glow space-y-4 border border-red-200 bg-red-50/55 p-5 dark:border-red-900/60 dark:bg-red-950/15">
+            <SectionHeading
+              eyebrow="Destructive actions"
+              title={detail.archive_action.kind === 'archive' ? 'Archive member' : 'Unarchive member'}
+              description={
+                detail.archive_action.kind === 'archive'
+                  ? 'Archiving signs the member out and removes them from the active roster.'
+                  : 'Unarchiving restores the member to the active roster.'
+              }
+            />
 
-          {detail.archive_action.kind === 'archive' && !detail.archive_action.allowed ? (
-            <Alert variant="warning">
-              {detail.archive_action.reason}
-            </Alert>
-          ) : null}
+            {detail.archive_action.kind === 'archive' && !detail.archive_action.allowed ? (
+              <Alert variant="warning">
+                {detail.archive_action.reason}
+              </Alert>
+            ) : null}
 
-          {detail.archive_action.blocked_by.length > 0 ? (
-            <div className="space-y-3">
-              {detail.archive_action.blocked_by.map((blocker) => (
-                <div
-                  key={blocker.subscription_id}
-                  className="grid gap-3 rounded-[1.2rem] border border-black/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-black dark:text-white">{blocker.service_type}</p>
-                    <p className="text-xs text-black/60 dark:text-white/70">
-                      {formatStatusLabel(blocker.lifecycle_state)} • {formatFullDate(blocker.start_date)} - {formatFullDate(blocker.end_date)}
-                    </p>
+            {detail.archive_action.blocked_by.length > 0 ? (
+              <div className="space-y-3">
+                {detail.archive_action.blocked_by.map((blocker) => (
+                  <div
+                    key={blocker.subscription_id}
+                    className="grid gap-3 rounded-[1.2rem] border border-black/10 bg-white/70 p-4 dark:border-white/10 dark:bg-white/[0.04] sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-black dark:text-white">{blocker.service_type}</p>
+                      <p className="text-xs text-black/60 dark:text-white/70">
+                        {formatStatusLabel(blocker.lifecycle_state)} • {formatFullDate(blocker.start_date)} - {formatFullDate(blocker.end_date)}
+                      </p>
+                    </div>
+                    <Link className="w-full sm:w-auto" to={`/members/${id}/subscriptions/${blocker.subscription_id}/attendance${viewQuery}`}>
+                      <Button variant="secondary" icon="calendar_month" className="w-full whitespace-nowrap sm:w-auto">
+                        Review & Terminate
+                      </Button>
+                    </Link>
                   </div>
-                  <Link className="w-full sm:w-auto" to={`/members/${id}/subscriptions/${blocker.subscription_id}/attendance${viewQuery}`}>
-                    <Button variant="secondary" icon="calendar_month" className="w-full whitespace-nowrap sm:w-auto">
-                      Review & Terminate
-                    </Button>
-                  </Link>
-                </div>
-              ))}
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="danger"
+                onClick={handleArchiveAction}
+                disabled={archiving || (detail.archive_action.kind === 'archive' && !detail.archive_action.allowed)}
+                icon={archiving ? 'progress_activity' : detail.archive_action.kind === 'archive' ? 'archive' : 'unarchive'}
+                className="w-full justify-center text-center"
+              >
+                {archiving
+                  ? (detail.archive_action.kind === 'archive' ? 'Archiving…' : 'Unarchiving…')
+                  : detail.archive_action.kind === 'archive'
+                    ? 'Archive member'
+                    : 'Unarchive member'}
+              </Button>
             </div>
-          ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="danger"
-              onClick={handleArchiveAction}
-              disabled={archiving || (detail.archive_action.kind === 'archive' && !detail.archive_action.allowed)}
-              icon={archiving ? 'progress_activity' : detail.archive_action.kind === 'archive' ? 'archive' : 'unarchive'}
-              className="w-full justify-center text-center"
-            >
-              {archiving
-                ? (detail.archive_action.kind === 'archive' ? 'Archiving…' : 'Unarchiving…')
-                : detail.archive_action.kind === 'archive'
-                  ? 'Archive member'
-                  : 'Unarchive member'}
-            </Button>
-          </div>
-
-          {archiveErr ? <Alert variant="error">{archiveErr}</Alert> : null}
-        </Card>
+            {archiveErr ? <Alert variant="error">{archiveErr}</Alert> : null}
+          </Card>
+        ) : (
+          <DestructiveActionSkeleton />
+        )}
       </div>
     </AppShell>
   );

@@ -115,8 +115,9 @@ export default function OwnerSubscriptionAttendancePage() {
         queryClient.invalidateQueries({ queryKey: ['owner-subscription-attendance', id, subscriptionId] }),
         queryClient.invalidateQueries({ queryKey: ['member-subs', id] }),
         queryClient.invalidateQueries({ queryKey: ['member-detail', id] }),
-        queryClient.invalidateQueries({ queryKey: ['owner-members'] }),
+        queryClient.invalidateQueries({ queryKey: ['owner-members-overview'] }),
         queryClient.invalidateQueries({ queryKey: ['owner-home'] }),
+        queryClient.invalidateQueries({ queryKey: ['owner-home-metrics'] }),
       ]);
     },
     onError: (mutationError: unknown) => {
@@ -139,8 +140,9 @@ export default function OwnerSubscriptionAttendancePage() {
         queryClient.invalidateQueries({ queryKey: ['owner-subscription-attendance', id, subscriptionId] }),
         queryClient.invalidateQueries({ queryKey: ['member-subs', id] }),
         queryClient.invalidateQueries({ queryKey: ['member-detail', id] }),
-        queryClient.invalidateQueries({ queryKey: ['owner-members'] }),
+        queryClient.invalidateQueries({ queryKey: ['owner-members-overview'] }),
         queryClient.invalidateQueries({ queryKey: ['owner-home'] }),
+        queryClient.invalidateQueries({ queryKey: ['owner-home-metrics'] }),
       ]);
     } catch (mutationError) {
       setError(mutationError instanceof ApiError ? mutationError.message : 'Could not mark subscription complete');

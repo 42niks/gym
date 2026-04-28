@@ -376,6 +376,27 @@ describe('Member Management', () => {
       expect(body.map((member) => member.full_name)).toEqual(['Renewal Ruby']);
     });
 
+    it('returns members and all tab counts from the overview endpoint', async () => {
+      await seedMembersViewFixtures();
+      await seedNotConsistentMemberFixture();
+      await seedBuildingAtRiskMemberFixture();
+
+      const res = await api('/api/members/overview?view=renewal', { headers: { Cookie: ownerCookie } });
+      expect(res.status).toBe(200);
+
+      const body = await res.json() as any;
+      expect(body.view).toBe('renewal');
+      expect(body.members.map((member: any) => member.full_name)).toEqual(['Renewal Ruby']);
+      expect(body.counts).toMatchObject({
+        all: 9,
+        'no-plan': 2,
+        renewal: 1,
+        'at-risk': 2,
+        'not-consistent': 1,
+        archived: 1,
+      });
+    });
+
     it('lists the at risk view', async () => {
       await seedMembersViewFixtures();
       await seedBuildingAtRiskMemberFixture();

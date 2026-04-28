@@ -1,23 +1,34 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { ThemeProvider } from './context/ThemeContext.js';
 import Spinner from './components/Spinner.js';
-import LoginPage from './pages/LoginPage.js';
-import MemberHomePage from './pages/member/MemberHomePage.js';
-import MemberBillingPage from './pages/member/MemberBillingPage.js';
-import MemberSubscriptionAttendancePage from './pages/member/MemberSubscriptionAttendancePage.js';
-import MemberProfilePage from './pages/member/MemberProfilePage.js';
-import OwnerHomePage from './pages/owner/OwnerHomePage.js';
-import OwnerMembersPage from './pages/owner/OwnerMembersPage.js';
-import OwnerNewMemberPage from './pages/owner/OwnerNewMemberPage.js';
-import OwnerMemberDetailPage from './pages/owner/OwnerMemberDetailPage.js';
-import OwnerNewSubscriptionPage from './pages/owner/OwnerNewSubscriptionPage.js';
-import OwnerSubscriptionAttendancePage from './pages/owner/OwnerSubscriptionAttendancePage.js';
-import OwnerPackagesPage from './pages/owner/OwnerPackagesPage.js';
-import OwnerNewPackagePage from './pages/owner/OwnerNewPackagePage.js';
 import { ownerLinks } from './pages/owner/ownerLinks.js';
 import { memberLinks } from './pages/member/memberLinks.js';
-import NotFoundPage from './pages/NotFoundPage.js';
+import { pageLoaders } from './lib/routePreload.js';
+
+const LoginPage = lazy(pageLoaders.LoginPage);
+const MemberHomePage = lazy(pageLoaders.MemberHomePage);
+const MemberBillingPage = lazy(pageLoaders.MemberBillingPage);
+const MemberSubscriptionAttendancePage = lazy(pageLoaders.MemberSubscriptionAttendancePage);
+const MemberProfilePage = lazy(pageLoaders.MemberProfilePage);
+const OwnerHomePage = lazy(pageLoaders.OwnerHomePage);
+const OwnerMembersPage = lazy(pageLoaders.OwnerMembersPage);
+const OwnerNewMemberPage = lazy(pageLoaders.OwnerNewMemberPage);
+const OwnerMemberDetailPage = lazy(pageLoaders.OwnerMemberDetailPage);
+const OwnerNewSubscriptionPage = lazy(pageLoaders.OwnerNewSubscriptionPage);
+const OwnerSubscriptionAttendancePage = lazy(pageLoaders.OwnerSubscriptionAttendancePage);
+const OwnerPackagesPage = lazy(pageLoaders.OwnerPackagesPage);
+const OwnerNewPackagePage = lazy(pageLoaders.OwnerNewPackagePage);
+const NotFoundPage = lazy(pageLoaders.NotFoundPage);
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[55vh] flex items-center justify-center">
+      <Spinner />
+    </div>
+  );
+}
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -32,39 +43,45 @@ function AppRoutes() {
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   if (user.role === 'owner') {
     return (
-      <Routes>
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route path="/home" element={<OwnerHomePage />} />
-        <Route path="/members" element={<OwnerMembersPage />} />
-        <Route path="/members/new" element={<OwnerNewMemberPage />} />
-        <Route path="/members/:id" element={<OwnerMemberDetailPage />} />
-        <Route path="/members/:id/subscriptions/new" element={<OwnerNewSubscriptionPage />} />
-        <Route path="/members/:id/subscriptions/:subscriptionId/attendance" element={<OwnerSubscriptionAttendancePage />} />
-        <Route path="/packages" element={<OwnerPackagesPage />} />
-        <Route path="/packages/new" element={<OwnerNewPackagePage />} />
-        <Route path="*" element={<NotFoundPage links={ownerLinks} />} />
-      </Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="/home" element={<OwnerHomePage />} />
+          <Route path="/members" element={<OwnerMembersPage />} />
+          <Route path="/members/new" element={<OwnerNewMemberPage />} />
+          <Route path="/members/:id" element={<OwnerMemberDetailPage />} />
+          <Route path="/members/:id/subscriptions/new" element={<OwnerNewSubscriptionPage />} />
+          <Route path="/members/:id/subscriptions/:subscriptionId/attendance" element={<OwnerSubscriptionAttendancePage />} />
+          <Route path="/packages" element={<OwnerPackagesPage />} />
+          <Route path="/packages/new" element={<OwnerNewPackagePage />} />
+          <Route path="*" element={<NotFoundPage links={ownerLinks} />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      <Route path="/home" element={<MemberHomePage />} />
-      <Route path="/subscription/:id/attendance" element={<MemberSubscriptionAttendancePage />} />
-      <Route path="/subscription" element={<MemberBillingPage />} />
-      <Route path="/profile" element={<MemberProfilePage />} />
-      <Route path="*" element={<NotFoundPage links={memberLinks} />} />
-    </Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<MemberHomePage />} />
+        <Route path="/subscription/:id/attendance" element={<MemberSubscriptionAttendancePage />} />
+        <Route path="/subscription" element={<MemberBillingPage />} />
+        <Route path="/profile" element={<MemberProfilePage />} />
+        <Route path="*" element={<NotFoundPage links={memberLinks} />} />
+      </Routes>
+    </Suspense>
   );
 }
 
