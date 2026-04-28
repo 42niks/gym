@@ -273,3 +273,9 @@ export interface OwnerMemberOverview {
 export interface MemberSummary extends MemberProfile {
   can_edit_profile: boolean;
 }
+
+export interface OwnerMemberProfilePatch {
+  full_name?: string;
+  phone?: string;
+  join_date?: string;
+}

@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
 import ThemeToggle from './ThemeToggle.js';
@@ -21,14 +21,28 @@ export default function AppShell({ links }: AppShellProps) {
   const { logout } = useAuth();
   const { theme, preference } = useTheme();
   const location = useLocation();
+  const navigationType = useNavigationType();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [navPending, setNavPending] = useState(false);
+  const isNavigatingRef = useRef(false);
   const homeHref = links[0]?.to ?? '/';
   const themeLabel = preference[0].toUpperCase() + preference.slice(1);
+  const currentUrlKey = `${location.pathname}${location.search}`;
+
+  function saveScrollSnapshot(routeKey: string, routeUrlKey: string) {
+    try {
+      const y = String(window.scrollY);
+      sessionStorage.setItem(`scroll:key:${routeKey}`, y);
+      sessionStorage.setItem(`scroll:url:${routeUrlKey}`, y);
+    } catch {
+      // Ignore storage quota/privacy mode failures.
+    }
+  }
 
   useEffect(() => {
     setDrawerOpen(false);
     setNavPending(false);
+    isNavigatingRef.current = false;
   }, [location.pathname]);
 
   useEffect(() => {
@@ -48,12 +62,14 @@ export default function AppShell({ links }: AppShellProps) {
 
   useEffect(() => {
     function handlePopState() {
+      isNavigatingRef.current = true;
+      saveScrollSnapshot(location.key, currentUrlKey);
       setNavPending(true);
     }
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [location.key, currentUrlKey]);
 
   useEffect(() => {
     if (!navPending) return;
@@ -65,6 +81,76 @@ export default function AppShell({ links }: AppShellProps) {
     document.body.classList.toggle('drawer-open', drawerOpen);
     return () => document.body.classList.remove('drawer-open');
   }, [drawerOpen]);
+
+  useEffect(() => {
+    if (!('scrollRestoration' in window.history)) return;
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+    return () => {
+      window.history.scrollRestoration = previous;
+    };
+  }, []);
+
+  useEffect(() => {
+    const saveCurrentPosition = () => saveScrollSnapshot(location.key, currentUrlKey);
+    const handleScroll = () => {
+      if (isNavigatingRef.current) return;
+      saveCurrentPosition();
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('beforeunload', saveCurrentPosition);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeunload', saveCurrentPosition);
+    };
+  }, [location.key, currentUrlKey]);
+
+  useLayoutEffect(() => {
+    let restoredY = 0;
+
+    try {
+      if (navigationType === 'POP') {
+        const byKey = sessionStorage.getItem(`scroll:key:${location.key}`);
+        const byUrl = sessionStorage.getItem(`scroll:url:${currentUrlKey}`);
+        const candidate = byKey ?? byUrl;
+        restoredY = candidate === null ? 0 : Number.parseInt(candidate, 10);
+      } else {
+        const byUrl = sessionStorage.getItem(`scroll:url:${currentUrlKey}`);
+        restoredY = byUrl === null ? 0 : Number.parseInt(byUrl, 10);
+      }
+    } catch {
+      restoredY = 0;
+    }
+
+    const targetY = Number.isFinite(restoredY) ? Math.max(0, restoredY) : 0;
+    if (targetY === 0) {
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    let frame = 0;
+    let cancelled = false;
+    const maxFrames = 24;
+
+    const tryRestore = () => {
+      if (cancelled) return;
+      const maxScrollableY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const clampedTarget = Math.min(targetY, maxScrollableY);
+      window.scrollTo(0, clampedTarget);
+
+      // Retry for a few frames so async list content can mount before final restore.
+      if (frame < maxFrames && maxScrollableY < targetY - 8) {
+        frame += 1;
+        window.requestAnimationFrame(tryRestore);
+      }
+    };
+
+    window.requestAnimationFrame(tryRestore);
+    return () => {
+      cancelled = true;
+    };
+  }, [location.key, currentUrlKey, navigationType]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -97,6 +183,8 @@ export default function AppShell({ links }: AppShellProps) {
     const currentPath = `${location.pathname}${location.search}`;
     const nextPath = `${internal.url.pathname}${internal.url.search}`;
     if (nextPath !== currentPath) {
+      isNavigatingRef.current = true;
+      saveScrollSnapshot(location.key, currentUrlKey);
       setNavPending(true);
       internal.anchor.dataset.navPending = 'true';
     }

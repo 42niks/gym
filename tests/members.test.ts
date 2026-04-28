@@ -713,6 +713,17 @@ describe('Member Management', () => {
       expect(body.phone).toBe('9999999999');
     });
 
+    it('should update join_date for active member', async () => {
+      const memberId = await seedMember({ email: 'join-update@test.com', phone: '1111111111' });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ join_date: '2026-01-10' }),
+      });
+      expect(res.status).toBe(200);
+      expect((await res.json()).join_date).toBe('2026-01-10');
+    });
+
     it('should update both full_name and phone', async () => {
       const memberId = await seedMember({ email: 'a@test.com', phone: '1111111111' });
       const body = await (await api(`/api/members/${memberId}`, {
@@ -751,6 +762,114 @@ describe('Member Management', () => {
         headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
         body: JSON.stringify({ full_name: '   ' }),
       })).status).toBe(400);
+    });
+
+    it('should reject empty join_date', async () => {
+      const memberId = await seedMember({ email: 'join-empty@test.com', phone: '1111111111' });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ join_date: '   ' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('join_date cannot be empty');
+    });
+
+    it('should reject invalid join_date format', async () => {
+      const memberId = await seedMember({ email: 'join-invalid@test.com', phone: '1111111111' });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ join_date: '2026-13-45' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('Invalid join_date format');
+    });
+
+    it('should reject join_date after earliest subscription start_date', async () => {
+      const memberId = await seedMember({ email: 'join-sub-limit@test.com', phone: '1111111111' });
+      await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2026-01-10',
+        end_date: '2026-02-10',
+        total_sessions: 8,
+        amount: 19900,
+      });
+
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ join_date: '2026-01-11' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('join_date cannot be after earliest subscription start_date');
+    });
+
+    it('should reject join_date after earliest attendance date', async () => {
+      const memberId = await seedMember({ email: 'join-att-limit@test.com', phone: '1111111111' });
+      const subscriptionId = await seedSubscription({
+        member_id: memberId,
+        package_id: 1,
+        start_date: '2026-01-20',
+        end_date: '2026-02-20',
+        total_sessions: 8,
+        amount: 19900,
+      });
+      await seedSession({ member_id: memberId, subscription_id: subscriptionId, date: '2026-01-10' });
+
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ join_date: '2026-01-11' }),
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('join_date cannot be after earliest attendance date');
+    });
+
+    it('should reject join_date update for archived member', async () => {
+      const memberId = await seedMember({
+        email: 'join-archived@test.com',
+        phone: '1111111111',
+        status: 'archived',
+      });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ join_date: '2026-01-10' }),
+      });
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toBe('Cannot update join_date for archived member');
+    });
+
+    it('should reject full_name update for archived member', async () => {
+      const memberId = await seedMember({
+        email: 'archived-name@test.com',
+        phone: '1111111111',
+        status: 'archived',
+      });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ full_name: 'Updated Archived Name' }),
+      });
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toBe('Cannot update archived member bio');
+    });
+
+    it('should reject phone update for archived member', async () => {
+      const memberId = await seedMember({
+        email: 'archived-phone@test.com',
+        phone: '1111111111',
+        status: 'archived',
+      });
+      const res = await api(`/api/members/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Cookie: ownerCookie },
+        body: JSON.stringify({ phone: '9999999999' }),
+      });
+      expect(res.status).toBe(409);
+      expect((await res.json()).error).toBe('Cannot update archived member bio');
     });
 
     it('should reject phone update when it is not exactly 10 digits', async () => {

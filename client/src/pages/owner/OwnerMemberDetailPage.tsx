@@ -14,6 +14,7 @@ import {
   ApiError,
   type MemberDetail,
   type MemberSummary,
+  type OwnerMemberProfilePatch,
   type OwnerMemberListView,
   type OwnerMemberOverview,
   type Subscription,
@@ -123,6 +124,10 @@ function formatMembershipAge(value: string) {
   const daysOld = Math.max(0, Math.floor((todayUtc - joinedDayUtc) / 86400000));
 
   return `${daysOld} ${daysOld === 1 ? 'day' : 'days'} ago`;
+}
+
+function isValidYmdDate(value: string) {
+  return parseDateParts(value) !== null;
 }
 
 function formatShortDate(value: string) {
@@ -442,14 +447,15 @@ function OwnerInlineProfileRow({
   canEdit,
   wrapDisplayWords,
   inputRef,
+  inputType,
   inputMode,
   maxLength,
   errorMessage,
 }: {
   label: string;
   displayValue: string;
-  field: 'name' | 'phone';
-  activeField: 'name' | 'phone' | null;
+  field: 'name' | 'phone' | 'join_date';
+  activeField: 'name' | 'phone' | 'join_date' | null;
   draft: string;
   onDraftChange: (v: string) => void;
   onRequestEdit: () => void;
@@ -459,6 +465,7 @@ function OwnerInlineProfileRow({
   canEdit: boolean;
   wrapDisplayWords: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
+  inputType?: InputHTMLAttributes<HTMLInputElement>['type'];
   inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
   maxLength: number;
   errorMessage?: string;
@@ -474,6 +481,7 @@ function OwnerInlineProfileRow({
           <span className={labelClass}>{label}</span>
           <input
             ref={inputRef}
+            type={inputType ?? 'text'}
             className={`box-border w-0 min-w-0 flex-1 rounded-xl border border-black/15 bg-white/90 px-2.5 sm:px-3 text-right text-base font-semibold text-black shadow-sm shadow-black/5 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-300/30 dark:border-white/15 dark:bg-surface-dark/85 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent-400/25 ${PROFILE_EDIT_ROW_H}`}
             value={draft}
             maxLength={maxLength}
@@ -808,13 +816,14 @@ export default function OwnerMemberDetailPage() {
   const [archiveErr, setArchiveErr] = useState('');
   const [completionError, setCompletionError] = useState('');
   const [completingSubscriptionId, setCompletingSubscriptionId] = useState<number | null>(null);
-  const [inlineField, setInlineField] = useState<null | 'name' | 'phone'>(null);
+  const [inlineField, setInlineField] = useState<null | 'name' | 'phone' | 'join_date'>(null);
   const [inlineDraft, setInlineDraft] = useState('');
   const [inlineSaving, setInlineSaving] = useState(false);
   const [inlineError, setInlineError] = useState('');
   const [showMoreBio, setShowMoreBio] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  const joinDateInputRef = useRef<HTMLInputElement>(null);
   const cachedSummary = findCachedMemberSummary(queryClient, id);
 
   const { data: summary } = useQuery<MemberSummary>({
@@ -892,11 +901,37 @@ export default function OwnerMemberDetailPage() {
       setInlineError('');
       setInlineSaving(true);
       try {
-        await api.patch(`/api/members/${id}`, { full_name: trimmed });
+        const payload: OwnerMemberProfilePatch = { full_name: trimmed };
+        await api.patch(`/api/members/${id}`, payload);
         setInlineField(null);
         await invalidateMemberQueries();
       } catch (error) {
         setInlineError(error instanceof ApiError ? error.message : 'Failed to update name');
+      } finally {
+        setInlineSaving(false);
+      }
+      return;
+    }
+
+    if (inlineField === 'join_date') {
+      const trimmed = inlineDraft.trim();
+      if (!trimmed) {
+        setInlineError('Join date is required');
+        return;
+      }
+      if (!isValidYmdDate(trimmed)) {
+        setInlineError('Select a valid join date');
+        return;
+      }
+      setInlineError('');
+      setInlineSaving(true);
+      try {
+        const payload: OwnerMemberProfilePatch = { join_date: trimmed };
+        await api.patch(`/api/members/${id}`, payload);
+        setInlineField(null);
+        await invalidateMemberQueries();
+      } catch (error) {
+        setInlineError(error instanceof ApiError ? error.message : 'Failed to update join date');
       } finally {
         setInlineSaving(false);
       }
@@ -911,7 +946,8 @@ export default function OwnerMemberDetailPage() {
     setInlineError('');
     setInlineSaving(true);
     try {
-      await api.patch(`/api/members/${id}`, { phone: normalizedPhone });
+      const payload: OwnerMemberProfilePatch = { phone: normalizedPhone };
+      await api.patch(`/api/members/${id}`, payload);
       setInlineField(null);
       await invalidateMemberQueries();
     } catch (error) {
@@ -928,6 +964,8 @@ export default function OwnerMemberDetailPage() {
     } else if (inlineField === 'phone') {
       phoneInputRef.current?.focus();
       phoneInputRef.current?.select();
+    } else if (inlineField === 'join_date') {
+      joinDateInputRef.current?.focus();
     }
   }, [inlineField]);
 
@@ -1004,7 +1042,7 @@ export default function OwnerMemberDetailPage() {
                     }}
                     onConfirm={confirmInlineProfileEdit}
                     saving={inlineSaving}
-                    canEdit={profile.can_edit_profile}
+                    canEdit={profile.can_edit_profile && profile.status !== 'archived'}
                     wrapDisplayWords
                     inputRef={nameInputRef}
                     maxLength={120}
@@ -1054,7 +1092,7 @@ export default function OwnerMemberDetailPage() {
                         }}
                         onConfirm={confirmInlineProfileEdit}
                         saving={inlineSaving}
-                        canEdit={profile.can_edit_profile}
+                        canEdit={profile.can_edit_profile && profile.status !== 'archived'}
                         wrapDisplayWords={false}
                         inputRef={phoneInputRef}
                         inputMode="numeric"
@@ -1063,16 +1101,35 @@ export default function OwnerMemberDetailPage() {
                       />
                     </div>
                     <div className="border-t border-black/10 dark:border-white/10">
-                      <div className="flex min-h-[3.25rem] items-center justify-between gap-3">
-                        <span className="shrink-0 font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white">
-                          Member since
-                        </span>
-                        <div className="min-w-0 flex-1 text-right">
-                          <p className="text-base font-semibold text-black dark:text-white">{formatJoinDate(profile.join_date)}</p>
-                          <p className="mt-0.5 text-xs font-medium text-black/55 dark:text-white/60">
-                            {formatMembershipAge(profile.join_date)}
-                          </p>
-                        </div>
+                      <OwnerInlineProfileRow
+                        label="Member since"
+                        displayValue={formatJoinDate(profile.join_date)}
+                        field="join_date"
+                        activeField={inlineField}
+                        draft={inlineDraft}
+                        onDraftChange={setInlineDraft}
+                        onRequestEdit={() => {
+                          setInlineError('');
+                          setInlineDraft(profile.join_date);
+                          setInlineField('join_date');
+                        }}
+                        onCancel={() => {
+                          setInlineField(null);
+                          setInlineError('');
+                        }}
+                        onConfirm={confirmInlineProfileEdit}
+                        saving={inlineSaving}
+                        canEdit={profile.can_edit_profile && profile.status !== 'archived'}
+                        wrapDisplayWords={false}
+                        inputRef={joinDateInputRef}
+                        inputType="date"
+                        maxLength={10}
+                        errorMessage={inlineField === 'join_date' ? inlineError : ''}
+                      />
+                      <div className="mt-0.5 text-right">
+                        <p className="text-xs font-medium text-black/55 dark:text-white/60">
+                          {formatMembershipAge(profile.join_date)}
+                        </p>
                       </div>
                     </div>
                   </div>

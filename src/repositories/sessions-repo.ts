@@ -29,6 +29,18 @@ export async function listAttendanceDatesForMember(db: AppDatabase, memberId: nu
   return rows.map(r => r.date);
 }
 
+export async function getEarliestAttendanceDateForMember(db: AppDatabase, memberId: number): Promise<string | null> {
+  const row = await db.get<{ date: string }>(
+    `SELECT date
+     FROM sessions
+     WHERE member_id = ?
+     ORDER BY date ASC
+     LIMIT 1`,
+    [memberId],
+  );
+  return row?.date ?? null;
+}
+
 export async function listAttendanceDatesForSubscription(
   db: AppDatabase,
   memberId: number,

@@ -48,7 +48,7 @@ export async function createMember(
 export async function updateMember(
   db: AppDatabase,
   id: number,
-  data: { full_name?: string; phone?: string }
+  data: { full_name?: string; phone?: string; join_date?: string }
 ): Promise<MemberRow | undefined> {
   const sets: string[] = [];
   const values: (string | number)[] = [];
@@ -59,6 +59,10 @@ export async function updateMember(
   if (data.phone !== undefined) {
     sets.push('phone = ?');
     values.push(data.phone.trim());
+  }
+  if (data.join_date !== undefined) {
+    sets.push('join_date = ?');
+    values.push(data.join_date.trim());
   }
   if (sets.length === 0) return findMemberById(db, id);
   values.push(id);

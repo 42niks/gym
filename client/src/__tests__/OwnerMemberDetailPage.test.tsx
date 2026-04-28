@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerMemberDetailPage from '../pages/owner/OwnerMemberDetailPage.js';
+import { ApiError } from '../lib/api.js';
 import { renderWithProviders } from './test-utils.js';
 import {
   mockCompletedSubscription,
@@ -162,6 +163,47 @@ describe('OwnerMemberDetailPage', () => {
     await user.type(screen.getByLabelText(/^mobile$/i), '123');
     await user.click(screen.getByRole('button', { name: /^save$/i }));
     expect(within(bioCard as HTMLElement).getByText('Phone must be exactly 10 digits')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit member since/i }));
+    await user.clear(screen.getByLabelText(/member since/i));
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+    expect(within(bioCard as HTMLElement).getByText('Join date is required')).toBeInTheDocument();
+  });
+
+  it('updates join date from member bio inline edit', async () => {
+    const user = userEvent.setup();
+    mockApiPatch.mockResolvedValueOnce({ ...mockMemberDetail, join_date: '2026-05-10' });
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    await user.click(await screen.findByRole('button', { name: /more/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /edit member since/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /edit member since/i }));
+    await user.clear(screen.getByLabelText(/member since/i));
+    await user.type(screen.getByLabelText(/member since/i), '2026-05-10');
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(mockApiPatch).toHaveBeenCalledWith('/api/members/2', { join_date: '2026-05-10' });
+    });
+  });
+
+  it('shows API error when join date update is rejected', async () => {
+    const user = userEvent.setup();
+    mockApiPatch.mockRejectedValueOnce(new ApiError(409, 'Cannot update join_date for archived member'));
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    await user.click(await screen.findByRole('button', { name: /more/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /edit member since/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /edit member since/i }));
+    await user.clear(screen.getByLabelText(/member since/i));
+    await user.type(screen.getByLabelText(/member since/i), '2026-05-10');
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Cannot update join_date for archived member')).toBeInTheDocument();
+    });
   });
 
   it('renders the empty active card with an add link and preserved view query', async () => {
@@ -212,6 +254,13 @@ describe('OwnerMemberDetailPage', () => {
       expect(activeCard).not.toBeNull();
       expect(within(activeCard as HTMLElement).getByRole('button', { name: /unarchive to add subscription/i })).toBeDisabled();
       expect(within(activeCard as HTMLElement).queryByRole('link')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /edit name/i })).not.toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: /more/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /edit mobile/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /edit member since/i })).not.toBeInTheDocument();
     });
   });
 

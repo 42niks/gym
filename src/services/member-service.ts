@@ -5,6 +5,7 @@ import {
   listAttendanceDatesForMember,
   listAttendanceDatesForSubscription,
   hasAttendanceForDate,
+  getEarliestAttendanceDateForMember,
 } from '../repositories/sessions-repo.js';
 import { deriveLifecycleState } from '../lib/subscription.js';
 import { computeRenewal } from '../lib/renewal.js';
@@ -833,10 +834,40 @@ export async function createNewMember(db: AppDatabase, data: { full_name: string
   return toProfile(member);
 }
 
-export async function updateExistingMember(db: AppDatabase, id: number, data: { full_name?: string; phone?: string }) {
+export async function updateExistingMember(
+  db: AppDatabase,
+  id: number,
+  data: { full_name?: string; phone?: string; join_date?: string },
+) {
+  const existing = await findMemberById(db, id);
+  if (!existing) return { error: 'Member not found', status: 404 as const };
+
+  const hasBioEdits = data.full_name !== undefined || data.phone !== undefined;
+  if (existing.status === 'archived' && hasBioEdits) {
+    return { error: 'Cannot update archived member bio', status: 409 as const };
+  }
+
+  if (data.join_date !== undefined) {
+    if (existing.status === 'archived') {
+      return { error: 'Cannot update join_date for archived member', status: 409 as const };
+    }
+
+    const [earliestSubscriptionStart, earliestAttendanceDate] = await Promise.all([
+      getEarliestSubscriptionStart(db, id),
+      getEarliestAttendanceDateForMember(db, id),
+    ]);
+
+    if (earliestSubscriptionStart !== null && data.join_date > earliestSubscriptionStart) {
+      return { error: 'join_date cannot be after earliest subscription start_date', status: 400 as const };
+    }
+    if (earliestAttendanceDate !== null && data.join_date > earliestAttendanceDate) {
+      return { error: 'join_date cannot be after earliest attendance date', status: 400 as const };
+    }
+  }
+
   const member = await repoUpdateMember(db, id, data);
-  if (!member) return null;
-  return toProfile(member);
+  if (!member) return { error: 'Member not found', status: 404 as const };
+  return { data: toProfile(member), status: 200 as const };
 }
 
 export async function archiveMemberById(db: AppDatabase, id: number): Promise<{ error?: string }> {

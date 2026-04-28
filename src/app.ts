@@ -348,7 +348,7 @@ export function createApp(
       return c.json({ error: 'Invalid JSON body' }, 400);
     }
 
-    const supportedFields = new Set(['full_name', 'phone']);
+    const supportedFields = new Set(['full_name', 'phone', 'join_date']);
     const unsupportedFields = Object.keys(body).filter((key) => !supportedFields.has(key));
     if (unsupportedFields.length > 0) {
       return c.json({
@@ -356,7 +356,7 @@ export function createApp(
       }, 400);
     }
 
-    const updates: { full_name?: string; phone?: string } = {};
+    const updates: { full_name?: string; phone?: string; join_date?: string } = {};
     if (body.full_name !== undefined) {
       const trimmed = typeof body.full_name === 'string' ? body.full_name.trim() : '';
       if (!trimmed) return c.json({ error: 'full_name cannot be empty' }, 400);
@@ -369,16 +369,20 @@ export function createApp(
       if (!isValidPhone(trimmed)) return c.json({ error: 'phone must be exactly 10 digits' }, 400);
       updates.phone = trimmed;
     }
+    if (body.join_date !== undefined) {
+      const trimmed = typeof body.join_date === 'string' ? body.join_date.trim() : '';
+      if (!trimmed) return c.json({ error: 'join_date cannot be empty' }, 400);
+      if (!isValidYmdDate(trimmed)) return c.json({ error: 'Invalid join_date format' }, 400);
+      updates.join_date = trimmed;
+    }
 
     if (Object.keys(updates).length === 0) {
       return c.json({ error: 'No editable field provided' }, 400);
     }
 
-    const existing = await findMemberById(db, id);
-    if (!existing) return c.json({ error: 'Member not found' }, 404);
-
-    const member = await updateExistingMember(db, id, updates);
-    return c.json(member);
+    const result = await updateExistingMember(db, id, updates);
+    if ('error' in result) return c.json({ error: result.error }, result.status);
+    return c.json(result.data);
   });
 
   app.post('/api/members/:id/archive', authMiddleware, requireOwner, async (c) => {
