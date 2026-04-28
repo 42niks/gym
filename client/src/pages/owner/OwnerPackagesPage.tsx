@@ -2,11 +2,9 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type ManagedPackage, ApiError } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
 import Icon from '../../components/Icon.js';
-import { ownerLinks } from './ownerLinks.js';
 
 interface PackageTab {
   key: string;
@@ -288,7 +286,7 @@ export default function OwnerPackagesPage() {
   }
 
   return (
-    <AppShell links={ownerLinks}>
+    <>
       <div
         className="page-stack"
         style={{ paddingBottom: 'calc(8.5rem + env(safe-area-inset-bottom, 0px))' }}
@@ -460,6 +458,6 @@ export default function OwnerPackagesPage() {
       {!isLoading && packages.length > 0 ? (
         <BottomPackageTabs tabs={tabs} selectedKey={selectedKey} onSelect={handleTabSelect} />
       ) : null}
-    </AppShell>
+    </>
   );
 }

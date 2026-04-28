@@ -3,14 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError, type ManagedPackage, type MemberDetail, type Subscription } from '../../lib/api.js';
 import Alert from '../../components/Alert.js';
-import AppShell from '../../components/AppShell.js';
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
 import Input from '../../components/Input.js';
 import Spinner from '../../components/Spinner.js';
 import { formatFullDate } from '../../components/attendance/AttendanceCalendar.js';
-import { ownerLinks } from './ownerLinks.js';
 
 function parseDateParts(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -746,47 +744,42 @@ export default function OwnerNewSubscriptionPage() {
 
   if (memberLoading || packagesLoading) {
     return (
-      <AppShell links={ownerLinks}>
-        <div className="page-stack max-w-5xl">
-          <Link to={backLink} className="back-link">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Member Profile
-          </Link>
-          <div className="flex justify-center py-16">
-            <Spinner />
-          </div>
+      <div className="page-stack max-w-5xl">
+        <Link to={backLink} className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Member Profile
+        </Link>
+        <div className="flex justify-center py-16">
+          <Spinner />
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (!memberDetail) {
     return (
-      <AppShell links={ownerLinks}>
-        <div className="page-stack max-w-5xl">
-          <Link to={backLink} className="back-link">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Member Profile
-          </Link>
-          <div className="empty-state">Could not load member details.</div>
-        </div>
-      </AppShell>
+      <div className="page-stack max-w-5xl">
+        <Link to={backLink} className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Member Profile
+        </Link>
+        <div className="empty-state">Could not load member details.</div>
+      </div>
     );
   }
 
   const isBlocked = !memberDetail.can_add_subscription;
 
   return (
-    <AppShell links={ownerLinks}>
-      <div className="page-stack max-w-5xl">
-        <Link to={backLink} className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Member Profile
-        </Link>
+    <div className="page-stack max-w-5xl">
+      <Link to={backLink} className="back-link">
+        <span className="material-symbols-outlined text-base">arrow_back</span>
+        Member Profile
+      </Link>
 
-        <div>
-          <h2 className="page-title">New subscription</h2>
-        </div>
+      <div>
+        <h2 className="page-title">New subscription</h2>
+      </div>
 
         {isBlocked ? (
           <Card className="space-y-4 p-5">
@@ -1178,7 +1171,6 @@ export default function OwnerNewSubscriptionPage() {
             </form>
           </>
         )}
-      </div>
-    </AppShell>
+    </div>
   );
 }

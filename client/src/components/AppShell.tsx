@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Suspense, useEffect, useState } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
 import ThemeToggle from './ThemeToggle.js';
 import Icon from './Icon.js';
+import Spinner from './Spinner.js';
 import { preloadOwnerShellRoutes, preloadRoute } from '../lib/routePreload.js';
 
 interface AppShellLink {
@@ -14,10 +15,9 @@ interface AppShellLink {
 
 interface AppShellProps {
   links: AppShellLink[];
-  children: React.ReactNode;
 }
 
-export default function AppShell({ links, children }: AppShellProps) {
+export default function AppShell({ links }: AppShellProps) {
   const { logout } = useAuth();
   const { theme, preference } = useTheme();
   const location = useLocation();
@@ -117,8 +117,8 @@ export default function AppShell({ links, children }: AppShellProps) {
     >
       <div
         aria-hidden="true"
-        className={`navigation-progress fixed inset-x-0 top-0 z-[70] h-1 origin-left bg-brand-500 shadow-glow-brand transition-opacity duration-150 dark:bg-accent-400 ${
-          navPending ? 'opacity-100' : 'opacity-0'
+        className={`fixed inset-x-0 top-0 z-[70] h-1 origin-left bg-brand-500 shadow-glow-brand transition-opacity duration-150 dark:bg-accent-400 ${
+          navPending ? 'navigation-progress opacity-100' : 'opacity-0'
         }`}
       />
       <div
@@ -160,6 +160,9 @@ export default function AppShell({ links, children }: AppShellProps) {
                 <img
                   src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
                   alt="BASE"
+                  width={4000}
+                  height={1627}
+                  decoding="async"
                   className="h-10 w-auto shrink-0 sm:h-11"
                 />
               </Link>
@@ -236,7 +239,9 @@ export default function AppShell({ links, children }: AppShellProps) {
       </div>
 
       <main className="page-content page-content-with-fixed-nav relative z-10 mx-auto min-h-screen max-w-6xl">
-        {children}
+        <Suspense fallback={<div className="min-h-[55vh] flex items-center justify-center"><Spinner /></div>}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

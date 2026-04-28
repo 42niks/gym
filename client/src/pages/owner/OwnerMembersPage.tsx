@@ -2,13 +2,11 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type MemberListItem, type OwnerMemberListView, type OwnerMemberOverview } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
 import MemberStatusPill, { type MemberStatusPillSpec } from '../../components/MemberStatusPill.js';
 import Spinner from '../../components/Spinner.js';
 import { formatFullDate } from '../../components/attendance/AttendanceCalendar.js';
-import { ownerLinks } from './ownerLinks.js';
 
 const ALL_VIEWS: OwnerMemberListView[] = [
   'all',
@@ -101,7 +99,7 @@ const PACKAGE_ICON_META = [
   { match: 'boxing', icon: 'sports_mma' },
 ] as const;
 
-const MEMBER_CARD_CLASS = 'rounded-2xl border border-zinc-300 bg-white/55 px-4 py-4 shadow-sm shadow-black/5 backdrop-blur-sm transition-all hover:border-zinc-400 hover:bg-white/72 active:translate-y-px active:scale-[0.99] dark:border-zinc-600 dark:bg-black/20 dark:hover:border-zinc-500 dark:hover:bg-black/28';
+const MEMBER_CARD_CLASS = 'member-list-card rounded-2xl border border-zinc-300 bg-white/55 px-4 py-4 shadow-sm shadow-black/5 transition-all hover:border-zinc-400 hover:bg-white/72 active:translate-y-px active:scale-[0.99] dark:border-zinc-600 dark:bg-black/20 dark:hover:border-zinc-500 dark:hover:bg-black/28';
 
 type MemberPill = MemberStatusPillSpec;
 
@@ -398,7 +396,7 @@ export default function OwnerMembersPage() {
   }
 
   return (
-    <AppShell links={ownerLinks}>
+    <>
       <div
         className="page-stack"
         style={{ paddingBottom: 'calc(8.5rem + env(safe-area-inset-bottom, 0px))' }}
@@ -542,6 +540,6 @@ export default function OwnerMembersPage() {
       </div>
 
       <BottomViewTabs currentView={currentView} counts={resolvedMemberCounts} onSelect={handleViewSelect} />
-    </AppShell>
+    </>
   );
 }

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { ThemeProvider } from './context/ThemeContext.js';
+import AppShell from './components/AppShell.js';
 import Spinner from './components/Spinner.js';
 import { ownerLinks } from './pages/owner/ownerLinks.js';
 import { memberLinks } from './pages/member/memberLinks.js';
@@ -54,9 +55,9 @@ function AppRoutes() {
 
   if (user.role === 'owner') {
     return (
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/home" replace />} />
+      <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route element={<AppShell links={ownerLinks} />}>
           <Route path="/home" element={<OwnerHomePage />} />
           <Route path="/members" element={<OwnerMembersPage />} />
           <Route path="/members/new" element={<OwnerNewMemberPage />} />
@@ -65,23 +66,23 @@ function AppRoutes() {
           <Route path="/members/:id/subscriptions/:subscriptionId/attendance" element={<OwnerSubscriptionAttendancePage />} />
           <Route path="/packages" element={<OwnerPackagesPage />} />
           <Route path="/packages/new" element={<OwnerNewPackagePage />} />
-          <Route path="*" element={<NotFoundPage links={ownerLinks} />} />
-        </Routes>
-      </Suspense>
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
     );
   }
 
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <Routes>
-        <Route path="/" element={<Navigate to="/home" replace />} />
+    <Routes>
+      <Route path="/" element={<Navigate to="/home" replace />} />
+      <Route element={<AppShell links={memberLinks} />}>
         <Route path="/home" element={<MemberHomePage />} />
         <Route path="/subscription/:id/attendance" element={<MemberSubscriptionAttendancePage />} />
         <Route path="/subscription" element={<MemberBillingPage />} />
         <Route path="/profile" element={<MemberProfilePage />} />
-        <Route path="*" element={<NotFoundPage links={memberLinks} />} />
-      </Routes>
-    </Suspense>
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   );
 }
 

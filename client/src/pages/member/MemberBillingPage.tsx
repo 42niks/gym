@@ -1,13 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, type MemberHome, type Subscription } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Badge from '../../components/Badge.js';
 import Icon from '../../components/Icon.js';
 import Spinner from '../../components/Spinner.js';
 import MemberRenewalAlert from '../../components/member/MemberRenewalAlert.js';
-import { memberLinks } from './memberLinks.js';
 
 function parseDateParts(value: string) {
   const [year, month, day] = value.split('-').map(Number);
@@ -271,8 +269,7 @@ export default function MemberBillingPage() {
   const past = sortPast(data.filter(s => s.lifecycle_state === 'completed'));
 
   return (
-    <AppShell links={memberLinks}>
-      <div className="page-stack space-y-6">
+    <div className="page-stack space-y-6">
         <div>
           <h2 className="page-title">SUBSCRIPTION</h2>
         </div>
@@ -325,7 +322,6 @@ export default function MemberBillingPage() {
             </section>
           </>
         )}
-      </div>
-    </AppShell>
+    </div>
   );
 }

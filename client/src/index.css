@@ -823,6 +823,11 @@
     box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset;
   }
 
+  .member-list-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 5rem;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .members-view-tab-active {
       animation: none;
@@ -833,6 +838,15 @@
     .members-view-tab-inactive:hover {
       transform: none;
       transition: none;
+    }
+
+    .navigation-progress {
+      animation: none;
+    }
+
+    .consistency-panel-frame::before,
+    .consistency-day-box-today {
+      animation: none;
     }
   }
 

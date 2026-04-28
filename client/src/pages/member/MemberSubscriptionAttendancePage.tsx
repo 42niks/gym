@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { api, type MemberSubscriptionAttendance } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
-import { memberLinks } from './memberLinks.js';
 import AttendanceCalendar, {
   buildCalendarWeeks,
   formatConsistencyRule,
@@ -47,47 +45,41 @@ export default function MemberSubscriptionAttendancePage() {
 
   if (!isValidSubscriptionId) {
     return (
-      <AppShell links={memberLinks}>
-        <div className="page-stack max-w-5xl">
-          <Link to="/subscription" className="back-link">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Subscription
-          </Link>
-          <div className="empty-state">Invalid subscription.</div>
-        </div>
-      </AppShell>
+      <div className="page-stack max-w-5xl">
+        <Link to="/subscription" className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Subscription
+        </Link>
+        <div className="empty-state">Invalid subscription.</div>
+      </div>
     );
   }
 
   if (isLoading) {
     return (
-      <AppShell links={memberLinks}>
-        <div className="page-stack max-w-5xl">
-          <Link to="/subscription" className="back-link">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Subscription
-          </Link>
-          <div className="flex justify-center py-16">
-            <Spinner />
-          </div>
+      <div className="page-stack max-w-5xl">
+        <Link to="/subscription" className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Subscription
+        </Link>
+        <div className="flex justify-center py-16">
+          <Spinner />
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (!data || error) {
     return (
-      <AppShell links={memberLinks}>
-        <div className="page-stack max-w-5xl">
-          <Link to="/subscription" className="back-link">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Subscription
-          </Link>
-          <div className="empty-state">
-            {error instanceof Error ? error.message : 'Could not load attendance dates.'}
-          </div>
+      <div className="page-stack max-w-5xl">
+        <Link to="/subscription" className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Subscription
+        </Link>
+        <div className="empty-state">
+          {error instanceof Error ? error.message : 'Could not load attendance dates.'}
         </div>
-      </AppShell>
+      </div>
     );
   }
 
@@ -99,8 +91,7 @@ export default function MemberSubscriptionAttendancePage() {
   const hasValidCalendarRange = weeks !== null;
 
   return (
-    <AppShell links={memberLinks}>
-      <div className="page-stack max-w-5xl">
+    <div className="page-stack max-w-5xl">
         <Link to="/subscription" className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Subscription
@@ -140,7 +131,6 @@ export default function MemberSubscriptionAttendancePage() {
         ) : (
           <div className="empty-state">Attendance calendar dates are invalid for this subscription.</div>
         )}
-      </div>
-    </AppShell>
+    </div>
   );
 }

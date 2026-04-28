@@ -1,10 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type MemberProfile } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import ProfileFieldRow from '../../components/ProfileFieldRow.js';
 import Spinner from '../../components/Spinner.js';
-import { memberLinks } from './memberLinks.js';
 
 export default function MemberProfilePage() {
   const { data, isLoading } = useQuery<MemberProfile>({
@@ -13,8 +11,7 @@ export default function MemberProfilePage() {
   });
 
   return (
-    <AppShell links={memberLinks}>
-      <div className="page-stack">
+    <div className="page-stack">
           <div>
             <h2 className="page-title">PROFILE</h2>
           </div>
@@ -40,7 +37,6 @@ export default function MemberProfilePage() {
               </div>
             </Card>
           )}
-      </div>
-    </AppShell>
+    </div>
   );
 }

@@ -1,12 +1,10 @@
 import { useState, type CSSProperties } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type MemberHome } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
 import MemberRenewalAlert from '../../components/member/MemberRenewalAlert.js';
-import { memberLinks } from './memberLinks.js';
 
 function extractDayCount(message: string | undefined) {
   const match = message?.match(/\d+/);
@@ -135,13 +133,11 @@ export default function MemberHomePage() {
 
   if (isLoading) {
     return (
-      <AppShell links={memberLinks}>
-        <div className="page-stack">
-          <div className="flex justify-center py-16">
-            <Spinner />
-          </div>
+      <div className="page-stack">
+        <div className="flex justify-center py-16">
+          <Spinner />
         </div>
-      </AppShell>
+      </div>
     );
   }
 
@@ -160,8 +156,7 @@ export default function MemberHomePage() {
   } as CSSProperties);
 
   return (
-    <AppShell links={memberLinks}>
-      <div className="page-stack">
+    <div className="page-stack">
         <div>
           <h2 className="page-title">Home</h2>
         </div>
@@ -292,7 +287,6 @@ export default function MemberHomePage() {
             </p>
           </Card>
         )}
-      </div>
-    </AppShell>
+    </div>
   );
 }

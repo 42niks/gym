@@ -3,11 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, type OwnerHomeMetrics } from '../../lib/api.js';
 import { getInitialProgressiveMode, useAdaptiveProgressiveMode } from '../../lib/adaptiveLoading.js';
-import AppShell from '../../components/AppShell.js';
 import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
 import MemberStatusPill, { type MemberStatusPillSpec } from '../../components/MemberStatusPill.js';
-import { ownerLinks } from './ownerLinks.js';
 
 function getDeltaTone(delta: number) {
   if (delta > 0) return 'text-brand-600 dark:text-brand-300';
@@ -229,15 +227,14 @@ export default function OwnerHomePage() {
   const renewalsLoading = data.renewal_due_count === undefined || data.no_active_plan_count === undefined;
 
   return (
-    <AppShell links={ownerLinks}>
-      <div className="page-stack">
-        <div className="page-header">
-          <div>
-            <h2 className="page-title">HOME</h2>
-          </div>
+    <div className="page-stack">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">HOME</h2>
         </div>
+      </div>
 
-        <div className="space-y-4 sm:space-y-5" aria-busy={attendanceLoading || consistencyLoading || renewalsLoading}>
+      <div className="space-y-4 sm:space-y-5" aria-busy={attendanceLoading || consistencyLoading || renewalsLoading}>
           <AttendanceCard
             title={"Today's Attendance"}
             count={data.attendance_summary?.present_today}
@@ -315,8 +312,7 @@ export default function OwnerHomePage() {
                 loading={renewalsLoading}
               />
             </div>
-          </div>
       </div>
-    </AppShell>
+    </div>
   );
 }

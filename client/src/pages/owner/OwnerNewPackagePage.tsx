@@ -2,11 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, type ManagedPackage, ApiError } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
-import { ownerLinks } from './ownerLinks.js';
 import { getFirstFormErrorMessage } from '../../lib/formValidation.js';
 
 interface PackageFormData {
@@ -368,8 +366,7 @@ export default function OwnerNewPackagePage() {
   );
 
   return (
-    <AppShell links={ownerLinks}>
-      <div className="page-stack max-w-3xl">
+    <div className="page-stack max-w-3xl">
         <Link to="/packages" className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Packages
@@ -500,7 +497,6 @@ export default function OwnerNewPackagePage() {
             Create package
           </Button>
         </form>
-      </div>
-    </AppShell>
+    </div>
   );
 }

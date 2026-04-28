@@ -19,14 +19,12 @@ import {
   type Subscription,
 } from '../../lib/api.js';
 import Alert from '../../components/Alert.js';
-import AppShell from '../../components/AppShell.js';
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
 import Icon from '../../components/Icon.js';
 import MemberStatusPill, { type MemberStatusPillSpec } from '../../components/MemberStatusPill.js';
 import ProfileFieldRow from '../../components/ProfileFieldRow.js';
 import { formatFullDate, formatStatusLabel } from '../../components/attendance/AttendanceCalendar.js';
-import { ownerLinks } from './ownerLinks.js';
 
 const KNOWN_MEMBER_VIEWS: OwnerMemberListView[] = [
   'all',
@@ -970,8 +968,7 @@ export default function OwnerMemberDetailPage() {
     past: orderedSubs.filter((sub) => sub.lifecycle_state === 'completed'),
   };
   return (
-    <AppShell links={ownerLinks}>
-      <div className="page-stack max-w-5xl">
+    <div className="page-stack max-w-5xl">
         <Link to={backLink} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           {backLabel}
@@ -1242,7 +1239,6 @@ export default function OwnerMemberDetailPage() {
         ) : (
           <DestructiveActionSkeleton />
         )}
-      </div>
-    </AppShell>
+    </div>
   );
 }

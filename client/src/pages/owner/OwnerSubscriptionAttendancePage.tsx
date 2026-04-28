@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError, type MemberSubscriptionAttendance } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Alert from '../../components/Alert.js';
 import AttendanceCalendar, {
   buildCalendarWeeks,
@@ -13,7 +12,6 @@ import AttendanceCalendar, {
 import Button from '../../components/Button.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
-import { ownerLinks } from './ownerLinks.js';
 
 function parseDateParts(value: string) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -153,31 +151,27 @@ export default function OwnerSubscriptionAttendancePage() {
 
   if (isLoading) {
     return (
-      <AppShell links={ownerLinks}>
-        <div className="page-stack max-w-5xl">
-          <Link to={`/members/${id}${viewQuery}`} className="back-link">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Member Profile
-          </Link>
-          <div className="flex justify-center py-16">
-            <Spinner />
-          </div>
+      <div className="page-stack max-w-5xl">
+        <Link to={`/members/${id}${viewQuery}`} className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Member Profile
+        </Link>
+        <div className="flex justify-center py-16">
+          <Spinner />
         </div>
-      </AppShell>
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <AppShell links={ownerLinks}>
-        <div className="page-stack max-w-5xl">
-          <Link to={`/members/${id}${viewQuery}`} className="back-link">
-            <span className="material-symbols-outlined text-base">arrow_back</span>
-            Member Profile
-          </Link>
-          <div className="empty-state">Could not load attendance dates.</div>
-        </div>
-      </AppShell>
+      <div className="page-stack max-w-5xl">
+        <Link to={`/members/${id}${viewQuery}`} className="back-link">
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Member Profile
+        </Link>
+        <div className="empty-state">Could not load attendance dates.</div>
+      </div>
     );
   }
 
@@ -203,8 +197,7 @@ export default function OwnerSubscriptionAttendancePage() {
   );
 
   return (
-    <AppShell links={ownerLinks}>
-      <div className="page-stack max-w-5xl">
+    <div className="page-stack max-w-5xl">
         <Link to={`/members/${id}${viewQuery}`} className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Member Profile
@@ -276,7 +269,6 @@ export default function OwnerSubscriptionAttendancePage() {
             </div>
           </Card>
         ) : null}
-      </div>
-    </AppShell>
+    </div>
   );
 }

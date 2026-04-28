@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api, type MemberProfile, ApiError } from '../../lib/api.js';
-import AppShell from '../../components/AppShell.js';
 import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
 import Alert from '../../components/Alert.js';
-import { ownerLinks } from './ownerLinks.js';
 import { getFirstFormErrorMessage } from '../../lib/formValidation.js';
 
 function isValidYmdDate(value: string) {
@@ -72,8 +70,7 @@ export default function OwnerNewMemberPage() {
   }
 
   return (
-    <AppShell links={ownerLinks}>
-      <div className="page-stack max-w-3xl">
+    <div className="page-stack max-w-3xl">
         <Link to="/members" className="back-link">
           <span className="material-symbols-outlined text-base">arrow_back</span>
           Members
@@ -103,7 +100,6 @@ export default function OwnerNewMemberPage() {
             {loading ? 'Creating…' : 'Create member'}
           </Button>
         </form>
-      </div>
-    </AppShell>
+    </div>
   );
 }
