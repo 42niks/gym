@@ -7,11 +7,15 @@ logo/
 *.db-shm
 *.db-wal
 .env
+.env.cloudflare.*
+!.env.cloudflare.example
 .dev.vars
 .wrangler/
 wrangler.toml
 wrangler.json
 wrangler.jsonc
+wrangler.*.jsonc
+!wrangler.example.jsonc
 worker-configuration.d.ts
 src/db/seed.credentials.sql
 .claude/
