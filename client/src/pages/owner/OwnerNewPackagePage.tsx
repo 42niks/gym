@@ -366,10 +366,10 @@ export default function OwnerNewPackagePage() {
   );
 
   return (
-    <div className="page-stack max-w-3xl">
-        <h2 className="page-title mb-6 mt-2">NEW PACKAGE</h2>
+    <div className="page-stack">
+        <h2 className="page-title">NEW PACKAGE</h2>
 
-        <form onSubmit={handleSubmit} noValidate className="glass-panel space-y-4 p-5 sm:p-6">
+        <form onSubmit={handleSubmit} noValidate className="glass-panel max-w-3xl mx-auto w-full space-y-4 p-5 sm:p-6">
           <div>
             <label
               htmlFor="service-type"

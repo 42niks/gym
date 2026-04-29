@@ -213,6 +213,7 @@
 
   .page-title {
     @apply font-headline text-3xl font-black italic uppercase tracking-tight text-black dark:text-white;
+    margin: 0;
   }
 
   .section-eyebrow {

@@ -401,7 +401,7 @@ export default function OwnerMembersPage() {
         className="page-stack"
         style={{ paddingBottom: 'calc(8.5rem + env(safe-area-inset-bottom, 0px))' }}
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <h2 className="page-title">MEMBERS</h2>
           <Link
             to="/members/new"

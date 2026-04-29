@@ -70,10 +70,10 @@ export default function OwnerNewMemberPage() {
   }
 
   return (
-    <div className="page-stack max-w-3xl">
-        <h2 className="page-title mb-6 mt-2">NEW MEMBER</h2>
+    <div className="page-stack">
+        <h2 className="page-title">NEW MEMBER</h2>
 
-        <form onSubmit={handleSubmit} noValidate className="glass-panel space-y-4 p-5 sm:p-6">
+        <form onSubmit={handleSubmit} noValidate className="glass-panel max-w-3xl mx-auto w-full space-y-4 p-5 sm:p-6">
           <Input label="Full name" labelClassName="ml-3 not-italic" type="text" required value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Doe" />
           <Input label="Email" labelClassName="ml-3 not-italic" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
           <Input label="Phone" labelClassName="ml-3 not-italic" type="text" inputMode="numeric" pattern="[0-9]{10}" minLength={10} maxLength={10} required value={phone} onChange={handlePhoneChange} placeholder="9876543210" />
