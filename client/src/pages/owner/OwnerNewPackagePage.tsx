@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, type ManagedPackage, ApiError } from '../../lib/api.js';
 import Input from '../../components/Input.js';
@@ -367,10 +367,6 @@ export default function OwnerNewPackagePage() {
 
   return (
     <div className="page-stack max-w-3xl">
-        <Link to="/packages" className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Packages
-        </Link>
         <h2 className="page-title mb-6 mt-2">NEW PACKAGE</h2>
 
         <form onSubmit={handleSubmit} noValidate className="glass-panel space-y-4 p-5 sm:p-6">

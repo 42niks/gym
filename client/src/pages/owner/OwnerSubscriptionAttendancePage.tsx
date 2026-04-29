@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError, type MemberSubscriptionAttendance } from '../../lib/api.js';
 import Alert from '../../components/Alert.js';
 import AttendanceCalendar, {
@@ -152,10 +152,6 @@ export default function OwnerSubscriptionAttendancePage() {
   if (isLoading) {
     return (
       <div className="page-stack max-w-5xl">
-        <Link to={`/members/${id}${viewQuery}`} className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Member Profile
-        </Link>
         <div className="flex justify-center py-16">
           <Spinner />
         </div>
@@ -166,10 +162,6 @@ export default function OwnerSubscriptionAttendancePage() {
   if (!data) {
     return (
       <div className="page-stack max-w-5xl">
-        <Link to={`/members/${id}${viewQuery}`} className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Member Profile
-        </Link>
         <div className="empty-state">Could not load attendance dates.</div>
       </div>
     );
@@ -198,11 +190,6 @@ export default function OwnerSubscriptionAttendancePage() {
 
   return (
     <div className="page-stack max-w-5xl">
-        <Link to={`/members/${id}${viewQuery}`} className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Member Profile
-        </Link>
-
         <div>
           <h2 className="page-title">Attendance dates</h2>
         </div>

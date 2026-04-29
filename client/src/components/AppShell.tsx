@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link, Outlet, useLocation, useNavigationType } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { useTheme } from '../context/ThemeContext.js';
 import ThemeToggle from './ThemeToggle.js';
@@ -21,6 +21,7 @@ export default function AppShell({ links }: AppShellProps) {
   const { logout } = useAuth();
   const { theme, preference } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const navigationType = useNavigationType();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [navPending, setNavPending] = useState(false);
@@ -28,6 +29,23 @@ export default function AppShell({ links }: AppShellProps) {
   const homeHref = links[0]?.to ?? '/';
   const themeLabel = preference[0].toUpperCase() + preference.slice(1);
   const currentUrlKey = `${location.pathname}${location.search}`;
+
+  const showBackInHeader =
+    /^\/members\/\d+$/.test(location.pathname) || // Owner: member detail
+    /^\/members\/new$/.test(location.pathname) || // Owner: create member
+    /^\/members\/\d+\/subscriptions\/new$/.test(location.pathname) || // Owner: create subscription
+    /^\/members\/\d+\/subscriptions\/\d+\/attendance$/.test(location.pathname) || // Owner: subscription attendance
+    location.pathname === '/packages/new' || // Owner: create package
+    /^\/subscription(\/\d+\/attendance)?$/.test(location.pathname); // Member: subscription pages
+
+  function handleHeaderBack() {
+    // Prefer a real "back" experience; if there's no history, fall back to the home route.
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(homeHref);
+  }
 
   function saveScrollSnapshot(routeKey: string, routeUrlKey: string) {
     try {
@@ -233,18 +251,25 @@ export default function AppShell({ links }: AppShellProps) {
       <header className="fixed inset-x-0 top-0 z-50 pt-2 sm:pt-4">
         <div className="mx-auto max-w-6xl px-2 sm:px-4">
           <nav className="w-full overflow-hidden rounded-shell border border-black bg-white/88 px-4 py-3 shadow-glass backdrop-blur-xl dark:border-white dark:bg-surface-dark/88">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={drawerOpen}
-                onClick={() => setDrawerOpen(open => !open)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-black text-black transition-all hover:bg-black/[0.05] hover:text-black active:translate-y-px active:scale-[0.98] dark:border-white dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white"
+            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
+              <div className="flex items-center justify-start">
+                {showBackInHeader ? (
+                  <button
+                    type="button"
+                    aria-label="Back"
+                    onClick={handleHeaderBack}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-black text-black transition-all hover:bg-black/[0.05] hover:text-black active:translate-y-px active:scale-[0.98] dark:border-white dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white"
+                  >
+                    <Icon name="arrow_back" className="text-[1.35rem]" />
+                  </button>
+                ) : (
+                  <div aria-hidden="true" />
+                )}
+              </div>
+              <Link
+                to={homeHref}
+                className="flex min-w-0 items-center justify-center gap-3 transition-all active:translate-y-px active:opacity-75"
               >
-                <Icon name={drawerOpen ? 'close' : 'menu'} className="text-[1.35rem]" />
-              </button>
-
-              <Link to={homeHref} className="flex min-w-0 items-center gap-3 transition-all active:translate-y-px active:opacity-75">
                 <img
                   src={theme === 'dark' ? '/base-wordmark-dark.png' : '/base-wordmark-light.png'}
                   alt="BASE"
@@ -254,6 +279,18 @@ export default function AppShell({ links }: AppShellProps) {
                   className="h-10 w-auto shrink-0 sm:h-11"
                 />
               </Link>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  aria-label={drawerOpen ? 'Close menu' : 'Open menu'}
+                  aria-expanded={drawerOpen}
+                  onClick={() => setDrawerOpen(open => !open)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-black text-black transition-all hover:bg-black/[0.05] hover:text-black active:translate-y-px active:scale-[0.98] dark:border-white dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white"
+                >
+                  <Icon name={drawerOpen ? 'close' : 'menu'} className="text-[1.35rem]" />
+                </button>
+              </div>
             </div>
           </nav>
         </div>
@@ -271,8 +308,8 @@ export default function AppShell({ links }: AppShellProps) {
         />
 
         <aside
-          className={`absolute bottom-2 left-2 top-[5.25rem] w-[min(18rem,82vw)] max-h-[calc(100dvh-5.75rem)] transition-transform duration-300 ease-out sm:bottom-4 sm:left-4 sm:top-[6.5rem] sm:max-h-[calc(100dvh-7.5rem)] ${
-            drawerOpen ? 'translate-x-0' : '-translate-x-[calc(100%+1rem)]'
+          className={`absolute bottom-2 right-2 top-[5.25rem] w-[min(18rem,82vw)] max-h-[calc(100dvh-5.75rem)] transition-transform duration-300 ease-out sm:bottom-4 sm:right-4 sm:top-[6.5rem] sm:max-h-[calc(100dvh-7.5rem)] ${
+            drawerOpen ? 'translate-x-0' : 'translate-x-[calc(100%+1rem)]'
           }`}
         >
           <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-shell border border-black bg-white/94 px-4 py-5 shadow-panel backdrop-blur-xl dark:border-white dark:bg-surface-dark/94">

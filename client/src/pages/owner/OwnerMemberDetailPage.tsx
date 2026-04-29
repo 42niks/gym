@@ -536,13 +536,13 @@ function SectionHeading({
   title,
   description,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description?: string;
 }) {
   return (
     <div>
-      <p className="section-eyebrow">{eyebrow}</p>
+      {eyebrow ? <p className="section-eyebrow">{eyebrow}</p> : null}
       <h3 className="mt-1 text-xl font-black tracking-tight text-black dark:text-white">{title}</h3>
       {description ? (
         <p className="mt-2 text-sm text-black/60 dark:text-white/70">{description}</p>
@@ -988,6 +988,7 @@ export default function OwnerMemberDetailPage() {
   if (!id) return null;
 
   const profile = summary ?? detail ?? null;
+  const isArchived = profile?.status === 'archived';
 
   const requestedView = searchParams.get('view');
   const preservedView = normalizeOwnerMemberListView(requestedView)
@@ -1007,11 +1008,6 @@ export default function OwnerMemberDetailPage() {
   };
   return (
     <div className="page-stack max-w-5xl">
-        <Link to={backLink} className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          {backLabel}
-        </Link>
-
         <div className="space-y-2">
           <div className="space-y-2">
             <div>
@@ -1135,30 +1131,34 @@ export default function OwnerMemberDetailPage() {
                   </div>
                 ) : null}
               </div>
-              <div className="border-t border-black pt-4 dark:border-white">
-                <p className="member-detail-subheading">
-                  OVERVIEW
-                </p>
-              </div>
-              {detail ? (
+              {!isArchived ? (
                 <>
-                  <CompactPillCard
-                    label="Subscription"
-                    pills={buildSubscriptionPills(detail)}
-                    action={
-                      detail.can_add_subscription
-                        ? { to: `/members/${id}/subscriptions/new${viewQuery}`, label: 'New', icon: 'add' }
-                        : undefined
-                    }
-                  />
-                  <CompactPillCard label="Consistency" pills={buildConsistencyPills(detail)} />
+                  <div className="border-t border-black pt-4 dark:border-white">
+                    <p className="member-detail-subheading">
+                      OVERVIEW
+                    </p>
+                  </div>
+                  {detail ? (
+                    <>
+                      <CompactPillCard
+                        label="Subscription"
+                        pills={buildSubscriptionPills(detail)}
+                        action={
+                          detail.can_add_subscription
+                            ? { to: `/members/${id}/subscriptions/new${viewQuery}`, label: 'New', icon: 'add' }
+                            : undefined
+                        }
+                      />
+                      <CompactPillCard label="Consistency" pills={buildConsistencyPills(detail)} />
+                    </>
+                  ) : (
+                    <>
+                      <CompactPillCardSkeleton label="Subscription" />
+                      <CompactPillCardSkeleton label="Consistency" />
+                    </>
+                  )}
                 </>
-              ) : (
-                <>
-                  <CompactPillCardSkeleton label="Subscription" />
-                  <CompactPillCardSkeleton label="Consistency" />
-                </>
-              )}
+              ) : null}
             </div>
           </div>
           <div className="space-y-4 border-t border-black pt-4 dark:border-white">
@@ -1169,80 +1169,109 @@ export default function OwnerMemberDetailPage() {
             <div className="space-y-6">
               <div className="space-y-3">
                 <div className="space-y-3">
-                  {activeUpcomingLoading ? (
-                    <SubscriptionCardSkeleton />
-                  ) : groupedSubs.active.length > 0 ? (
-                    groupedSubs.active.map((sub) => (
-                      <SubscriptionCard
-                        key={sub.id}
-                        memberId={id}
-                        sub={sub}
-                        viewQuery={viewQuery}
-                        onComplete={handleComplete}
-                        sectionLabel="ACTIVE SUBSCRIPTION"
-                        completing={completingSubscriptionId === sub.id}
-                      />
-                    ))
-                  ) : (
-                    <EmptyActiveSubscriptionCard
-                      memberId={id}
-                      viewQuery={viewQuery}
-                      canAddSubscription={detail?.can_add_subscription ?? false}
-                    />
-                  )}
+                    {!isArchived ? (
+                      activeUpcomingLoading ? (
+                        <SubscriptionCardSkeleton />
+                      ) : groupedSubs.active.length > 0 ? (
+                        groupedSubs.active.map((sub) => (
+                          <SubscriptionCard
+                            key={sub.id}
+                            memberId={id}
+                            sub={sub}
+                            viewQuery={viewQuery}
+                            onComplete={handleComplete}
+                            sectionLabel="ACTIVE SUBSCRIPTION"
+                            completing={completingSubscriptionId === sub.id}
+                          />
+                        ))
+                      ) : (
+                        <EmptyActiveSubscriptionCard
+                          memberId={id}
+                          viewQuery={viewQuery}
+                          canAddSubscription={detail?.can_add_subscription ?? false}
+                        />
+                      )
+                    ) : null}
                 </div>
               </div>
 
-              {([
-                ['upcoming', groupedSubs.upcoming, 'Upcoming subscriptions'],
-                ['past', groupedSubs.past, 'Past subscriptions'],
-              ] as const).map(([key, items, heading]) => (
-                items.length > 0 ? (
-                  <div key={key} className="space-y-3">
-                    {key === 'upcoming' || key === 'past' ? (
-                      <div className="member-detail-subheading flex items-center justify-between gap-3">
-                        <span>{heading}</span>
-                        <span>{items.length}</span>
-                      </div>
-                    ) : (
-                      <p className="section-eyebrow">{heading}</p>
-                    )}
-                    <div className="space-y-3">
-                      {items.map((sub) => (
-                        <SubscriptionCard
-                          key={sub.id}
-                          memberId={id}
-                          sub={sub}
-                          viewQuery={viewQuery}
-                          onComplete={handleComplete}
-                          completing={completingSubscriptionId === sub.id}
-                        />
-                      ))}
+                {isArchived ? (
+                  <div className="space-y-3">
+                    <div className="member-detail-subheading flex items-center justify-between gap-3">
+                      <span>Past subscriptions</span>
+                      <span>{groupedSubs.past.length}</span>
                     </div>
+                    {loadPastSubscriptions && pastSubsLoading ? (
+                      <SubscriptionCardSkeleton />
+                    ) : (
+                      <div className="space-y-3">
+                        {groupedSubs.past.map((sub) => (
+                          <SubscriptionCard
+                            key={sub.id}
+                            memberId={id}
+                            sub={sub}
+                            viewQuery={viewQuery}
+                            onComplete={handleComplete}
+                            completing={completingSubscriptionId === sub.id}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ) : null
-              ))}
-              {loadPastSubscriptions && pastSubsLoading ? (
-                <div className="space-y-3">
-                  <div className="member-detail-subheading flex items-center justify-between gap-3">
-                    <span>Past subscriptions</span>
-                  </div>
-                  <SubscriptionCardSkeleton />
-                </div>
-              ) : null}
+                ) : (
+                  <>
+                    {([
+                      ['upcoming', groupedSubs.upcoming, 'Upcoming subscriptions'],
+                      ['past', groupedSubs.past, 'Past subscriptions'],
+                    ] as const).map(([key, items, heading]) => (
+                      items.length > 0 ? (
+                        <div key={key} className="space-y-3">
+                          {key === 'upcoming' || key === 'past' ? (
+                            <div className="member-detail-subheading flex items-center justify-between gap-3">
+                              <span>{heading}</span>
+                              <span>{items.length}</span>
+                            </div>
+                          ) : (
+                            <p className="section-eyebrow">{heading}</p>
+                          )}
+                          <div className="space-y-3">
+                            {items.map((sub) => (
+                              <SubscriptionCard
+                                key={sub.id}
+                                memberId={id}
+                                sub={sub}
+                                viewQuery={viewQuery}
+                                onComplete={handleComplete}
+                                completing={completingSubscriptionId === sub.id}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null
+                    ))}
+                    {loadPastSubscriptions && pastSubsLoading ? (
+                      <div className="space-y-3">
+                        <div className="member-detail-subheading flex items-center justify-between gap-3">
+                          <span>Past subscriptions</span>
+                        </div>
+                        <SubscriptionCardSkeleton />
+                      </div>
+                    ) : null}
+                  </>
+                )}
             </div>
           </div>
         </div>
+        <div className="border-t border-black pt-4 dark:border-white" />
 
         {detail ? (
           <Card className="destructive-card-glow space-y-4 border border-red-200 bg-red-50/55 p-5 dark:border-red-900/60 dark:bg-red-950/15">
             <SectionHeading
-              eyebrow="Destructive actions"
-              title={detail.archive_action.kind === 'archive' ? 'Archive member' : 'Unarchive member'}
+              title={detail.archive_action.kind === 'archive' ? 'Archive member' : 'Restore member'}
               description={
                 detail.archive_action.kind === 'archive'
-                  ? 'Archiving signs the member out and removes them from the active roster.'
-                  : 'Unarchiving restores the member to the active roster.'
+                  ? 'Archiving signs the member out and removes them from the active roster. The member can no longer log in.'
+                  : 'Restore the member to the active roster. This will enable their log in.'
               }
             />
 
@@ -1287,7 +1316,7 @@ export default function OwnerMemberDetailPage() {
                   ? (detail.archive_action.kind === 'archive' ? 'Archiving…' : 'Unarchiving…')
                   : detail.archive_action.kind === 'archive'
                     ? 'Archive member'
-                    : 'Unarchive member'}
+                    : 'Restore member'}
               </Button>
             </div>
 

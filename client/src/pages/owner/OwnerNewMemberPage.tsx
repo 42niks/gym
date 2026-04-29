@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api, type MemberProfile, ApiError } from '../../lib/api.js';
 import Input from '../../components/Input.js';
 import Button from '../../components/Button.js';
@@ -71,10 +71,6 @@ export default function OwnerNewMemberPage() {
 
   return (
     <div className="page-stack max-w-3xl">
-        <Link to="/members" className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Members
-        </Link>
         <h2 className="page-title mb-6 mt-2">NEW MEMBER</h2>
 
         <form onSubmit={handleSubmit} noValidate className="glass-panel space-y-4 p-5 sm:p-6">

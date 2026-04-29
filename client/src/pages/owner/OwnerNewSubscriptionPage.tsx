@@ -745,10 +745,6 @@ export default function OwnerNewSubscriptionPage() {
   if (memberLoading || packagesLoading) {
     return (
       <div className="page-stack max-w-5xl">
-        <Link to={backLink} className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Member Profile
-        </Link>
         <div className="flex justify-center py-16">
           <Spinner />
         </div>
@@ -759,10 +755,6 @@ export default function OwnerNewSubscriptionPage() {
   if (!memberDetail) {
     return (
       <div className="page-stack max-w-5xl">
-        <Link to={backLink} className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Member Profile
-        </Link>
         <div className="empty-state">Could not load member details.</div>
       </div>
     );
@@ -772,11 +764,6 @@ export default function OwnerNewSubscriptionPage() {
 
   return (
     <div className="page-stack max-w-5xl">
-      <Link to={backLink} className="back-link">
-        <span className="material-symbols-outlined text-base">arrow_back</span>
-        Member Profile
-      </Link>
-
       <div>
         <h2 className="page-title">New subscription</h2>
       </div>

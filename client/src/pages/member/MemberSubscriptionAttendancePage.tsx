@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { api, type MemberSubscriptionAttendance } from '../../lib/api.js';
 import Card from '../../components/Card.js';
 import Spinner from '../../components/Spinner.js';
@@ -46,10 +46,6 @@ export default function MemberSubscriptionAttendancePage() {
   if (!isValidSubscriptionId) {
     return (
       <div className="page-stack max-w-5xl">
-        <Link to="/subscription" className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Subscription
-        </Link>
         <div className="empty-state">Invalid subscription.</div>
       </div>
     );
@@ -58,10 +54,6 @@ export default function MemberSubscriptionAttendancePage() {
   if (isLoading) {
     return (
       <div className="page-stack max-w-5xl">
-        <Link to="/subscription" className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Subscription
-        </Link>
         <div className="flex justify-center py-16">
           <Spinner />
         </div>
@@ -72,10 +64,6 @@ export default function MemberSubscriptionAttendancePage() {
   if (!data || error) {
     return (
       <div className="page-stack max-w-5xl">
-        <Link to="/subscription" className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Subscription
-        </Link>
         <div className="empty-state">
           {error instanceof Error ? error.message : 'Could not load attendance dates.'}
         </div>
@@ -92,11 +80,6 @@ export default function MemberSubscriptionAttendancePage() {
 
   return (
     <div className="page-stack max-w-5xl">
-        <Link to="/subscription" className="back-link">
-          <span className="material-symbols-outlined text-base">arrow_back</span>
-          Subscription
-        </Link>
-
         <div>
           <h2 className="page-title">Attendance dates</h2>
         </div>

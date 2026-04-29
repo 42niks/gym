@@ -16,14 +16,14 @@ export default function ProfileFieldRow({
     : 'text-right text-sm font-semibold text-black dark:text-white';
   const valueWrap = wrapWords
     ? 'min-w-0 flex-1 whitespace-normal break-normal'
-    : 'min-w-0 flex-1 break-words';
+    : 'min-w-0 flex-1 whitespace-normal break-all';
 
   return (
     <div
       className={
         compact
-          ? 'flex min-h-[3.25rem] items-center justify-between gap-3'
-          : 'flex items-center justify-between gap-4 py-4'
+          ? 'flex min-w-0 min-h-[3.25rem] items-center justify-between gap-3'
+          : 'flex min-w-0 items-center justify-between gap-4 py-4'
       }
     >
       <span className="shrink-0 font-label text-[0.66rem] font-bold uppercase tracking-[0.22em] text-black dark:text-white">

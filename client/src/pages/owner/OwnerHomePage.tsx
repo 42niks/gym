@@ -243,8 +243,8 @@ export default function OwnerHomePage() {
             loading={attendanceLoading}
           />
             <Card className="owner-home-metric-frame border border-black dark:border-white">
-              <div className="owner-home-metric-surface space-y-3 px-4 py-4 sm:px-5 sm:py-5">
-                <div className="flex items-center justify-between gap-4">
+              <div className="owner-home-metric-surface space-y-3 px-5 py-5 sm:px-6 sm:py-6">
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="section-eyebrow not-italic">Consistency Pipeline</p>
                   </div>
