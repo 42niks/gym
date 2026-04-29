@@ -22,7 +22,7 @@ function getToneClassName(pill: MemberStatusPillSpec) {
     : pill.tone === 'neutral'
       ? 'border-black/15 bg-black/[0.04] text-black/70 dark:border-white/15 dark:bg-white/[0.04] dark:text-white/75'
       : pill.key === 'active'
-        ? 'border-energy-300/40 bg-energy-100/55 text-energy-500 dark:border-energy-500/35 dark:bg-energy-500/12 dark:text-energy-300'
+        ? 'border-energy-300/40 bg-energy-100/60 text-energy-500 dark:border-energy-500/35 dark:bg-energy-500/10 dark:text-energy-300'
         : isConsistentFamilyPill(pill)
           ? 'border-brand-600/65 text-brand-50 dark:border-brand-400/40 dark:text-brand-50'
           : pill.key === 'building'
