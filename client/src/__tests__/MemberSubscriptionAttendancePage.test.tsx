@@ -59,14 +59,14 @@ describe('MemberSubscriptionAttendancePage', () => {
     });
   });
 
-  it('highlights attended days and keeps a back link to subscription', async () => {
+  it('highlights attended days and relies on shell header nav (no in-page back link)', async () => {
     mockApiGet.mockResolvedValue(mockMemberSubscriptionAttendance);
     renderWithProviders(<MemberSubscriptionAttendancePage />, { route: '/subscription/1/attendance' });
 
     await waitFor(() => {
       expect(screen.getByLabelText('Attended on 3 Apr 2026')).toBeInTheDocument();
       expect(screen.getByLabelText('Attended on 7 Apr 2026')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /arrow_back Subscription/i })).toHaveAttribute('href', '/subscription');
+      expect(screen.queryByRole('link', { name: /subscription/i })).not.toBeInTheDocument();
     });
   });
 

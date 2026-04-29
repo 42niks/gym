@@ -219,13 +219,13 @@ describe('OwnerMemberDetailPage', () => {
 
     let activeCard: HTMLElement | null = null;
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: /marked today$/i })).toHaveAttribute('href', '/members?view=today');
       expect(screen.getByText('This member has no subscription active for today')).toBeInTheDocument();
       activeCard = screen.getByText('ACTIVE SUBSCRIPTION').closest('.glass-panel');
       expect(activeCard).not.toBeNull();
       expect(within(activeCard as HTMLElement).getByRole('button', { name: /add subscription/i })).toBeInTheDocument();
       expect(within(activeCard as HTMLElement).getByRole('link')).toHaveAttribute('href', '/members/2/subscriptions/new?view=today');
     });
+    expect(screen.queryByRole('link', { name: /marked today$/i })).not.toBeInTheDocument();
   });
 
   it('disables the empty active card CTA when the member cannot add subscriptions', async () => {
@@ -247,13 +247,14 @@ describe('OwnerMemberDetailPage', () => {
 
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
-    let activeCard: HTMLElement | null = null;
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: /archived members$/i })).toHaveAttribute('href', '/members?view=archived');
-      activeCard = screen.getByText('ACTIVE SUBSCRIPTION').closest('.glass-panel');
-      expect(activeCard).not.toBeNull();
-      expect(within(activeCard as HTMLElement).getByRole('button', { name: /unarchive to add subscription/i })).toBeDisabled();
-      expect(within(activeCard as HTMLElement).queryByRole('link')).not.toBeInTheDocument();
+      expect(screen.queryByText('OVERVIEW')).not.toBeInTheDocument();
+      expect(screen.queryByText('ACTIVE SUBSCRIPTION')).not.toBeInTheDocument();
+      expect(screen.queryByText('Upcoming subscriptions')).not.toBeInTheDocument();
+
+      const pastHeading = screen.getByText('Past subscriptions').closest('.member-detail-subheading');
+      expect(pastHeading).not.toBeNull();
+      expect(within(pastHeading as HTMLElement).getByText('0')).toBeInTheDocument();
     });
     expect(screen.queryByRole('button', { name: /edit name/i })).not.toBeInTheDocument();
 
@@ -262,6 +263,29 @@ describe('OwnerMemberDetailPage', () => {
       expect(screen.queryByRole('button', { name: /edit mobile/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /edit member since/i })).not.toBeInTheDocument();
     });
+  });
+
+  it('wraps long email in the expanded bio to prevent horizontal overflow', async () => {
+    const user = userEvent.setup();
+    const longEmail = 'averyveryverylongemailaddressaveryveryverylongemailaddressaveryveryverylongemailaddress@example.com';
+
+    configurePageData({
+      detail: {
+        ...mockMemberDetail,
+        email: longEmail,
+      },
+      subscriptions: [],
+    });
+
+    renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
+
+    await user.click(await screen.findByRole('button', { name: /more/i }));
+    const emailValue = await screen.findByText(longEmail);
+
+    // ProfileFieldRow (compact mode, non-wrapping edit row) should force wrapping so the UI can't expand past the viewport.
+    expect(emailValue).toHaveClass('min-w-0');
+    expect(emailValue).toHaveClass('whitespace-normal');
+    expect(emailValue).toHaveClass('break-all');
   });
 
   it('sorts upcoming by start date and past by end date regardless of API order', async () => {
@@ -379,8 +403,8 @@ describe('OwnerMemberDetailPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /unarchive member/i })).toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: /unarchive member/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /restore member/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /restore member/i }));
 
     expect(mockApiPost).toHaveBeenCalledWith('/api/members/2/unarchive');
     confirmSpy.mockRestore();

@@ -36,12 +36,12 @@ beforeEach(() => {
 });
 
 describe('OwnerSubscriptionAttendancePage', () => {
-  it('renders the attendance workspace and preserves the member back link', async () => {
+  it('renders the attendance workspace without an in-page back link', async () => {
     renderWithProviders(<OwnerSubscriptionAttendancePage />, { route: '/members/2/subscriptions/1/attendance?view=today' });
 
     await waitFor(() => {
       expect(screen.getByText('Attendance dates')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /member profile/i })).toHaveAttribute('href', '/members/2?view=today');
+      expect(screen.queryByRole('link', { name: /member profile/i })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /terminate subscription/i })).toBeInTheDocument();
     });
   });
