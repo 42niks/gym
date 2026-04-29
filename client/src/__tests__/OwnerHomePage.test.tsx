@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, waitFor } from '@testing-library/react';
 import OwnerHomePage from '../pages/owner/OwnerHomePage.js';
+import AppShell from '../components/AppShell.js';
 import { renderWithProviders } from './test-utils.js';
 import { mockDashboard } from './mocks.js';
 import { clearAdaptiveLoadingMemory, rememberSlowNetwork } from '../lib/adaptiveLoading.js';
+import { ownerLinks } from '../pages/owner/ownerLinks.js';
+import { Route, Routes } from 'react-router-dom';
 
 const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }));
 
@@ -108,7 +111,17 @@ describe('OwnerHomePage', () => {
 
   it('has nav link to members', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
-    renderWithProviders(<OwnerHomePage />, { route: '/home' });
+    function WithShell() {
+      return (
+        <Routes>
+          <Route element={<AppShell links={ownerLinks} />}>
+            <Route path="/home" element={<OwnerHomePage />} />
+          </Route>
+        </Routes>
+      );
+    }
+
+    renderWithProviders(<WithShell />, { route: '/home' });
     expect(screen.getByText('Members')).toBeInTheDocument();
   });
 

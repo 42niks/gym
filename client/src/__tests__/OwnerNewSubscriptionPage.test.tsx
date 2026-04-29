@@ -2,8 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerNewSubscriptionPage from '../pages/owner/OwnerNewSubscriptionPage.js';
+import AppShell from '../components/AppShell.js';
 import { renderWithProviders } from './test-utils.js';
 import { mockManagedPackages, mockMemberDetail, mockPackages } from './mocks.js';
+import { ownerLinks } from '../pages/owner/ownerLinks.js';
+import { Route, Routes } from 'react-router-dom';
 
 const { mockApiGet, mockApiPost, mockNavigate } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
@@ -52,12 +55,24 @@ beforeEach(() => {
 });
 
 describe('OwnerNewSubscriptionPage', () => {
-  it('renders the heading, mode tabs, and member back link', async () => {
-    renderWithProviders(<OwnerNewSubscriptionPage />, { route: '/members/2/subscriptions/new' });
+  it('renders the heading, mode tabs, and shell back button', async () => {
+    function WithShell() {
+      return (
+        <Routes>
+          <Route element={<AppShell links={ownerLinks} />}>
+            <Route path="/members/:id/subscriptions/new" element={<OwnerNewSubscriptionPage />} />
+          </Route>
+        </Routes>
+      );
+    }
+
+    renderWithProviders(<WithShell />, { route: '/members/2/subscriptions/new' });
 
     await waitFor(() => {
       expect(screen.getByText('New subscription')).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /member profile/i })).toHaveAttribute('href', '/members/2');
+      const backButton = screen.getByRole('button', { name: /^back$/i });
+      expect(backButton).toBeInTheDocument();
+      expect(within(backButton).getByText('arrow_back')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /existing package/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /custom package/i })).toBeInTheDocument();
     });

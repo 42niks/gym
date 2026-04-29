@@ -105,7 +105,7 @@ describe('OwnerMemberDetailPage', () => {
     renderWithProviders(<OwnerMemberDetailPage />, { route: '/members/2' });
 
     const activePill = await screen.findByText('Active');
-    expect(activePill.parentElement).toHaveClass('bg-energy-100/55');
+    expect(activePill.parentElement).toHaveClass('bg-energy-100/60');
     expect(activePill.parentElement).toHaveClass('text-energy-500');
 
     const consistentDaysSurface = screen.getByText('14 Days').closest('.member-status-pill-consistent-surface');

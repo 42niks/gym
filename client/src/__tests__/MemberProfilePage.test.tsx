@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import MemberProfilePage from '../pages/member/MemberProfilePage.js';
+import AppShell from '../components/AppShell.js';
 import { renderWithProviders } from './test-utils.js';
 import { mockMemberProfile } from './mocks.js';
+import { memberLinks } from '../pages/member/memberLinks.js';
+import { Route, Routes } from 'react-router-dom';
 
 const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }));
 
@@ -57,7 +60,17 @@ describe('MemberProfilePage', () => {
 
   it('has nav links to Home and Subscription', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
-    renderWithProviders(<MemberProfilePage />, { route: '/profile' });
+    function WithShell() {
+      return (
+        <Routes>
+          <Route element={<AppShell links={memberLinks} />}>
+            <Route path="/profile" element={<MemberProfilePage />} />
+          </Route>
+        </Routes>
+      );
+    }
+
+    renderWithProviders(<WithShell />, { route: '/profile' });
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Subscription')).toBeInTheDocument();
   });

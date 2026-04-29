@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import OwnerNewMemberPage from '../pages/owner/OwnerNewMemberPage.js';
+import AppShell from '../components/AppShell.js';
 import { renderWithProviders } from './test-utils.js';
+import { ownerLinks } from '../pages/owner/ownerLinks.js';
+import { Route, Routes } from 'react-router-dom';
 
 const { mockApiPost, mockNavigate } = vi.hoisted(() => ({
   mockApiPost: vi.fn(),
@@ -38,8 +41,21 @@ describe('OwnerNewMemberPage', () => {
   });
 
   it('has a back link to members', () => {
-    renderWithProviders(<OwnerNewMemberPage />, { route: '/members/new' });
-    expect(screen.getByRole('link', { name: /arrow_back Members$/ })).toBeInTheDocument();
+    function WithShell() {
+      return (
+        <Routes>
+          <Route element={<AppShell links={ownerLinks} />}>
+            <Route path="/members/new" element={<OwnerNewMemberPage />} />
+          </Route>
+        </Routes>
+      );
+    }
+
+    renderWithProviders(<WithShell />, { route: '/members/new' });
+
+    const backButton = screen.getByRole('button', { name: /^back$/i });
+    expect(backButton).toBeInTheDocument();
+    expect(within(backButton).getByText('arrow_back')).toBeInTheDocument();
   });
 
   it('submits form and navigates to member detail', async () => {

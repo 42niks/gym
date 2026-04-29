@@ -16,6 +16,7 @@ vi.mock('../context/AuthContext.js', () => ({
 
 vi.mock('../context/ThemeContext.js', () => ({
   ThemeProvider: ({ children }: any) => children,
+  useTheme: () => ({ theme: 'light', preference: 'light' }),
 }));
 
 vi.mock('../pages/LoginPage.js', () => ({ default: () => <div>Login Page</div> }));

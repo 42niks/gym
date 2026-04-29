@@ -1,8 +1,11 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OwnerNewPackagePage from '../pages/owner/OwnerNewPackagePage.js';
+import AppShell from '../components/AppShell.js';
 import { renderWithProviders } from './test-utils.js';
+import { ownerLinks } from '../pages/owner/ownerLinks.js';
+import { Route, Routes } from 'react-router-dom';
 
 const { mockApiPost, mockNavigate } = vi.hoisted(() => ({
   mockApiPost: vi.fn(),
@@ -41,9 +44,26 @@ describe('OwnerNewPackagePage', () => {
     renderWithProviders(<OwnerNewPackagePage />, { route: '/packages/new' });
 
     expect(screen.getByText('NEW PACKAGE')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /arrow_back Packages$/ })).toHaveAttribute('href', '/packages');
     expect(screen.getByLabelText(/service type/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create package/i })).toBeInTheDocument();
+  });
+
+  it('shows the shell back button on the new package route', () => {
+    function WithShell() {
+      return (
+        <Routes>
+          <Route element={<AppShell links={ownerLinks} />}>
+            <Route path="/packages/new" element={<OwnerNewPackagePage />} />
+          </Route>
+        </Routes>
+      );
+    }
+
+    renderWithProviders(<WithShell />, { route: '/packages/new' });
+
+    const backButton = screen.getByRole('button', { name: /^back$/i });
+    expect(backButton).toBeInTheDocument();
+    expect(within(backButton).getByText('arrow_back')).toBeInTheDocument();
   });
 
   it('reveals a custom service type input when requested', async () => {

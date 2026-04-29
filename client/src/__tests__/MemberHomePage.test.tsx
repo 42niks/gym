@@ -2,9 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MemberHomePage from '../pages/member/MemberHomePage.js';
+import AppShell from '../components/AppShell.js';
 import { renderWithProviders } from './test-utils.js';
 import { mockMemberHome } from './mocks.js';
 import type { MemberHome } from '../lib/api.js';
+import { memberLinks } from '../pages/member/memberLinks.js';
+import { Route, Routes } from 'react-router-dom';
 
 const { mockApiGet, mockApiPost } = vi.hoisted(() => ({
   mockApiGet: vi.fn(),
@@ -28,8 +31,8 @@ beforeEach(() => {
 describe('MemberHomePage', () => {
   it('shows spinner while loading', () => {
     mockApiGet.mockReturnValue(new Promise(() => {}));
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
-    expect(screen.getByText('Home')).toBeInTheDocument();
+    const { container } = renderWithProviders(<MemberHomePage />, { route: '/home' });
+    expect(container.querySelector('.animate-spin')).not.toBeNull();
   });
 
   it('renders consistency and check in panels', async () => {
@@ -158,7 +161,17 @@ describe('MemberHomePage', () => {
 
   it('renders nav links', async () => {
     mockApiGet.mockResolvedValue(mockMemberHome);
-    renderWithProviders(<MemberHomePage />, { route: '/home' });
+    function WithShell() {
+      return (
+        <Routes>
+          <Route element={<AppShell links={memberLinks} />}>
+            <Route path="/home" element={<MemberHomePage />} />
+          </Route>
+        </Routes>
+      );
+    }
+
+    renderWithProviders(<WithShell />, { route: '/home' });
 
     await waitFor(() => {
       expect(screen.getByText('Subscription')).toBeInTheDocument();

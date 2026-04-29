@@ -8,7 +8,7 @@ describe('MemberStatusPill', () => {
 
     const pill = screen.getByText('Active').parentElement;
     expect(pill).not.toBeNull();
-    expect(pill).toHaveClass('bg-energy-100/55');
+    expect(pill).toHaveClass('bg-energy-100/60');
     expect(pill).toHaveClass('text-energy-500');
   });
 
